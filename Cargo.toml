@@ -1,0 +1,20 @@
+[package]
+name = "hello_world"
+version = "0.1.0"
+authors = ["Kun Wu <kunwu@kth.se>"]
+edition = "2021"
+
+[lib]
+path = "src/lib.rs"
+
+[[bin]]
+path = "src/main.rs"
+name = "hello_world"
+
+[dependencies]
+actix-web = "4"
+serde = { version = "1.0.160", features = ["derive"] }
+tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
+
+[dev-dependencies]
+reqwest = "0.11.16"
