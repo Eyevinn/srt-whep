@@ -1,13 +1,14 @@
-use hello_world::run;
+use hello_world::startup::run;
+use hello_world::telemetry::{get_subscriber, init_subscriber};
 use std::net::TcpListener;
 
 #[tokio::main]
 async fn main() -> std::io::Result<()> {
-    let listener = TcpListener::bind("127.0.0.1:0")
-        .expect("Failed to bind random port");
-    let port = listener.local_addr().unwrap().port();
-    println!("http://127.0.0.1:{}", port);
+    let subscriber = get_subscriber("hello_world".into(), "info".into(), std::io::stdout);
+    init_subscriber(subscriber);
 
-    let server = run(listener).expect("Failed to bind address");
-    tokio::spawn(server).await? 
+    let listener = TcpListener::bind("127.0.0.1:8000").expect("Failed to bind random port");
+    run(listener)?.await?;
+
+    Ok(())
 }

@@ -15,6 +15,7 @@ class MyHandler(BaseHTTPRequestHandler):
 
         # Store the content in a dictionary with the client ID as the key
         MyHandler.responses[client_id] = content
+        print("Receive content:", content)
 
         # Wait for both clients to submit their requests
         while len(MyHandler.responses) < 2:
@@ -29,7 +30,7 @@ class MyHandler(BaseHTTPRequestHandler):
             MyHandler.responses[client_id] = new_response
         else:
             status_code = 201
-            # replace "a=setup:actpass" with "a=setup:active"
+            # replace "a=setup:actpass" with "a=setup:passive"
             response_content = MyHandler.responses[client_id]
             new_response = response_content.replace("a=setup:actpass", "a=setup:passive")
             MyHandler.responses[client_id] = new_response
