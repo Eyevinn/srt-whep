@@ -100,7 +100,6 @@ pub async fn store_token(
     subscriber_id: Uuid,
     subscription_token: &str,
 ) -> Result<(), StoreTokenError> {
-
     Ok(())
 }
 
