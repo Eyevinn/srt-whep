@@ -1,6 +1,6 @@
-use crate::domain::{NewSubscriber, SubscriberEmail, SubscriberName};
-use actix_web::http::StatusCode;
+use crate::domain::*;
 use actix_web::http::header::ContentType;
+use actix_web::http::StatusCode;
 use actix_web::{web, HttpResponse, ResponseError};
 use anyhow::Context;
 use chrono::Utc;
@@ -51,20 +51,23 @@ impl ResponseError for SubscribeError {
 #[allow(clippy::async_yields_async)]
 #[tracing::instrument(
     name = "Adding a new subscriber",
-    skip(form),
+    skip(form, app_state),
     fields(
         subscriber_email = %form.email,
         subscriber_name = %form.name
     )
 )]
-pub async fn subscribe(form: web::Form<FormData>) -> Result<HttpResponse, SubscribeError> {
+pub async fn subscribe(
+    form: web::Form<FormData>,
+    app_state: web::Data<SharableAppState>,
+) -> Result<HttpResponse, SubscribeError> {
     let new_subscriber = form.0.try_into().map_err(SubscribeError::ValidationError)?;
 
-    let subscriber_id = insert_subscriber(&new_subscriber)
+    let subscriber_id = insert_subscriber(&app_state, &new_subscriber)
         .await
         .context("Failed to insert new subscriber in the database.")?;
     let subscription_token = generate_subscription_token();
-    store_token(subscriber_id, &subscription_token)
+    store_token(&app_state, subscriber_id, &subscription_token)
         .await
         .context("Failed to store the confirmation token for a new subscriber.")?;
    
@@ -83,76 +86,36 @@ fn generate_subscription_token() -> String {
 
 #[tracing::instrument(
     name = "Saving new subscriber details in the database",
-    skip(new_subscriber)
+    skip(app_state, new_subscriber)
 )]
-pub async fn insert_subscriber(new_subscriber: &NewSubscriber) -> Result<Uuid, MyError> {
+pub async fn insert_subscriber(
+    app_state: &web::Data<SharableAppState>,
+    new_subscriber: &NewSubscriber,
+) -> Result<Uuid, SubscribeError> {
     let subscriber_id = Uuid::new_v4();
     tracing::info!("Saving new subscriber {:?} at time {:?}", subscriber_id,  Utc::now());
+
+    // Lock the app_state and insert the email and name into the status HashMap
+    // Block when the lock is held by another thread
+    app_state
+        .insert_subscriber(new_subscriber)
+        .context("Failed to complete insert operation")?;
 
     Ok(subscriber_id)
 }
 
 #[tracing::instrument(
     name = "Store subscription token in the database",
-    skip(subscription_token)
+    skip(app_state, subscription_token)
 )]
 pub async fn store_token(
+    app_state: &web::Data<SharableAppState>,
     subscriber_id: Uuid,
     subscription_token: &str,
-) -> Result<(), StoreTokenError> {
-    Ok(())
-}
+) -> Result<(), SubscribeError> {
+    app_state
+        .save_token(subscriber_id, subscription_token)
+        .context("Failed to complete save operation")?;
 
-#[derive(thiserror::Error)]
-pub struct MyError(String);
-
-impl std::fmt::Debug for MyError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        error_chain_fmt(self, f)
-    }
-}
-
-impl std::fmt::Display for MyError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "A WebRTC failure was encountered while trying to setup the pipeline."
-        )
-    }
-}
-
-pub struct StoreTokenError(MyError);
-
-impl std::error::Error for StoreTokenError {
-    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
-        Some(&self.0)
-    }
-}
-
-impl std::fmt::Debug for StoreTokenError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        error_chain_fmt(self, f)
-    }
-}
-
-impl std::fmt::Display for StoreTokenError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "A database failure was encountered while trying to store a subscription token."
-        )
-    }
-}
-
-pub fn error_chain_fmt(
-    e: &impl std::error::Error,
-    f: &mut std::fmt::Formatter<'_>,
-) -> std::fmt::Result {
-    writeln!(f, "{}\n", e)?;
-    let mut current = e.source();
-    while let Some(cause) = current {
-        writeln!(f, "Caused by:\n\t{}", cause)?;
-        current = cause.source();
-    }
     Ok(())
 }

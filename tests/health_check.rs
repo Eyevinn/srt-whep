@@ -1,11 +1,11 @@
+use hello_world::domain::SharableAppState;
 use hello_world::startup::run;
 use hello_world::telemetry::{get_subscriber, init_subscriber};
 use once_cell::sync::Lazy;
 use std::net::TcpListener;
-use uuid::Uuid;
 
 // Ensure that the `tracing` stack is only initialised once using `once_cell`
-static TRACING: Lazy<()> = Lazy::new(|| {
+static _TRACING: Lazy<()> = Lazy::new(|| {
     let default_filter_level = "info".to_string();
     let subscriber_name = "test".to_string();
     if std::env::var("TEST_LOG").is_ok() {
@@ -19,9 +19,10 @@ static TRACING: Lazy<()> = Lazy::new(|| {
 
 fn spawn_app() -> String {
     let listener = TcpListener::bind("127.0.0.1:0").expect("Failed to bind random port");
+    let app_data = SharableAppState::new();
 
     let port = listener.local_addr().unwrap().port();
-    let server = run(listener).expect("Failed to bind address");
+    let server = run(listener, app_data).expect("Failed to bind address");
     let _ = tokio::spawn(server);
 
     format!("http://127.0.0.1:{}", port)
@@ -117,4 +118,29 @@ async fn subscribe_returns_a_400_when_fields_are_present_but_invalid() {
             description
         );
     }
+}
+
+#[tokio::test]
+async fn subscribe_returns_a_500_when_repeated_name_is_registered() {
+    let address = spawn_app();
+    let client = reqwest::Client::new();
+    let body = "name=le%20guin&email=ursula_le_guin%40gmail.com";
+
+    let _response = client
+        .post(format!("{}/subscriptions", &address))
+        .header("Content-Type", "application/x-www-form-urlencoded")
+        .body(body)
+        .send()
+        .await
+        .expect("Failed to execute request.");
+
+    let response = client
+        .post(format!("{}/subscriptions", &address))
+        .header("Content-Type", "application/x-www-form-urlencoded")
+        .body(body)
+        .send()
+        .await
+        .expect("Failed to execute request.");
+
+    assert_eq!(500, response.status().as_u16());
 }
