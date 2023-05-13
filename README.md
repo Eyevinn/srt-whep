@@ -2,15 +2,50 @@
 This application ingests one MPEG-TS over SRT stream and outputs to WebRTC recvonly clients using WHEP as signaling protocol.
 
 ## Build
+### OSX
+Requirements:
+- XCode command line tools installed
+- Install GStreamer using Homebrew
+- Install Rust using rustup
+
 ```
-To be added later
+brew install gstreamer gst-plugins-bad gst-plugins-good gst-plugins-ugly gst-libav
 ```
+
+## Run
+
+To run you need to set the `GST_PLUGIN_PATH` environment variable to where you have the gstreamer plugins installed, e.g:
+
+```
+export GST_PLUGIN_PATH=/opt/homebrew/lib/gstreamer-1.0
+```
+
+Then run the application. 
+```
+cargo run | bunyan
+```
+
+A http server will be started on port 8000. You can then set up the WebRTC stream.
+```
+gst-launch-1.0 -v avfvideosrc capture-screen=true ! \
+    video/x-raw,framerate=20/1 ! videoscale ! videoconvert ! \
+    x264enc tune=zerolatency bitrate=500 speed-preset=superfast ! rtph264pay ! \
+    whipsink whip-endpoint="http://localhost:8000/subscriptions"
+
+gst-launch-1.0 -v whepsrc whep-endpoint="http://localhost:8000/subscriptions" \
+    video-caps = "application/x-rtp, media=(string)video, clock-rate=(int)90000, encoding-name=(string)H264, payload=(int)96" \
+    audio-caps = "application/x-rtp, media=(string)audio, encoding-name=(string)AVP, payload=(int)111" ! \
+    rtph264depay ! h264parse ! avdec_h264 ! autovideosink
+```
+
+## Example
+![Example](./docs/Example.gif)
 
 ## Plans
 - [x] Understand WHEP endoint for WebRTC based streaming.
 - [x] Check avaible tools for SRT to WebRTC
 - [x] Build a prototype server for WHEP
-- [ ] Build the HTTP server in Rust
+- [x] Build the HTTP server in Rust
 - [ ] Add support for audio
 - [ ] Check the format/codec of the SRT stream
 - [ ] Add optional pass-through to another SRT receiver
