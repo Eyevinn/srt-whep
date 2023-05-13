@@ -1,18 +1,19 @@
-use crate::domain::new_subscriber::NewSubscriber;
-use std::collections::HashMap;
+use super::{MyError, SessionDescription};
 use std::sync::{Arc, Mutex};
 use uuid::Uuid;
 
 struct AppState {
-    status: HashMap<String, String>,
-    tokens: HashMap<Uuid, String>,
+    whip_offer: Option<SessionDescription>,
+    whep_offer: Option<SessionDescription>,
+    resource_id: Option<String>,
 }
 
 impl AppState {
     fn new() -> Self {
         Self {
-            status: HashMap::new(),
-            tokens: HashMap::new(),
+            whip_offer: None,
+            whep_offer: None,
+            resource_id: None,
         }
     }
 }
@@ -25,64 +26,71 @@ impl SharableAppState {
         Self(Arc::new(Mutex::new(AppState::new())))
     }
 
-    pub fn insert_subscriber(&self, subscriber: &NewSubscriber) -> Result<(), MyError> {
-        // wait to hold the lock to the app_state and insert the email and name into the status HashMap
-        // Block when the lock is held by another thread
+    pub async fn save_whip_offer(&self, offer: SessionDescription) -> Result<(), MyError> {
         let mut app_state = self.0.lock().unwrap();
-        if app_state.status.contains_key(subscriber.email.as_ref()) {
-            return Err(MyError::RepeatedUserNameError);
-        } else {
-            app_state.status.insert(
-                subscriber.email.as_ref().to_string(),
-                subscriber.name.as_ref().to_string(),
-            );
+        if app_state.whip_offer.is_some() {
+            return Err(MyError::RepeatedWhipOffer);
         }
+        app_state.whip_offer = Some(offer);
 
         Ok(())
     }
 
-    pub fn save_token(&self, subscriber_id: Uuid, subscription_token: &str) -> Result<(), MyError> {
-        // Lock the app_state and insert the email and name into the status HashMap
-        // Block when the lock is held by another thread
+    pub async fn create_resource(&self) -> Result<String, MyError> {
         let mut app_state = self.0.lock().unwrap();
-        if app_state.tokens.contains_key(&subscriber_id) {
-            return Err(MyError::RepeatedUserIdError);
-        } else {
-            app_state
-                .tokens
-                .insert(subscriber_id, subscription_token.to_string());
+        let resource_id = Uuid::new_v4().to_string();
+        app_state.resource_id = Some(resource_id.clone());
+
+        Ok(resource_id)
+    }
+
+    pub async fn get_resource(&self) -> Result<String, MyError> {
+        let app_state = self.0.lock().unwrap();
+        if let Some(resource_id) = &app_state.resource_id {
+            return Ok(resource_id.clone());
         }
+
+        Err(MyError::ResourceNotFound)
+    }
+
+    pub async fn wait_on_whep_offer(&self) -> Result<SessionDescription, MyError> {
+        // Check every second if an offer is ready
+        // If the offer is ready, return it
+        loop {
+            let mut app_state = self.0.lock().unwrap();
+            if let Some(offer) = &mut app_state.whep_offer {
+                offer.set_as_passive();
+
+                return Ok(offer.clone());
+            }
+            drop(app_state);
+
+            tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
+        }
+    }
+
+    pub async fn save_whep_offer(&self, offer: SessionDescription) -> Result<(), MyError> {
+        let mut app_state = self.0.lock().unwrap();
+        if app_state.whep_offer.is_some() {
+            return Err(MyError::RepeatedWhepError);
+        }
+        app_state.whep_offer = Some(offer);
 
         Ok(())
     }
-}
 
-#[derive(thiserror::Error)]
-pub enum MyError {
-    #[error("Poisoned lock")]
-    PoisonedLockError,
-    #[error("Repeated user id")]
-    RepeatedUserIdError,
-    #[error("Repeated user name")]
-    RepeatedUserNameError,
-}
+    pub async fn wait_on_whip_offer(&self) -> Result<SessionDescription, MyError> {
+        // Check every second if an offer is ready
+        // If the offer is ready, return it
+        loop {
+            let mut app_state: std::sync::MutexGuard<AppState> = self.0.lock().unwrap();
+            if let Some(offer) = &mut app_state.whip_offer {
+                offer.set_as_active();
+                return Ok(offer.clone());
+            }
+            drop(app_state);
 
-// We are still using a bespoke implementation of `Debug` // to get a nice report using the error source chain
-impl std::fmt::Debug for MyError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        error_chain_fmt(self, f)
+            tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
+        }
     }
-}
-
-pub fn error_chain_fmt(
-    e: &impl std::error::Error,
-    f: &mut std::fmt::Formatter<'_>,
-) -> std::fmt::Result {
-    writeln!(f, "{}\n", e)?;
-    let mut current = e.source();
-    while let Some(cause) = current {
-        writeln!(f, "Caused by:\n\t{}", cause)?;
-        current = cause.source();
-    }
-    Ok(())
 }
