@@ -27,15 +27,17 @@ cargo run | bunyan
 
 A http server will be started on port 8000. You can then set up the WebRTC stream.
 ```
-gst-launch-1.0 -v avfvideosrc capture-screen=true ! \
-    video/x-raw,framerate=20/1 ! videoscale ! videoconvert ! \
-    x264enc tune=zerolatency bitrate=500 speed-preset=superfast ! rtph264pay ! \
-    whipsink whip-endpoint="http://localhost:8000/subscriptions"
+gst-launch-1.0 -v \
+    avfvideosrc capture-screen=true ! video/x-raw,framerate=20/1 ! videoscale ! videoconvert ! x264enc tune=zerolatency ! mux. \
+    audiotestsrc ! audio/x-raw, format=S16LE, channels=2, rate=44100 ! audioconvert ! voaacenc ! aacparse ! mux. \
+    mpegtsmux name=mux ! rtpmp2tpay ! whipsink whip-endpoint="http://localhost:8000/subscriptions"
 
 gst-launch-1.0 -v whepsrc whep-endpoint="http://localhost:8000/subscriptions" \
     video-caps = "application/x-rtp, media=(string)video, clock-rate=(int)90000, encoding-name=(string)H264, payload=(int)96" \
-    audio-caps = "application/x-rtp, media=(string)audio, encoding-name=(string)AVP, payload=(int)111" ! \
-    rtph264depay ! h264parse ! avdec_h264 ! autovideosink
+    audio-caps = "application/x-rtp, media=(string)audio, encoding-name=(string)AAC, payload=(int)111" ! \
+    rtpmp2tdepay ! decodebin name=d \
+    d. ! queue ! autovideosink sync=false \
+    d. ! queue ! audioconvert ! autoaudiosink sync=false
 ```
 
 ## Example
@@ -46,8 +48,9 @@ gst-launch-1.0 -v whepsrc whep-endpoint="http://localhost:8000/subscriptions" \
 - [x] Check avaible tools for SRT to WebRTC
 - [x] Build a prototype server for WHEP
 - [x] Build the HTTP server in Rust
-- [ ] Add support for audio
-- [ ] Check the format/codec of the SRT stream
+- [x] Add support for audio
+- [x] Check the format/codec of the SRT stream
+- [ ] Write the pipeline in Rust
 - [ ] Add optional pass-through to another SRT receiver
 - [ ] Add support for multiple WebRTC clients
 

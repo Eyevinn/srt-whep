@@ -1,71 +1,60 @@
-WEBRTCSINK_SIGNALLING_SERVER_LOG=debug cargo run --bin gst-webrtc-signalling-server
-
-## Video Only
-gst-launch-1.0 -v videotestsrc ! video/x-raw, height=360, width=640 ! videoconvert ! \
-    x264enc tune=zerolatency ! video/x-h264, profile=high ! mpegtsmux ! srtsink uri=srt://:8888 wait-for-connection=false
-
-gst-launch-1.0 webrtcsink name=ws meta="meta,name=gst-stream" srtsrc uri="srt://127.0.0.1:8888" ! decodebin ! queue ! ws. audiotestsrc ! ws.
-
-## Video & Audio
-gst-launch-1.0 -v \
-    videotestsrc ! video/x-raw, height=360, width=640 ! videoconvert ! x264enc tune=zerolatency ! mux. \
-    audiotestsrc ! audio/x-raw, format=S16LE, channels=2, rate=44100 ! audioconvert ! voaacenc ! aacparse ! mux. \
-    mpegtsmux name=mux ! srtsink uri="srt://127.0.0.1:1234?mode=listener" wait-for-connection=false
-
-gst-launch-1.0 -v srtsrc  uri="srt://127.0.0.1:1234" ! srtsink uri="srt://127.0.0.1:8888" wait-for-connection=false
-
-gst-launch-1.0 -v srtsrc  uri="srt://127.0.0.1:1234" ! tsdemux name=demux \
-    demux. ! queue ! h264parse ! avdec_h264 ! videoconvert ! autovideosink sync=false \
-    demux. ! queue ! decodebin ! audioconvert ! autoaudiosink sync=false \
-
-# test
-gst-launch-1.0 webrtcsink name=ws meta="meta,name=gst-stream" videotestsrc ! ws. audiotestsrc ! ws.
-
-# use decodebin
-gst-launch-1.0 webrtcsink name=ws meta="meta,name=gst-stream" srtsrc uri="srt://127.0.0.1:1234"  ! tee name=t ! \
-    queue ! h264parse ! avdec_h264 ! videoconvert ! ws. t. ! \
-    queue ! decodebin ! audioconvert ! ws.
-
-# use avdec_aac (stalled)
-gst-launch-1.0 webrtcsink name=ws meta="meta,name=gst-stream" srtsrc uri="srt://127.0.0.1:1234"  ! tee name=t ! \
-    queue ! h264parse ! avdec_h264 ! videoconvert ! ws. t. ! \
-    queue ! aacparse ! avdec_aac ! audioconvert ! ws.
-
-# Others
-gst-launch-1.0 -v videotestsrc ! video/x-raw, height=360, width=640 ! videoconvert ! \
-    x264enc tune=zerolatency ! video/x-h264, profile=high ! mpegtsmux ! decodebin ! queue ! webrtcsink name=ws meta="meta,name=gst-stream"
-
-
-## SRT
-# producer
-gst-launch-1.0 -v videotestsrc ! clockoverlay ! video/x-raw, height=360, width=640 ! videoconvert ! x264enc tune=zerolatency ! video/x-h264, profile=high ! mpegtsmux ! srtsink uri=srt://:8888
-
-# middle
-gst-launch-1.0 srtsrc uri="srt://127.0.0.1:8888" ! queue !  srtserversink uri="srt://:1234" wait-for-connection=false
-
-# consumer
-gst-launch-1.0 srtsrc uri="srt://127.0.0.1:1234"  ! tsdemux ! queue ! h264parse ! avdec_h264 ! videoconvert ! autovideosink
-
+## HLS Streaming
 gst-launch-1.0 videotestsrc is-live=true ! x264enc ! h264parse ! hlssink3
 
+gst-launch-1.0 srtsrc uri="srt://" ! \
+    tsdemux ! queue ! h264parse ! \
+    hlssink3 enable-program-date-time=true playlist-length=3 target-duration=5 max-files=5
+
+## SRT Streaming
+### Video Only
+#### producer
+gst-launch-1.0 -v videotestsrc ! clockoverlay ! video/x-raw, height=360, width=640 ! videoconvert ! \
+    x264enc tune=zerolatency ! video/x-h264, profile=high ! \
+    mpegtsmux ! srtsink uri=srt://:8888 wait-for-connection=false
+
+#### trasmitter
+gst-launch-1.0 srtsrc uri="srt://127.0.0.1:8888" ! queue !  srtserversink uri="srt://:1234" wait-for-connection=false
+
+#### consumer
+gst-launch-1.0 srtsrc uri="srt://127.0.0.1:1234"  ! tsdemux ! queue ! h264parse ! avdec_h264 ! videoconvert ! autovideosink
+
+### Video & Audio
+#### producer
+gst-launch-1.0 -v \
+    avfvideosrc capture-screen=true ! video/x-raw,framerate=20/1 ! videoscale ! videoconvert ! x264enc tune=zerolatency ! mux. \
+    audiotestsrc ! audio/x-raw, format=S16LE, channels=2, rate=44100 ! audioconvert ! voaacenc ! aacparse ! mux. \
+    mpegtsmux name=mux ! queue ! srtserversink uri="srt://127.0.0.1:1234?mode=listener" wait-for-connection=false
+
+#### consumer
+gst-launch-1.0 -v srtsrc  uri="srt://127.0.0.1:1234" ! decodebin name=d \
+    d. ! queue ! audioconvert ! autoaudiosink \
+    d. ! queue ! autovideosink
+    
 ## WebRTC
+### Signalling Server
 WEBRTCSINK_SIGNALLING_SERVER_LOG=debug cargo run --bin gst-webrtc-signalling-server
 
-# Server
-gst-launch-1.0 srtsrc uri="srt://127.0.0.1:1234"  ! tsdemux ! queue ! h264parse ! avdec_h264 ! videoconvert ! webrtcsink name=ws meta="meta,name=gst-stream"
+### WebRTC Sink
+gst-launch-1.0 -v srtsrc  uri="srt://127.0.0.1:1234" ! decodebin name=d \
+    d. ! queue ! audioconvert ! webrtcsink name=ws meta="meta,name=gst-stream" \
+    d. ! queue ! ws.
 
-# Client
-gst-launch-1.0 webrtcsrc signaller::producer-peer-id="" ! videoconvert ! autovideosink
+### WebRTC Source
+gst-launch-1.0 webrtcsrc name=ws signaller::producer-peer-id="" \
+    ws. ! videoconvert ! autovideosink \
+    ws. ! audioconvert ! autoaudiosink
 
-
+## WebRTC HTTP
 ## WHIP Sink
-gst-launch-1.0 -v avfvideosrc capture-screen=true ! \
-    video/x-raw,framerate=20/1 ! videoscale ! videoconvert ! \
-    x264enc tune=zerolatency bitrate=500 speed-preset=superfast ! rtph264pay ! \
-    whipsink whip-endpoint="http://localhost:8000/subscriptions"
+gst-launch-1.0 -v \
+    avfvideosrc capture-screen=true ! video/x-raw,framerate=20/1 ! videoscale ! videoconvert ! x264enc tune=zerolatency ! mux. \
+    audiotestsrc ! audio/x-raw, format=S16LE, channels=2, rate=44100 ! audioconvert ! voaacenc ! aacparse ! mux. \
+    mpegtsmux name=mux ! rtpmp2tpay ! whipsink whip-endpoint="http://localhost:8000/subscriptions"
 
 ## WHEP Source
 gst-launch-1.0 -v whepsrc whep-endpoint="http://localhost:8000/subscriptions" \
     video-caps = "application/x-rtp, media=(string)video, clock-rate=(int)90000, encoding-name=(string)H264, payload=(int)96" \
-    audio-caps = "application/x-rtp, media=(string)audio, encoding-name=(string)AVP, payload=(int)111" ! \
-    rtph264depay ! h264parse ! avdec_h264 ! autovideosink
+    audio-caps = "application/x-rtp, media=(string)audio, encoding-name=(string)AAC, payload=(int)111" ! \
+    rtpmp2tdepay ! decodebin name=d \
+    d. ! queue ! autovideosink sync=false \
+    d. ! queue ! audioconvert ! autoaudiosink sync=false
