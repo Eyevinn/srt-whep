@@ -34,8 +34,9 @@ gst-launch-1.0 srtsrc uri="srt://127.0.0.1:1234"  ! typefind ! queue ! tsdemux n
     demux. ! multiqueue name=q ! h264parse ! fakesink sync=false \
     demux. ! q. q. ! aacparse  ! fakesink sync=false
 
-gst-launch-1.0 srtsrc uri="srt://127.0.0.1:1234"  ! typefind ! queue ! \
-    rtpmp2tpay ! whipsink whip-endpoint="http://localhost:8000/subscriptions"
+gst-launch-1.0 srtsrc uri="srt://127.0.0.1:1234" ! tee name=t \
+    t. ! queue ! typefind ! queue ! rtpmp2tpay ! whipsink whip-endpoint="http://localhost:8000/subscriptions" \
+    t. ! queue ! srtserversink uri="srt://:8888" wait-for-connection=false
 
 ## WebRTC
 ### Signalling Server
