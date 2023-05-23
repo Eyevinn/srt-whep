@@ -53,12 +53,12 @@ async fn subscribe_returns_a_200_after_exchange_offer() {
     let whep_offer = VALID_WHEP_OFFER;
 
     let whip_response = client
-        .post(format!("{}/subscriptions", &address))
+        .post(address.clone())
         .header("Content-Type", "application/sdp")
         .body(whip_offer.to_string())
         .send();
     let whep_response = client
-        .post(format!("{}/subscriptions", &address))
+        .post(address)
         .header("Content-Type", "application/sdp")
         .body(whep_offer.to_string())
         .send();
@@ -99,7 +99,7 @@ async fn subscribe_returns_a_400_for_invalid_sdps() {
 
     for (invalid_body, error_message) in test_cases {
         let response = client
-            .post(format!("{}/subscriptions", &address))
+            .post(address.clone())
             .header("Content-Type", "application/sdp")
             .body(invalid_body)
             .send()

@@ -14,30 +14,38 @@ brew install gstreamer gst-plugins-bad gst-plugins-good gst-plugins-ugly gst-lib
 
 ## Run
 
-To run you need to set the `GST_PLUGIN_PATH` environment variable to where you have the gstreamer plugins installed, e.g:
+To generate SRT stream, you need to set the `GST_PLUGIN_PATH` environment variable to where you have the gstreamer plugins installed, e.g:
 
 ```
 export GST_PLUGIN_PATH=/opt/homebrew/lib/gstreamer-1.0
+
+gst-launch-1.0 -v \
+    avfvideosrc capture-screen=true ! video/x-raw,framerate=20/1 ! videoscale ! videoconvert ! x264enc tune=zerolatency ! mux. \
+    audiotestsrc ! audio/x-raw, format=S16LE, channels=2, rate=44100 ! audioconvert ! voaacenc ! aacparse ! mux. \
+    mpegtsmux name=mux ! queue ! srtserversink uri="srt://127.0.0.1:1234?mode=listener" wait-for-connection=false
 ```
 
 Then run the application. 
 ```
-cargo run | bunyan
+cargo build
+./target/debug/srt-whep -i 127.0.0.1:1234 -o :8888 -p 8000 | bunyan
 ```
 
-A http server will be started on port 8000. You can then set up the WebRTC stream.
+The whep server will be started on port 8000. You can then set up the WebRTC stream.
 ```
-gst-launch-1.0 -v \
-    avfvideosrc capture-screen=true ! video/x-raw,framerate=20/1 ! videoscale ! videoconvert ! x264enc tune=zerolatency ! mux. \
-    audiotestsrc ! audio/x-raw, format=S16LE, channels=2, rate=44100 ! audioconvert ! voaacenc ! aacparse ! mux. \
-    mpegtsmux name=mux ! rtpmp2tpay ! whipsink whip-endpoint="http://localhost:8000/subscriptions"
-
-gst-launch-1.0 -v whepsrc whep-endpoint="http://localhost:8000/subscriptions" \
+gst-launch-1.0 -v whepsrc whep-endpoint="http://localhost:8000" \
     video-caps = "application/x-rtp, media=(string)video, clock-rate=(int)90000, encoding-name=(string)H264, payload=(int)96" \
     audio-caps = "application/x-rtp, media=(string)audio, encoding-name=(string)AAC, payload=(int)111" ! \
     rtpmp2tdepay ! decodebin name=d \
     d. ! queue ! autovideosink sync=false \
     d. ! queue ! audioconvert ! autoaudiosink sync=false
+```
+SRT stream can be played using the following command:
+```
+gst-launch-1.0 -v srtsrc  uri="srt://127.0.0.1:8888" ! decodebin name=d \
+    d. ! queue ! audioconvert ! autoaudiosink \
+    d. ! queue ! autovideosink
+
 ```
 
 ## Example
@@ -50,8 +58,9 @@ gst-launch-1.0 -v whepsrc whep-endpoint="http://localhost:8000/subscriptions" \
 - [x] Build the HTTP server in Rust
 - [x] Add support for audio
 - [x] Check the format/codec of the SRT stream
-- [ ] Write the pipeline in Rust
-- [ ] Add optional pass-through to another SRT receiver
+- [x] Write the pipeline in Rust
+- [x] Add optional pass-through to another SRT receiver
+- [ ] Add support for graceful shutdown
 - [ ] Add support for multiple WebRTC clients
 
 ## Issues

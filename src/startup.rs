@@ -10,7 +10,7 @@ pub fn run(listener: TcpListener, app_state: SharableAppState) -> Result<Server,
         App::new()
             .wrap(TracingLogger::default())
             .route("/health_check", web::get().to(health_check))
-            .route("/subscriptions", web::post().to(subscribe))
+            .route("/", web::post().to(subscribe))
             .app_data(web::Data::new(app_state.clone()))
     })
     .listen(listener)?
