@@ -29,7 +29,14 @@ gst-launch-1.0 -v \
 gst-launch-1.0 -v srtsrc  uri="srt://127.0.0.1:1234" ! decodebin name=d \
     d. ! queue ! audioconvert ! autoaudiosink \
     d. ! queue ! autovideosink
-    
+
+gst-launch-1.0 srtsrc uri="srt://127.0.0.1:1234"  ! typefind ! queue ! tsdemux name=demux \
+    demux. ! multiqueue name=q ! h264parse ! fakesink sync=false \
+    demux. ! q. q. ! aacparse  ! fakesink sync=false
+
+gst-launch-1.0 srtsrc uri="srt://127.0.0.1:1234"  ! typefind ! queue ! \
+    rtpmp2tpay ! whipsink whip-endpoint="http://localhost:8000/subscriptions"
+
 ## WebRTC
 ### Signalling Server
 WEBRTCSINK_SIGNALLING_SERVER_LOG=debug cargo run --bin gst-webrtc-signalling-server
@@ -53,8 +60,8 @@ gst-launch-1.0 -v \
 
 ## WHEP Source
 gst-launch-1.0 -v whepsrc whep-endpoint="http://localhost:8000/subscriptions" \
-    video-caps = "application/x-rtp, media=(string)video, clock-rate=(int)90000, encoding-name=(string)H264, payload=(int)96" \
-    audio-caps = "application/x-rtp, media=(string)audio, encoding-name=(string)AAC, payload=(int)111" ! \
+    video-caps = "application/x-rtp, media=(string)video, clock-rate=(int)90000, encoding-name=(string)H264, payload=(int)33" \
+    audio-caps = "application/x-rtp, media=(string)audio, encoding-name=(string)AAC, payload=(int)96" ! \
     rtpmp2tdepay ! decodebin name=d \
     d. ! queue ! autovideosink sync=false \
     d. ! queue ! audioconvert ! autoaudiosink sync=false
