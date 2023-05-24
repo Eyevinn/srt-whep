@@ -45,7 +45,6 @@ pub async fn subscribe(
 ) -> Result<HttpResponse, SubscribeError> {
     let sdp: SessionDescription = form.try_into().map_err(SubscribeError::ValidationError)?;
     tracing::info!("Received SDP at time: {:?}", Utc::now());
-
     if sdp.is_sendonly() {
         app_state
             .save_whip_offer(sdp)

@@ -93,4 +93,12 @@ impl SharableAppState {
             tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
         }
     }
+    pub fn get_whip_offer(&self) -> Result<SessionDescription, MyError> {
+        let app_state = self.0.lock().unwrap();
+        if let Some(whip_offer) = &app_state.whip_offer {
+            return Ok(whip_offer.clone());
+        }
+
+        Err(MyError::ResourceNotFound)
+    }
 }
