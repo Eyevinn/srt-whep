@@ -13,7 +13,7 @@ pub fn run(listener: TcpListener, app_state: SharableAppState, webrtc_state: Sha
             .route("/health_check", web::get().to(health_check))
             .route("/subscriptions", web::post().to(subscribe))
             .route("broadcaster/channel/{id}", web::get().to(get_status))
-            .route("broadcaster/channel/{id}", web::post().to(get_connection))
+            .route("/broadcaster/channel/{id}", web::post().to(get_connection))
             .route("broadcaster/channel/{id}/{sessionId}", web::put().to(get_answer))
             .route("broadcaster/channel/{id}/{sessionId}", web::patch().to(get_ice_candidate))
             .app_data(web::Data::new(app_state.clone()))

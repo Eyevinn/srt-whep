@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 use webrtc::peer_connection::sdp::session_description::RTCSessionDescription;
 use actix_web::http::Error;
 use std::convert::{TryFrom, TryInto};
+use crate::domain::SharableAppState;
 
 #[derive(Serialize, Deserialize)]
 struct SdpResponse {
@@ -21,8 +22,8 @@ struct Sdp {
 struct SdpReq {
     offer: String
 }
-#[tracing::instrument(name = "Receive an offer from a client", skip(form, _webrtc_state))]
-pub async fn get_connection(form: String, _webrtc_state: web::Data<SharableWebrtcState>) -> Result<HttpResponse, Error> {
+#[tracing::instrument(name = "Receive an offer from a client", skip(form, app_state, _webrtc_state))]
+pub async fn get_connection(form: String, app_state: web::Data<SharableAppState>, _webrtc_state: web::Data<SharableWebrtcState>) -> Result<HttpResponse, Error> {
     
     // let sdp_str:String = match String::from_utf8(bytes.to_vec()) {
     //     Ok(s) => s.to_owned(),
