@@ -1,9 +1,9 @@
+use clap::Parser;
 use hello_world::domain::SharableAppState;
-use hello_world::pipeline::{Args, setup_pipeline};
+use hello_world::pipeline::{setup_pipeline, Args};
 use hello_world::startup::run;
 use hello_world::telemetry::{get_subscriber, init_subscriber};
 use std::net::TcpListener;
-use clap::Parser;
 
 #[tokio::main]
 async fn main() -> std::io::Result<()> {
@@ -13,7 +13,8 @@ async fn main() -> std::io::Result<()> {
     init_subscriber(subscriber);
 
     let app_data = SharableAppState::new();
-    let listener = TcpListener::bind(format!("127.0.0.1:{}", args.port)).expect("Whep port is already in use");
+    let listener =
+        TcpListener::bind(format!("127.0.0.1:{}", args.port)).expect("Whep port is already in use");
 
     // Run the pipeline in a separate thread
     let t = tokio::spawn(async move {

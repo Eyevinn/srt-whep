@@ -43,9 +43,30 @@ pub async fn subscribe(
     form: String,
     app_state: web::Data<SharableAppState>,
 ) -> Result<HttpResponse, SubscribeError> {
-    let sdp: SessionDescription = form.try_into().map_err(SubscribeError::ValidationError)?;
     tracing::info!("Received SDP at time: {:?}", Utc::now());
 
+    if form.is_empty() {
+        let whep_answer = app_state
+            .wait_on_whip_offer()
+            .await
+            .context("Failed to receive a whip offer")?;
+
+        let resouce_id = app_state
+            .get_resource()
+            .await
+            .context("Failed to find resource")?;
+
+        return Ok(HttpResponse::Created()
+            .append_header((
+                "Location",
+                format!("http://0.0.0.0:8000/resources/{}", resouce_id),
+            ))
+            .content_type("application/sdp")
+            .body(whep_answer.as_ref().to_string()));
+    }
+    
+    // Non-empty POST request
+    let sdp: SessionDescription = form.try_into().map_err(SubscribeError::ValidationError)?;
     if sdp.is_sendonly() {
         app_state
             .save_whip_offer(sdp)
@@ -63,35 +84,21 @@ pub async fn subscribe(
             .context("Failed to receive a whep offer")?;
 
         return Ok(HttpResponse::Ok()
-            .append_header(("Location", format!("http://0.0.0.0:8000/resources/{}", resouce_id)))
+            .append_header((
+                "Location",
+                format!("http://0.0.0.0:8000/resources/{}", resouce_id),
+            ))
             .content_type("application/sdp")
             .body(whip_answer.as_ref().to_string()));
     } else {
-        // Empty POST request
-        if sdp.is_empty() {
-            let whep_answer = app_state
-                .wait_on_whip_offer()
-                .await
-                .context("Failed to receive a whip offer")?;
-
-            let resouce_id = app_state
-                .get_resource()
-                .await
-                .context("Failed to find resource")?;
-    
-            return Ok(HttpResponse::Created()
-                .append_header(("Location", format!("http://0.0.0.0:8000/resources/{}", resouce_id)))
-                .content_type("application/sdp")
-                .body(whep_answer.as_ref().to_string()));
-        }
+        // We don't support Client mode yet so we return 400
+        return Ok(HttpResponse::BadRequest().into());
     }
-
-    Ok(HttpResponse::BadRequest().into())
 }
 
 #[allow(clippy::async_yields_async)]
 #[tracing::instrument(name = "Receive an answer from a client", skip(form, app_state))]
-pub async fn patch(
+pub async fn save_answer(
     form: String,
     app_state: web::Data<SharableAppState>,
 ) -> Result<HttpResponse, SubscribeError> {
