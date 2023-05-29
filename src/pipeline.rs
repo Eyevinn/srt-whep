@@ -7,6 +7,7 @@ use gstreamer as gst;
 /// Simple program to greet a person
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
+#[derive(Clone)]
 pub struct Args {
     /// SRT source stream address(ip:port)
     #[arg(short, long)]
@@ -63,7 +64,7 @@ pub fn setup_pipeline(args: &Args) -> Result<(), Error> {
     // let opusenc = gst::ElementFactory::make("opusenc").build()?;
     // let rtpopuspay = gst::ElementFactory::make("rtpopuspay").build()?;
     let whipsink = gst::ElementFactory::make("whipsink")
-        .property("whip-endpoint", format!("http://localhost:{}", args.port))
+        .property("whip-endpoint", format!("http://localhost:{}/srt_sink", args.port))
         .build()?;
     let srtserversink = gst::ElementFactory::make("srtserversink")
         .property("uri", format!("srt://{}", args.output_address))
