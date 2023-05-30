@@ -28,6 +28,9 @@ pub fn setup_pipeline(args: &Args) -> Result<(), Error> {
     // gst-launch-1.0 srtsrc uri="srt://127.0.0.1:1234"  ! decodebin name=d \
     //     d. ! queue ! x264enc tune=zerolatency ! rtph264pay ! whipsink whip-endpoint="http://localhost:8000/subscriptions" name=ws \
     //     d. ! queue ! audioconvert ! audioresample ! opusenc ! rtpopuspay ! ws.
+    
+    // gst-launch-1.0 srtsrc uri="srt://127.0.0.1:1234"  ! typefind ! queue ! tsdemux name=demux \
+    //     demux. ! queue ! h264parse ! rtph264pay ! whipsink whip-endpoint="http://localhost:8000/subscriptions"
     let pipeline = gst::Pipeline::default();
     let src = gst::ElementFactory::make("srtsrc")
         .property("uri", format!("srt://{}", args.input_address))
@@ -39,26 +42,26 @@ pub fn setup_pipeline(args: &Args) -> Result<(), Error> {
     let srt_queue = gst::ElementFactory::make("queue")
         .name("srt_queue")
         .build()?;
-    let decodebin = gst::ElementFactory::make("decodebin")
-        .name("decodebin")
+    let typefind = gst::ElementFactory::make("typefind").name("typefind").build()?;
+    let tsdemux = gst::ElementFactory::make("tsdemux")
+        .name("demux")
         .build()?;
 
     let video_queue: gst::Element = gst::ElementFactory::make("queue")
         .name("video-queue")
         .build()?;
-    let x264enc = gst::ElementFactory::make("x264enc")
-        .property_from_str("tune", "zerolatency")
-        // .property("dct8x8", false)  // This could affect the H264 profile to use
-        .build()?;
+    let h264parse = gst::ElementFactory::make("h264parse").build()?;
     let rtph264pay = gst::ElementFactory::make("rtph264pay").build()?;
 
-    let audio_queue: gst::Element = gst::ElementFactory::make("queue")
-        .name("audio-queue")
-        .build()?;
-    let audioconvert = gst::ElementFactory::make("audioconvert").build()?;
-    let audioresample = gst::ElementFactory::make("audioresample").build()?;
-    let opusenc = gst::ElementFactory::make("opusenc").build()?;
-    let rtpopuspay = gst::ElementFactory::make("rtpopuspay").build()?;
+    // let audio_queue: gst::Element = gst::ElementFactory::make("queue")
+    //     .name("audio-queue")
+    //     .build()?;
+    // let aacparse = gst::ElementFactory::make("aacparse").build()?;
+    // let avdec_aac = gst::ElementFactory::make("avdec_aac").build()?;
+    // let audioconvert = gst::ElementFactory::make("audioconvert").build()?;
+    // let audioresample = gst::ElementFactory::make("audioresample").build()?;
+    // let opusenc = gst::ElementFactory::make("opusenc").build()?;
+    // let rtpopuspay = gst::ElementFactory::make("rtpopuspay").build()?;
     let whipsink = gst::ElementFactory::make("whipsink")
         .property("whip-endpoint", format!("http://localhost:{}", args.port))
         .build()?;
@@ -73,26 +76,29 @@ pub fn setup_pipeline(args: &Args) -> Result<(), Error> {
         &tee,
         &whep_queue,
         &srt_queue,
-        &decodebin,
+        &typefind,
+        &tsdemux,
         &video_queue,
-        &audio_queue,
-        &x264enc,
-        &audioconvert,
-        &audioresample,
+        // &audio_queue,
+        &h264parse,
+        // &aacparse,
+        // &avdec_aac,
+        // &audioconvert,
+        // &audioresample,
         &rtph264pay,
-        &opusenc,
-        &rtpopuspay,
+        // &opusenc,
+        // &rtpopuspay,
         &srtserversink,
     ])?;
     gst::Element::link_many(&[&src, &tee])?;
-    gst::Element::link_many(&[&tee, &whep_queue, &decodebin])?;
+    gst::Element::link_many(&[&tee, &whep_queue, &typefind, &tsdemux])?;
     gst::Element::link_many(&[&tee, &srt_queue, &srtserversink])?;
-    // gst::Element::link_many(&[&src, &whep_queue, &decodebin])?;
+    // gst::Element::link_many(&[&src, &typefind, &whep_queue, &tsdemux])?;
 
     let pipeline_weak = pipeline.downgrade();
-    // Connect to decodebin's no-more-pads signal, that is emitted when the element
+    // Connect to tsdemux's no-more-pads signal, that is emitted when the element
     // will not generate more dynamic pads.
-    decodebin.connect_no_more_pads(move |_| {
+    tsdemux.connect_no_more_pads(move |_| {
         // Here we temporarily retrieve a strong reference on the pipeline from the weak one
         // we moved into this callback.
         let pipeline = match pipeline_weak.upgrade() {
@@ -101,18 +107,21 @@ pub fn setup_pipeline(args: &Args) -> Result<(), Error> {
         };
 
         let link_sink = || -> Result<(), Error> {
-            let video_elements = &[&video_queue, &x264enc, &rtph264pay, &whipsink];
+            let video_elements = &[&video_queue, &h264parse, &rtph264pay, &whipsink];
             gst::Element::link_many(video_elements).expect("Failed to link video elements");
+            // Link only video elements for the moment
 
-            let audio_elements = &[
-                &audio_queue,
-                &audioconvert,
-                &audioresample,
-                &opusenc,
-                &rtpopuspay,
-                &whipsink,
-            ];
-            gst::Element::link_many(audio_elements).expect("Failed to link audio elements");
+            // let audio_elements = &[
+            //     &audio_queue,
+            //     &aacparse,
+            //     &avdec_aac,
+            //     &audioconvert,
+            //     &audioresample,
+            //     &opusenc,
+            //     &rtpopuspay,
+            //     &whipsink,
+            // ];
+            // gst::Element::link_many(audio_elements).expect("Failed to link audio elements");
 
             // This is quite important and people forget it often. Without making sure that
             // the new elements have the same state as the pipeline, things will fail later.
@@ -121,9 +130,9 @@ pub fn setup_pipeline(args: &Args) -> Result<(), Error> {
                 e.sync_state_with_parent()?;
             }
 
-            for e in audio_elements {
-                e.sync_state_with_parent()?;
-            }
+            // for e in audio_elements {
+            //     e.sync_state_with_parent()?;
+            // }
 
             Ok(())
         };
@@ -146,7 +155,7 @@ pub fn setup_pipeline(args: &Args) -> Result<(), Error> {
     // it found another stream from the input file and found a way to decode it to its raw format.
     // decodebin automatically adds a src-pad for this raw stream, which
     // we can use to build the follow-up pipeline.
-    decodebin.connect_pad_added(move |_dbin, src_pad| {
+    tsdemux.connect_pad_added(move |_dbin, src_pad| {
         // Here we temporarily retrieve a strong reference on the pipeline from the weak one
         // we moved into this callback.
         let pipeline = match pipeline_weak.upgrade() {
@@ -174,17 +183,17 @@ pub fn setup_pipeline(args: &Args) -> Result<(), Error> {
         };
 
         let insert_sink = |is_audio, is_video| -> Result<(), Error> {
-            if is_audio {
-                // Get the queue element's sink pad and link the decodebin's newly created
-                // src pad for the audio stream to it.
-                let audio_queue = pipeline
-                    .by_name("audio-queue")
-                    .expect("pipeline has no element with name audio-queue");
-                let sink_pad = audio_queue
-                    .static_pad("sink")
-                    .expect("queue has no sinkpad");
-                src_pad.link(&sink_pad)?;
-            }
+            // if is_audio {
+            //     // Get the queue element's sink pad and link the decodebin's newly created
+            //     // src pad for the audio stream to it.
+            //     let audio_queue = pipeline
+            //         .by_name("audio-queue")
+            //         .expect("pipeline has no element with name audio-queue");
+            //     let sink_pad = audio_queue
+            //         .static_pad("sink")
+            //         .expect("queue has no sinkpad");
+            //     src_pad.link(&sink_pad)?;
+            // }
             if is_video {
                 // Get the queue element's sink pad and link the decodebin's newly created
                 // src pad for the video stream to it.
