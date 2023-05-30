@@ -20,7 +20,7 @@ To generate SRT stream, you need to set the `GST_PLUGIN_PATH` environment variab
 export GST_PLUGIN_PATH=/opt/homebrew/lib/gstreamer-1.0
 
 gst-launch-1.0 -v \
-    avfvideosrc capture-screen=true ! video/x-raw,framerate=20/1 ! timeoverlay ! videoscale ! videoconvert ! x264enc tune=zerolatency ! mux. \
+    avfvideosrc capture-screen=true ! video/x-raw,framerate=20/1 ! timeoverlay ! videoscale ! videoconvert ! x264enc tune=zerolatency ! video/x-h264, profile=main mux. \
     audiotestsrc ! audio/x-raw, format=S16LE, channels=2, rate=44100 ! audioconvert ! voaacenc ! aacparse ! mux. \
     mpegtsmux name=mux ! queue ! srtserversink uri="srt://127.0.0.1:1234?mode=listener" wait-for-connection=false
 ```
@@ -52,6 +52,9 @@ gst-launch-1.0 -v playbin  uri="srt://127.0.0.1:8888"
 - [x] Test with browser
 - [ ] Add support for graceful shutdown
 - [ ] Add support for multiple WebRTC clients
+
+## Sample Pipeline
+![Pipeline](./docs/pipeline.svg)
 
 ## Issues
 All relavant discussions are tracked in the [issues](https://github.com/Eyevinn/srt-whep/issues/)
