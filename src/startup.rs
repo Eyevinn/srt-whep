@@ -1,13 +1,17 @@
 use crate::domain::SharableAppState;
 use crate::pipeline::SharablePipeline;
-use crate::routes::{health_check, patch, subscribe, srt_request};
+use crate::routes::{health_check, patch, srt_request, subscribe};
 use actix_cors::Cors;
 use actix_web::dev::Server;
 use actix_web::{web, App, HttpServer};
 use std::net::TcpListener;
 use tracing_actix_web::TracingLogger;
 
-pub fn run(listener: TcpListener, app_state: SharableAppState, pipeline_state: SharablePipeline) -> Result<Server, std::io::Error> {
+pub fn run(
+    listener: TcpListener,
+    app_state: SharableAppState,
+    pipeline_state: SharablePipeline,
+) -> Result<Server, std::io::Error> {
     let server = HttpServer::new(move || {
         let cors = Cors::permissive();
         App::new()

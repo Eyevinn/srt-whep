@@ -50,7 +50,7 @@ pub async fn srt_request(
     if sdp.is_sendonly() {
         let resource_id = Uuid::new_v4().to_string();
         app_state
-        .save_whip_offer(sdp, Some(resource_id.clone()))
+            .save_whip_offer(sdp, Some(resource_id.clone()))
             .await
             .context("Failed to save whip offer")?;
 
@@ -59,16 +59,22 @@ pub async fn srt_request(
             .await
             .context("Failed to receive a whep offer")?;
         return Ok(HttpResponse::Ok()
-        .append_header(("Location", format!("http://0.0.0.0:8000/channel/{}", resource_id)))
-        .content_type("application/sdp")
-        .body(whip_answer.as_ref().to_string()));
+            .append_header((
+                "Location",
+                format!("http://0.0.0.0:8000/channel/{}", resource_id),
+            ))
+            .content_type("application/sdp")
+            .body(whip_answer.as_ref().to_string()));
     } else {
         return Ok(HttpResponse::BadRequest().into());
     }
 }
 
 #[allow(clippy::async_yields_async)]
-#[tracing::instrument(name = "Receive an offer from a client", skip(form, app_state, pipeline_state))]
+#[tracing::instrument(
+    name = "Receive an offer from a client",
+    skip(form, app_state, pipeline_state)
+)]
 pub async fn subscribe(
     form: String,
     app_state: web::Data<SharableAppState>,
@@ -77,6 +83,8 @@ pub async fn subscribe(
     tracing::info!("Received SDP at time: {:?}", Utc::now());
 
     if form.is_empty() {
+        pipeline_state.add_client().unwrap();
+        
         let result = app_state
             .wait_on_whip_offer()
             .await
@@ -90,14 +98,15 @@ pub async fn subscribe(
             .content_type("application/sdp")
             .body(result.sdp.as_ref().to_string()));
     }
-    pipeline_state.add_client().unwrap();
+
     return Ok(HttpResponse::BadRequest().into());
 }
 
 #[allow(clippy::async_yields_async)]
 //#[tracing::instrument(name = "Receive an answer from a client", skip(form, app_state))]
 pub async fn patch(
-    form: String, path: web::Path<String>,
+    form: String,
+    path: web::Path<String>,
     app_state: web::Data<SharableAppState>,
 ) -> Result<HttpResponse, SubscribeError> {
     let sdp: SessionDescription = form.try_into().map_err(SubscribeError::ValidationError)?;

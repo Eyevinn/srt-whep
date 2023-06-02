@@ -4,7 +4,7 @@ use hello_world::pipeline::{Args, SharablePipeline};
 use hello_world::startup::run;
 use hello_world::telemetry::{get_subscriber, init_subscriber};
 use std::net::TcpListener;
-use tokio::signal;  
+use tokio::signal;
 use tokio::task;
 
 #[tokio::main]
@@ -24,16 +24,16 @@ async fn main() -> std::io::Result<()> {
     let t = task::spawn(async move {
         p2.setup_pipeline(&args).unwrap();
     });
-    
+
     run(listener, app_data, pipeline_data)?.await?;
     t.await.expect("Failed to stop server");
 
     match signal::ctrl_c().await {
-        Ok(()) => {},
+        Ok(()) => {}
         Err(err) => {
             eprintln!("Unable to listen for shutdown signal: {}", err);
             // we also shut down in case of error
-        },
+        }
     }
 
     Ok(())
