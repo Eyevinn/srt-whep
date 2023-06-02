@@ -1,12 +1,11 @@
 use crate::domain::*;
-use crate::pipeline::setup_pipeline;
+use crate::pipeline::SharablePipeline;
 use actix_web::http::StatusCode;
 use actix_web::{web, HttpResponse, ResponseError};
 use anyhow::Context;
 use chrono::Utc;
 use std::convert::{TryFrom, TryInto};
 use uuid::Uuid;
-use tokio::task;
 
 impl TryFrom<String> for SessionDescription {
     type Error = String;
@@ -49,7 +48,6 @@ pub async fn srt_request(
     tracing::info!("Received SDP at time: {:?}", Utc::now());
     let sdp: SessionDescription = form.try_into().map_err(SubscribeError::ValidationError)?;
     if sdp.is_sendonly() {
-        println!("whip inc");
         let resource_id = Uuid::new_v4().to_string();
         app_state
         .save_whip_offer(sdp, Some(resource_id.clone()))
@@ -60,7 +58,6 @@ pub async fn srt_request(
             .wait_on_whep_offer(resource_id.clone())
             .await
             .context("Failed to receive a whep offer")?;
-        println!("sending whep");
         return Ok(HttpResponse::Ok()
         .append_header(("Location", format!("http://0.0.0.0:8000/channel/{}", resource_id)))
         .content_type("application/sdp")
@@ -71,24 +68,15 @@ pub async fn srt_request(
 }
 
 #[allow(clippy::async_yields_async)]
-#[tracing::instrument(name = "Receive an offer from a client", skip(form, app_state))]
+#[tracing::instrument(name = "Receive an offer from a client", skip(form, app_state, pipeline_state))]
 pub async fn subscribe(
     form: String,
     app_state: web::Data<SharableAppState>,
+    pipeline_state: web::Data<SharablePipeline>,
 ) -> Result<HttpResponse, SubscribeError> {
     tracing::info!("Received SDP at time: {:?}", Utc::now());
 
     if form.is_empty() {
-        println!("bad req");
-        let args = app_state.get_args().await.context("Failed to find resource")?;
-        println!("why1");
-        let t = task::spawn(async move {
-            println!("why");
-            setup_pipeline(&args.clone()).unwrap();
-        });
-
-        println!("working");
-
         let result = app_state
             .wait_on_whip_offer()
             .await
@@ -102,7 +90,7 @@ pub async fn subscribe(
             .content_type("application/sdp")
             .body(result.sdp.as_ref().to_string()));
     }
-    
+    pipeline_state.add_client().unwrap();
     return Ok(HttpResponse::BadRequest().into());
 }
 
