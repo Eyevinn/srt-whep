@@ -18,7 +18,7 @@ impl SessionDescription {
         if is_empty_or_whitespace || !starts_with_v0 || !sendonly_or_recvonly {
             Err(format!("Invalid Sdp: {}", s))
         } else {*/
-            Ok(Self(s))
+        Ok(Self(s))
         //}
     }
 

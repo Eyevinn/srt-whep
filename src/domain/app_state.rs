@@ -1,6 +1,9 @@
-use crate::pipeline::Args;
 use super::{MyError, SessionDescription};
-use std::{sync::{Arc, Mutex}, collections::HashMap};
+use crate::pipeline::Args;
+use std::{
+    collections::HashMap,
+    sync::{Arc, Mutex},
+};
 
 struct Connection {
     whip_offer: SessionDescription,
@@ -13,15 +16,15 @@ pub struct ReturnValues {
 }
 
 struct AppState {
-    connections: HashMap<String,Connection>,
-    args: Option<Args>
+    connections: HashMap<String, Connection>,
+    args: Option<Args>,
 }
 
 impl AppState {
     fn new(_args: Args) -> Self {
         Self {
             connections: HashMap::new(),
-            args: Some(_args)
+            args: Some(_args),
         }
     }
 }
@@ -43,24 +46,34 @@ impl SharableAppState {
         Err(MyError::ResourceNotFound)
     }
 
-    pub async fn save_whip_offer(&self, offer: SessionDescription, resource_id: Option<String>) -> Result<(), MyError> {
+    pub async fn save_whip_offer(
+        &self,
+        offer: SessionDescription,
+        resource_id: Option<String>,
+    ) -> Result<(), MyError> {
         println!("svae whip");
         let mut app_state = self.0.lock().unwrap();
         let connections = &mut app_state.connections;
 
-        let  rid = resource_id.unwrap();
+        let rid = resource_id.unwrap();
 
         if let Some(_) = connections.get_mut(&rid) {
             return Err(MyError::RepeatedWhipOffer);
         }
 
-        let temp = Connection { whip_offer: offer.to_owned(), whep_offer: None };
+        let temp = Connection {
+            whip_offer: offer.to_owned(),
+            whep_offer: None,
+        };
         connections.insert(rid, temp);
 
         Ok(())
     }
 
-    pub async fn wait_on_whep_offer(&self, resource_id: String) -> Result<SessionDescription, MyError> {
+    pub async fn wait_on_whep_offer(
+        &self,
+        resource_id: String,
+    ) -> Result<SessionDescription, MyError> {
         // Check every second if an offer is ready
         // If the offer is ready, return it
         loop {
@@ -81,7 +94,11 @@ impl SharableAppState {
         }
     }
 
-    pub async fn save_whep_offer(&self, offer: SessionDescription, resource_id: Option<String>) -> Result<(), MyError> {
+    pub async fn save_whep_offer(
+        &self,
+        offer: SessionDescription,
+        resource_id: Option<String>,
+    ) -> Result<(), MyError> {
         if resource_id.is_none() {
             return Err(MyError::ResourceNotFound);
         }
@@ -89,7 +106,7 @@ impl SharableAppState {
         let mut app_state = self.0.lock().unwrap();
 
         let connections = &mut app_state.connections;
-        let  rid = resource_id.unwrap();
+        let rid = resource_id.unwrap();
 
         if let Some(con) = connections.get_mut(&rid) {
             if con.whep_offer.is_some() {
@@ -97,7 +114,7 @@ impl SharableAppState {
             }
             con.whep_offer = Some(offer);
         }
-        
+
         Ok(())
     }
 
@@ -108,9 +125,9 @@ impl SharableAppState {
             let mut app_state = self.0.lock().unwrap();
             let connections = &mut app_state.connections;
 
-            let mut key_value : String = "".to_string();
+            let mut key_value: String = "".to_string();
 
-            for (key,value) in &mut *connections {
+            for (key, value) in &mut *connections {
                 if !Option::is_some(&value.whep_offer) {
                     key_value = key.to_string();
                 }
@@ -120,7 +137,10 @@ impl SharableAppState {
                 if let Some(con) = connections.get_mut(&key_value) {
                     con.whip_offer.set_as_active();
 
-                    return Ok(ReturnValues{sdp: con.whip_offer.clone(), resource_id: key_value});
+                    return Ok(ReturnValues {
+                        sdp: con.whip_offer.clone(),
+                        resource_id: key_value,
+                    });
                 }
             }
 
