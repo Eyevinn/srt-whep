@@ -1,6 +1,6 @@
 use crate::domain::SharableAppState;
 use crate::pipeline::SharablePipeline;
-use crate::routes::{health_check, patch, srt_request, subscribe};
+use crate::routes::{health_check, patch, whip_request, subscribe};
 use actix_cors::Cors;
 use actix_web::dev::Server;
 use actix_web::{web, App, HttpServer};
@@ -20,7 +20,7 @@ pub fn run(
             .route("/health_check", web::get().to(health_check))
             .route("/channel/{id}", web::patch().to(patch))
             .route("/channel", web::post().to(subscribe))
-            .route("/srt_sink", web::post().to(srt_request))
+            .route("/whip_sink", web::post().to(whip_request))
             .app_data(web::Data::new(app_state.clone()))
             .app_data(web::Data::new(pipeline_state.clone()))
     })

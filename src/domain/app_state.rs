@@ -1,5 +1,4 @@
 use super::{MyError, SessionDescription};
-use crate::pipeline::Args;
 use std::{
     collections::HashMap,
     sync::{Arc, Mutex},
@@ -17,14 +16,12 @@ pub struct ReturnValues {
 
 struct AppState {
     connections: HashMap<String, Connection>,
-    args: Option<Args>,
 }
 
 impl AppState {
-    fn new(_args: Args) -> Self {
+    fn new() -> Self {
         Self {
             connections: HashMap::new(),
-            args: Some(_args),
         }
     }
 }
@@ -33,17 +30,8 @@ impl AppState {
 pub struct SharableAppState(Arc<Mutex<AppState>>);
 
 impl SharableAppState {
-    pub fn new(_args: Args) -> Self {
-        Self(Arc::new(Mutex::new(AppState::new(_args))))
-    }
-
-    pub async fn get_args(&self) -> Result<Args, MyError> {
-        let app_state = self.0.lock().unwrap();
-        if let Some(resource_id) = &app_state.args {
-            return Ok(resource_id.clone());
-        }
-
-        Err(MyError::ResourceNotFound)
+    pub fn new() -> Self {
+        Self(Arc::new(Mutex::new(AppState::new())))
     }
 
     pub async fn save_whip_offer(
@@ -51,7 +39,6 @@ impl SharableAppState {
         offer: SessionDescription,
         resource_id: Option<String>,
     ) -> Result<(), MyError> {
-        println!("svae whip");
         let mut app_state = self.0.lock().unwrap();
         let connections = &mut app_state.connections;
 

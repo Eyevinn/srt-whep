@@ -1,6 +1,7 @@
 use actix_web::http::StatusCode;
 use futures::future::join;
 use hello_world::domain::{SharableAppState, VALID_WHEP_OFFER, VALID_WHIP_OFFER};
+use hello_world::pipeline::{SharablePipeline, Args};
 use hello_world::startup::run;
 use hello_world::telemetry::{get_subscriber, init_subscriber};
 use once_cell::sync::Lazy;
@@ -22,9 +23,14 @@ static _TRACING: Lazy<()> = Lazy::new(|| {
 fn spawn_app() -> String {
     let listener = TcpListener::bind("127.0.0.1:0").expect("Failed to bind random port");
     let app_data = SharableAppState::new();
-
+    
     let port = listener.local_addr().unwrap().port();
-    let server = run(listener, app_data).expect("Failed to bind address");
+    let args: Args = {Args{port: 28, input_address: "127.0.0.1:1234".to_string(), output_address: "127.0.0.1:1234".to_string() }};
+    let pipeline_data = SharablePipeline::new(args);
+    
+
+    
+    let server = run(listener, app_data, pipeline_data).expect("Failed to bind address");
     let _ = tokio::spawn(server);
 
     format!("http://127.0.0.1:{}", port)
