@@ -1,7 +1,7 @@
 use anyhow::Error;
 use std::result::Result::Ok;
 use clap::Parser;
-use gst::{prelude::*, DebugGraphDetails, Pipeline, Message};
+use gst::{prelude::*, DebugGraphDetails, Pipeline};
 use gstreamer::message::Eos;
 use gstreamer as gst;
 use std::sync::{Arc, Mutex};
