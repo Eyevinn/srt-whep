@@ -14,7 +14,7 @@ async fn main() -> std::io::Result<()> {
     let subscriber = get_subscriber("hello_world".into(), "info".into(), std::io::stdout);
     init_subscriber(subscriber);
 
-    let app_data = SharableAppState::new(args.clone());
+    let app_data = SharableAppState::new();
     let pipeline_data = SharablePipeline::new(args.clone());
     let listener =
         TcpListener::bind(format!("127.0.0.1:{}", args.port)).expect("Whep port is already in use");
@@ -25,14 +25,17 @@ async fn main() -> std::io::Result<()> {
         p2.setup_pipeline(&args).unwrap();
     });
 
-    run(listener, app_data, pipeline_data)?.await?;
-    t.await.expect("Failed to stop server");
+    run(listener, app_data, pipeline_data.clone())?.await?;
 
     match signal::ctrl_c().await {
-        Ok(()) => {}
+        Ok(()) => {
+            pipeline_data.close_pipeline().unwrap();
+            t.abort();
+        }
         Err(err) => {
             eprintln!("Unable to listen for shutdown signal: {}", err);
-            // we also shut down in case of error
+            pipeline_data.close_pipeline().unwrap();
+            t.abort();
         }
     }
 
