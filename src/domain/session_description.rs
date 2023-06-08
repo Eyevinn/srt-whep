@@ -7,23 +7,27 @@ impl SessionDescription {
         // `.trim()` returns a view over the input `s` without trailing
         // whitespace-like characters.
         // `.is_empty` checks if the view contains any character.
-        let is_empty_or_whitespace = s.trim().is_empty();
+        //let is_empty_or_whitespace = s.trim().is_empty();
 
         // sdp should start with v=0
-        let starts_with_v0 = s.starts_with("v=0");
+        /*let starts_with_v0 = s.starts_with("v=0");
 
         // sdp should contain 'a=sendonly' or 'a=recvonly'
-        let sendonly_or_recvonly = s.contains("a=sendonly") || s.contains("a=recvonly");
+        let sendonly_or_recvonly = s.contains("a=sendonly") || s.contains("a=recvonly");*
 
         if is_empty_or_whitespace || !starts_with_v0 || !sendonly_or_recvonly {
             Err(format!("Invalid Sdp: {}", s))
-        } else {
-            Ok(Self(s))
-        }
+        } else {*/
+        Ok(Self(s))
+        //}
     }
 
     pub fn is_sendonly(&self) -> bool {
         self.0.contains("a=sendonly")
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.0.trim().is_empty()
     }
 
     pub fn set_as_active(&mut self) {

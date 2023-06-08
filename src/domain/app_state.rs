@@ -1,19 +1,27 @@
 use super::{MyError, SessionDescription};
-use std::sync::{Arc, Mutex};
-use uuid::Uuid;
+use std::{
+    collections::HashMap,
+    sync::{Arc, Mutex},
+};
+
+struct Connection {
+    whip_offer: SessionDescription,
+    whep_offer: Option<SessionDescription>,
+}
+
+pub struct ReturnValues {
+    pub sdp: SessionDescription,
+    pub resource_id: String,
+}
 
 struct AppState {
-    whip_offer: Option<SessionDescription>,
-    whep_offer: Option<SessionDescription>,
-    resource_id: Option<String>,
+    connections: HashMap<String, Connection>,
 }
 
 impl AppState {
     fn new() -> Self {
         Self {
-            whip_offer: None,
-            whep_offer: None,
-            resource_id: None,
+            connections: HashMap::new(),
         }
     }
 }
@@ -26,68 +34,103 @@ impl SharableAppState {
         Self(Arc::new(Mutex::new(AppState::new())))
     }
 
-    pub async fn save_whip_offer(&self, offer: SessionDescription) -> Result<(), MyError> {
+    pub async fn save_whip_offer(
+        &self,
+        offer: SessionDescription,
+        resource_id: Option<String>,
+    ) -> Result<(), MyError> {
         let mut app_state = self.0.lock().unwrap();
-        if app_state.whip_offer.is_some() {
+        let connections = &mut app_state.connections;
+
+        let rid = resource_id.unwrap();
+
+        if let Some(_) = connections.get_mut(&rid) {
             return Err(MyError::RepeatedWhipOffer);
         }
-        app_state.whip_offer = Some(offer);
+
+        let temp = Connection {
+            whip_offer: offer.to_owned(),
+            whep_offer: None,
+        };
+        connections.insert(rid, temp);
 
         Ok(())
     }
 
-    pub async fn create_resource(&self) -> Result<String, MyError> {
-        let mut app_state = self.0.lock().unwrap();
-        let resource_id = Uuid::new_v4().to_string();
-        app_state.resource_id = Some(resource_id.clone());
-
-        Ok(resource_id)
-    }
-
-    pub async fn get_resource(&self) -> Result<String, MyError> {
-        let app_state = self.0.lock().unwrap();
-        if let Some(resource_id) = &app_state.resource_id {
-            return Ok(resource_id.clone());
-        }
-
-        Err(MyError::ResourceNotFound)
-    }
-
-    pub async fn wait_on_whep_offer(&self) -> Result<SessionDescription, MyError> {
+    pub async fn wait_on_whep_offer(
+        &self,
+        resource_id: String,
+    ) -> Result<SessionDescription, MyError> {
         // Check every second if an offer is ready
         // If the offer is ready, return it
         loop {
             let mut app_state = self.0.lock().unwrap();
-            if let Some(offer) = &mut app_state.whep_offer {
-                offer.set_as_passive();
+            let connections = &mut app_state.connections;
 
-                return Ok(offer.clone());
+            if let Some(con) = connections.get_mut(&resource_id) {
+                con.whip_offer.set_as_active();
+
+                if con.whep_offer.is_some() {
+                    return Ok(con.whep_offer.clone().unwrap());
+                }
             }
+
             drop(app_state);
 
             tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
         }
     }
 
-    pub async fn save_whep_offer(&self, offer: SessionDescription) -> Result<(), MyError> {
-        let mut app_state = self.0.lock().unwrap();
-        if app_state.whep_offer.is_some() {
-            return Err(MyError::RepeatedWhepError);
+    pub async fn save_whep_offer(
+        &self,
+        offer: SessionDescription,
+        resource_id: Option<String>,
+    ) -> Result<(), MyError> {
+        if resource_id.is_none() {
+            return Err(MyError::ResourceNotFound);
         }
-        app_state.whep_offer = Some(offer);
+
+        let mut app_state = self.0.lock().unwrap();
+
+        let connections = &mut app_state.connections;
+        let rid = resource_id.unwrap();
+
+        if let Some(con) = connections.get_mut(&rid) {
+            if con.whep_offer.is_some() {
+                return Err(MyError::RepeatedWhepError);
+            }
+            con.whep_offer = Some(offer);
+        }
 
         Ok(())
     }
 
-    pub async fn wait_on_whip_offer(&self) -> Result<SessionDescription, MyError> {
+    pub async fn wait_on_whip_offer(&self) -> Result<ReturnValues, MyError> {
         // Check every second if an offer is ready
         // If the offer is ready, return it
         loop {
-            let mut app_state: std::sync::MutexGuard<AppState> = self.0.lock().unwrap();
-            if let Some(offer) = &mut app_state.whip_offer {
-                offer.set_as_active();
-                return Ok(offer.clone());
+            let mut app_state = self.0.lock().unwrap();
+            let connections = &mut app_state.connections;
+
+            let mut key_value: String = "".to_string();
+
+            for (key, value) in &mut *connections {
+                if !Option::is_some(&value.whep_offer) {
+                    key_value = key.to_string();
+                }
             }
+
+            if !key_value.is_empty() {
+                if let Some(con) = connections.get_mut(&key_value) {
+                    con.whip_offer.set_as_active();
+
+                    return Ok(ReturnValues {
+                        sdp: con.whip_offer.clone(),
+                        resource_id: key_value,
+                    });
+                }
+            }
+
             drop(app_state);
 
             tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
