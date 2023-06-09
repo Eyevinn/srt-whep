@@ -28,7 +28,8 @@ brew install gstreamer gst-plugins-bad gst-plugins-good gst-plugins-ugly gst-lib
 To generate SRT stream, you need to set the `GST_PLUGIN_PATH`, `GIO_EXTRA_MODULES` and `DYLD_LIBRARY_PATH` environment variable to where you have the gstreamer plugins installed, e.g:
 
 ```
-export GST_PLUGIN_PATH=/opt/homebrew/lib/gstreamer-1.0
+export PATH=/Library/Frameworks/GStreamer.framework/Versions/Current/bin:$PATH
+export GST_PLUGIN_PATH=/Library/Frameworks/GStreamer.framework/Versions/Current/lib:$GST_PLUGIN_PATH
 export GIO_EXTRA_MODULES=/Library/Frameworks/GStreamer.framework/Libraries/gio/modules/ 
 export DYLD_LIBRARY_PATH=$DYLD_LIBRARY_PATH:$GST_PLUGIN_PATH
 ```
