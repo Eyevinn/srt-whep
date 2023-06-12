@@ -3,15 +3,10 @@ use std::{
     collections::HashMap,
     sync::{Arc, Mutex},
 };
-
+#[derive(Debug, Clone)]
 struct Connection {
-    whip_offer: SessionDescription,
+    whip_offer: Option<SessionDescription>,
     whep_offer: Option<SessionDescription>,
-}
-
-pub struct ReturnValues {
-    pub sdp: SessionDescription,
-    pub resource_id: String,
 }
 
 struct AppState {
@@ -34,27 +29,73 @@ impl SharableAppState {
         Self(Arc::new(Mutex::new(AppState::new())))
     }
 
-    pub async fn save_whip_offer(
+    pub async fn remove_connection(
         &self,
-        offer: SessionDescription,
-        resource_id: Option<String>,
+        resource_id: String,
     ) -> Result<(), MyError> {
         let mut app_state = self.0.lock().unwrap();
         let connections = &mut app_state.connections;
 
-        let rid = resource_id.unwrap();
+        if let Some(_) = connections.remove_entry(&resource_id) {
+           return Ok(());
+        }
 
-        if let Some(_) = connections.get_mut(&rid) {
-            return Err(MyError::RepeatedWhipOffer);
+        return Err(MyError::ResourceNotFound)
+    }
+
+    pub fn list_connections(
+        &self,
+    ) -> Result<Vec<String>, MyError> {
+        let mut app_state = self.0.lock().unwrap();
+        let connections = &mut app_state.connections;
+
+        let keys = connections.clone().into_keys().collect();
+
+        return Ok(keys);
+    }
+
+    pub fn add_resource(&self, resource_id: String) -> Result<(), MyError>  {
+
+        let mut app_state = self.0.lock().unwrap();
+        let connections = &mut app_state.connections;
+
+        if let Some(_) = connections.get_mut(&resource_id) {
+            return Err(MyError::RepeatedResourceIdError);
         }
 
         let temp = Connection {
-            whip_offer: offer.to_owned(),
+            whip_offer: None,
             whep_offer: None,
         };
-        connections.insert(rid, temp);
 
-        Ok(())
+        connections.insert(resource_id, temp);
+
+        return Ok(());
+    } 
+
+    pub fn save_whip_offer(
+        &self,
+        offer: SessionDescription,
+    ) -> Result<String, MyError> {
+        let mut app_state = self.0.lock().unwrap();
+        let connections = &mut app_state.connections;
+
+        let mut key_value = "".to_string();
+
+        for (key, value) in &mut *connections {
+            if !Option::is_some(&value.whep_offer) {
+                key_value = key.to_string();
+            }
+        }
+
+        if let Some(con) = connections.get_mut(&key_value) {
+            if con.whip_offer.is_some() {
+            return Err(MyError::RepeatedWhipOffer);
+            }
+            con.whip_offer = Some(offer);
+        }
+
+        Ok(key_value)
     }
 
     pub async fn wait_on_whep_offer(
@@ -68,7 +109,8 @@ impl SharableAppState {
             let connections = &mut app_state.connections;
 
             if let Some(con) = connections.get_mut(&resource_id) {
-                con.whip_offer.set_as_active();
+                let whip_offer = con.whip_offer.as_mut().unwrap();
+                whip_offer.set_as_active();
 
                 if con.whep_offer.is_some() {
                     return Ok(con.whep_offer.clone().unwrap());
@@ -81,7 +123,7 @@ impl SharableAppState {
         }
     }
 
-    pub async fn save_whep_offer(
+    pub fn save_whep_offer(
         &self,
         offer: SessionDescription,
         resource_id: Option<String>,
@@ -105,29 +147,19 @@ impl SharableAppState {
         Ok(())
     }
 
-    pub async fn wait_on_whip_offer(&self) -> Result<ReturnValues, MyError> {
+    pub async fn wait_on_whip_offer(&self, resource_id: String) -> Result<SessionDescription, MyError> {
         // Check every second if an offer is ready
         // If the offer is ready, return it
         loop {
             let mut app_state = self.0.lock().unwrap();
             let connections = &mut app_state.connections;
 
-            let mut key_value: String = "".to_string();
+            if let Some(con) = connections.get_mut(&resource_id) {
+                if con.whip_offer.is_some() {
+                    let whip_offer = con.whip_offer.as_mut().unwrap();
+                    whip_offer.set_as_active();
 
-            for (key, value) in &mut *connections {
-                if !Option::is_some(&value.whep_offer) {
-                    key_value = key.to_string();
-                }
-            }
-
-            if !key_value.is_empty() {
-                if let Some(con) = connections.get_mut(&key_value) {
-                    con.whip_offer.set_as_active();
-
-                    return Ok(ReturnValues {
-                        sdp: con.whip_offer.clone(),
-                        resource_id: key_value,
-                    });
+                    return Ok(con.whip_offer.clone().unwrap());
                 }
             }
 

@@ -1,5 +1,4 @@
-use anyhow::Error;
-use std::result::Result::Ok;
+use anyhow::{Error, Ok};
 use clap::Parser;
 use gst::{prelude::*, DebugGraphDetails, Pipeline};
 use gstreamer::message::Eos;
@@ -46,13 +45,13 @@ impl SharablePipeline {
         Self(Arc::new(Mutex::new(PipelineStruct::new(_args))))
     }
 
-    pub fn add_client(&self) -> Result<(), Error> {
+    pub fn add_client(&self, resource_id: String) -> Result<(), Error> {
         let pipeline_state = self.0.lock().unwrap();
         let pipeline = pipeline_state.pipeline.as_ref().unwrap();
 
-        let queue_video: gst::Element = gst::ElementFactory::make("queue").build()?;
-        let queue_audio: gst::Element = gst::ElementFactory::make("queue").build()?;
-        let whipsink = gst::ElementFactory::make("whipsink")
+        let queue_video: gst::Element = gst::ElementFactory::make("queue").name("video-queue-".to_string() + &resource_id.to_owned()).build()?;
+        let queue_audio: gst::Element = gst::ElementFactory::make("queue").name("audio-queue-".to_string() + &resource_id.to_owned()).build()?;
+        let whipsink = gst::ElementFactory::make("whipsink").name(("whip-sink-".to_owned() +  &resource_id.clone()).as_str(),)
             .property(
                 "whip-endpoint",
                 format!("http://localhost:{}/whip_sink", pipeline_state.port),
@@ -82,6 +81,33 @@ impl SharablePipeline {
 
         pipeline.debug_to_dot_file(DebugGraphDetails::all(), "add-client");
         Ok(())
+    }
+
+    pub fn remove_connection(&self, id: String) -> Result<(), Error> {
+        let pipeline_state = self.0.lock().unwrap();
+        let pipeline = pipeline_state.pipeline.as_ref().unwrap();
+        
+        let video_queue = pipeline
+            .by_name(("video-queue-".to_string() + &id.clone()).as_str())
+            .expect(("pipeline has no element with name video-queue-".to_owned() + &id.clone()).as_str());
+        let audio_queue = pipeline
+            .by_name(("audio-queue-".to_string() + &id.clone()).as_str())
+            .expect(("pipeline has no element with name output_tee_video".to_owned() + &id.clone()).as_str());
+        let whip_sink = pipeline
+            .by_name(("whip-sink-".to_owned() + &id.clone()).as_str())
+            .expect(("pipeline has no element with name output_tee_video".to_owned() + &id.clone()).as_str());
+
+        video_queue.set_state(gst::State::Null).unwrap();
+        audio_queue.set_state(gst::State::Null).unwrap();
+        whip_sink.set_state(gst::State::Null).unwrap();
+
+        pipeline.remove(&whip_sink).expect("Failed to remove element");
+        pipeline.remove(&video_queue).expect("Failed to remove element");
+        pipeline.remove(&audio_queue).expect("Failed to remove element");
+        
+        pipeline.debug_to_dot_file(DebugGraphDetails::all(), "after-remove");
+
+        return Ok(());
     }
 
     pub fn setup_pipeline(&self, args: &Args) -> Result<(), Error> {

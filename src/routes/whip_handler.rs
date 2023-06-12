@@ -1,5 +1,3 @@
-
-use uuid::Uuid;
 use crate::domain::*;
 use actix_web::{web, HttpResponse,};
 use anyhow::Context;
@@ -15,10 +13,8 @@ pub async fn whip_request(
     tracing::info!("Received SDP at time: {:?}", Utc::now());
     let sdp: SessionDescription = form.try_into().map_err(SubscribeError::ValidationError)?;
     if sdp.is_sendonly() {
-        let resource_id = Uuid::new_v4().to_string();
-        app_state
-            .save_whip_offer(sdp, Some(resource_id.clone()))
-            .await
+        let resource_id = app_state
+            .save_whip_offer(sdp)
             .context("Failed to save whip offer")?;
 
         let whip_answer = app_state

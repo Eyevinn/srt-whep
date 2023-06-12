@@ -3,6 +3,7 @@ use crate::pipeline::SharablePipeline;
 use actix_web::{web, HttpResponse};
 use anyhow::Context;
 use chrono::Utc;
+use uuid::Uuid;
 use std::convert::{TryFrom, TryInto};
 
 impl TryFrom<String> for SessionDescription {
@@ -27,20 +28,23 @@ pub async fn subscribe(
     tracing::info!("Received SDP at time: {:?}", Utc::now());
 
     if form.is_empty() {
-        pipeline_state.add_client().unwrap();
+
+        let resource_id = Uuid::new_v4().to_string();
+        pipeline_state.add_client(resource_id.clone()).unwrap();
+        app_state.add_resource(resource_id.clone()).expect(MyError::RepeatedResourceIdError.to_string().as_str());
         
-        let result = app_state
-            .wait_on_whip_offer()
+        let sdp = app_state
+            .wait_on_whip_offer(resource_id.clone())
             .await
             .context("Failed to receive a whip offer")?;
 
         return Ok(HttpResponse::Created()
             .append_header((
                 "Location",
-                format!("http://0.0.0.0:8000/channel/{}", result.resource_id),
+                format!("http://0.0.0.0:8000/channel/{}", resource_id),
             ))
             .content_type("application/sdp")
-            .body(result.sdp.as_ref().to_string()));
+            .body(sdp.as_ref().to_string()));
     }
 
     return Ok(HttpResponse::BadRequest().body("Client initialization not supported"));
@@ -51,14 +55,13 @@ pub async fn subscribe(
 pub async fn patch(
     form: String,
     path: web::Path<String>,
-    app_state: web::Data<SharableAppState>,
+    app_state: web::Data<SharableAppState>
 ) -> Result<HttpResponse, SubscribeError> {
     let sdp: SessionDescription = form.try_into().map_err(SubscribeError::ValidationError)?;
     let id = path.into_inner();
 
     app_state
         .save_whep_offer(sdp, Some(id))
-        .await
         .context("Failed to save whep offer")?;
 
     return Ok(HttpResponse::NoContent().into());
