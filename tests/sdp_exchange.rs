@@ -1,7 +1,7 @@
 use actix_web::http::StatusCode;
 use futures::future::join;
 use hello_world::domain::{SharableAppState, VALID_WHEP_OFFER, VALID_WHIP_OFFER};
-use hello_world::pipeline::{SharablePipeline, Args};
+use hello_world::pipeline::{SharablePipeline, Args, SRTMode};
 use hello_world::startup::run;
 use hello_world::telemetry::{get_subscriber, init_subscriber};
 use once_cell::sync::Lazy;
@@ -25,7 +25,7 @@ fn spawn_app() -> String {
     let app_data = SharableAppState::new();
     
     let port = listener.local_addr().unwrap().port();
-    let args: Args = {Args{port: 28, input_address: "127.0.0.1:1234".to_string(), output_address: "127.0.0.1:1234".to_string() }};
+    let args: Args = {Args{port: 28, input_address: "127.0.0.1:1234".to_string(), output_address: "127.0.0.1:1234".to_string(), srt_mode:SRTMode::Caller }};
     let pipeline_data = SharablePipeline::new(args);
     
 
