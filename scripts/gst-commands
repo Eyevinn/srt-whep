@@ -23,29 +23,21 @@ gst-launch-1.0 srtsrc uri="srt://127.0.0.1:1234"  ! tsdemux ! queue ! h264parse 
 gst-launch-1.0 -v \
     avfvideosrc capture-screen=true ! video/x-raw,framerate=20/1 ! timeoverlay ! videoscale ! videoconvert ! x264enc tune=zerolatency ! video/x-h264, profile=main ! mux. \
     audiotestsrc ! audio/x-raw, format=S16LE, channels=2, rate=44100 ! audioconvert ! voaacenc ! aacparse ! mux. \
-    mpegtsmux name=mux ! queue ! srtserversink uri="srt://127.0.0.1:1234?mode=listener" wait-for-connection=false
+    mpegtsmux name=mux ! queue ! srtsink uri="srt://127.0.0.1:1234?mode=caller" wait-for-connection=false
 
 #### consumer
-gst-launch-1.0 -v playbin  uri="srt://127.0.0.1:8888"
+gst-launch-1.0 -v playbin  uri="srt://127.0.0.1:1234?mode=listener"
 
-gst-launch-1.0 srtsrc uri="srt://127.0.0.1:1234"  ! typefind ! queue ! tsdemux name=demux \
+gst-launch-1.0 srtsrc uri="srt://127.0.0.1:1234?mode=listener"  ! typefind ! queue ! tsdemux name=demux \
     demux. ! queue ! h264parse ! rtph264pay ! udpsink host=localhost port=5000 \
     demux. ! queue ! aacparse  ! avdec_aac  ! audioconvert ! audioresample ! opusenc ! rtpopuspay ! udpsink host=localhost port=5001 
 
-gst-launch-1.0 -v srtsrc uri="srt://127.0.0.1:1234"  ! typefind ! queue ! tsdemux name=demux \
-    demux. ! queue ! h264parse ! rtph264pay ! whipsink whip-endpoint="http://localhost:8000/subscriptions" name=ws \
-    demux. ! queue ! aacparse  ! avdec_aac ! audioconvert ! audioresample ! opusenc ! rtpopuspay ! ws.
-
-gst-launch-1.0 srtsrc uri="srt://127.0.0.1:1234"  ! decodebin name=d \
-    d. ! queue ! x264enc tune=zerolatency ! rtph264pay ! udpsink host=localhost port=5000 \
-    d. ! queue ! audioconvert ! audiosample ! opusenc  ! rtpopuspay ! udpsink host=localhost port=5001
-
-gst-launch-1.0 srtsrc uri="srt://127.0.0.1:1234"  ! typefind ! queue ! tsdemux name=demux \
+gst-launch-1.0 srtsrc uri="srt://127.0.0.1:1234?mode=listener"  ! typefind ! queue ! tsdemux name=demux \
     demux. ! queue ! h264parse ! rtph264pay ! whipsink whip-endpoint="http://localhost:8000/subscriptions" name=ws
 
-gst-launch-1.0 srtsrc uri="srt://127.0.0.1:1234" ! tee name=t \
-    t. ! queue ! typefind ! queue ! rtpmp2tpay ! whipsink whip-endpoint="http://localhost:8000/subscriptions" \
-    t. ! queue ! srtserversink uri="srt://:8888" wait-for-connection=false
+gst-launch-1.0 srtsrc uri="srt://127.0.0.1:1234?mode=listener" ! tee name=t \
+    t. ! queue ! typefind ! queue ! fakesink \
+    t. ! queue ! srtsink uri="srt://127.0.0.1:8888?mode=caller" wait-for-connection=false
 
 ## WebRTC
 ### Signalling Server
