@@ -9,6 +9,8 @@ pub enum MyError {
     RepeatedWhipOffer,
     #[error("Repeated WHEP offer exists")]
     RepeatedWhepError,
+    #[error("Repeated resource id")]
+    RepeatedResourceIdError,
     #[error("Resource not found")]
     ResourceNotFound,
 }
