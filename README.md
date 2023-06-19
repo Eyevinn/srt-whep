@@ -36,28 +36,27 @@ export DYLD_LIBRARY_PATH=$DYLD_LIBRARY_PATH:$GST_PLUGIN_PATH
 
 Example command for starting a srt stream with screen captured video and a constant tone as audio.
 ```
-
 gst-launch-1.0 -v \
     avfvideosrc capture-screen=true ! video/x-raw,framerate=20/1 ! timeoverlay ! videoscale ! videoconvert ! x264enc tune=zerolatency ! video/x-h264, profile=main ! mux. \
     audiotestsrc ! audio/x-raw, format=S16LE, channels=2, rate=44100 ! audioconvert ! voaacenc ! aacparse ! mux. \
-    mpegtsmux name=mux ! queue ! srtserversink uri="srt://127.0.0.1:1234?mode=listener" wait-for-connection=false
+    mpegtsmux name=mux ! queue ! srtsink uri="srt://127.0.0.1:1234?mode=caller" wait-for-connection=false
 ```
-
+We are setting the srt sink as 'caller' mode, so our application needs to be in 'listener' mode. If srt sink is in 'listener' mode, the application needs to be in 'caller' mode.
 
 Then run the application. 
 ```
-cargo run -- -i 127.0.0.1:1234 -o :8888 -p 8000
+cargo run -- -i 127.0.0.1:1234 -o 127.0.0.1:8888 -p 8000 -s listener
 ```
 With pretty print
 ```
-cargo run -- -i 127.0.0.1:1234 -o :8888 -p 8000 | bunyan
+cargo run -- -i 127.0.0.1:1234 -o :8888 -p 8000 -s listener | bunyan
 ```
 
 The whep server will be started on port 8000. You can then play it out using WHEP [Player](https://webrtc.player.eyevinn.technology/?type=whep). 
 
 The pass-through SRT stream can be viewed using the following command:
 ```
-gst-launch-1.0 -v playbin  uri="srt://127.0.0.1:8888"
+gst-launch-1.0 -v playbin uri="srt://127.0.0.1:8888?mode=listener"
 ```
 
 ## Example
@@ -75,6 +74,10 @@ gst-launch-1.0 -v playbin  uri="srt://127.0.0.1:8888"
 - [x] Test with browser
 - [x] Add support for graceful shutdown
 - [x] Add support for multiple WebRTC clients
+- [x] Add support for different SRT stream modes (caller/listener)
+- [ ] Add support for different browsers
+- [ ] Improve the error handling & logging
+- [ ] Add support for cloud deployment
 
 ## Sample Pipeline
 ![Pipeline](./docs/pipeline.svg)

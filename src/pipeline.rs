@@ -5,13 +5,16 @@ use gstreamer::message::Eos;
 use gstreamer as gst;
 use std::sync::{Arc, Mutex};
 
-#[derive(Parser, Debug)]
+#[derive(Parser, Debug, Clone)]
 #[command(author, version, about, long_about = None)]
-#[derive(Clone)]
 pub struct Args {
     /// SRT source stream address(ip:port)
     #[arg(short, long)]
     pub input_address: String,
+
+    #[arg(short, long)]
+    #[clap(value_enum)]
+    pub srt_mode: SRTMode,
 
     /// SRT output stream address(ip:port)
     #[arg(short, long)]
@@ -20,6 +23,28 @@ pub struct Args {
     /// Port for whep client
     #[arg(short, long, default_value_t = 8000)]
     pub port: u32,
+}
+
+#[derive(ValueEnum, Clone, Debug)]
+pub enum SRTMode {
+    Caller,
+    Listener
+}
+
+impl SRTMode {
+    fn to_str(&self) -> &str {
+        match self {
+            SRTMode::Caller => "caller",
+            SRTMode::Listener => "listener",
+        }
+    }
+
+    fn reverse(&self) -> Self {
+        match self {
+            SRTMode::Caller => SRTMode::Listener,
+            SRTMode::Listener => SRTMode::Caller,
+        }
+    }
 }
 
 #[derive(Clone)]
@@ -115,16 +140,10 @@ impl SharablePipeline {
         gst::init()?;
 
         // Create a pipeline (WebRTC branch)
-        // gst-launch-1.0 srtsrc uri="srt://127.0.0.1:1234"  ! decodebin name=d \
-        //     d. ! queue ! x264enc tune=zerolatency ! rtph264pay ! whipsink whip-endpoint="http://localhost:8000/subscriptions" name=ws \
-        //     d. ! queue ! audioconvert ! audioresample ! opusenc ! rtpopuspay ! ws.
-
-        // gst-launch-1.0 srtsrc uri="srt://127.0.0.1:1234"  ! typefind ! queue ! tsdemux name=demux \
-        //     demux. ! queue ! h264parse ! rtph264pay ! tee ! queue ! whipsink whip-endpoint="http://localhost:8000/subscriptions"
         let pipeline = gst::Pipeline::default();
 
         let src = gst::ElementFactory::make("srtsrc")
-            .property("uri", format!("srt://{}", args.input_address))
+            .property("uri", format!("srt://{}?mode={}", args.input_address, args.srt_mode.to_str()))
             .build()?;
         let input_tee = gst::ElementFactory::make("tee").name("input_tee").build()?;
 
@@ -161,8 +180,8 @@ impl SharablePipeline {
         let audioresample = gst::ElementFactory::make("audioresample").build()?;
         let opusenc = gst::ElementFactory::make("opusenc").build()?;
         let rtpopuspay = gst::ElementFactory::make("rtpopuspay").build()?;
-        let srtserversink = gst::ElementFactory::make("srtserversink")
-            .property("uri", format!("srt://{}", args.output_address))
+        let srtsink = gst::ElementFactory::make("srtsink")
+            .property("uri", format!("srt://{}?mode={}", args.output_address, args.srt_mode.reverse().to_str()))
             .property("async", false) // to not block tee
             .property("wait-for-connection", false)
             .build()?;
@@ -186,12 +205,12 @@ impl SharablePipeline {
             &output_tee_audio,
             &opusenc,
             &rtpopuspay,
-            &srtserversink,
+            &srtsink,
         ])?;
         gst::Element::link_many(&[&src, &input_tee])?;
         gst::Element::link_many(&[&input_tee, &whep_queue, &typefind, &tsdemux])?;
         gst::Element::link_many(&[&video_queue, &h264parse, &rtph264pay, &output_tee_video])?;
-        gst::Element::link_many(&[&input_tee, &srt_queue, &srtserversink])?;
+        gst::Element::link_many(&[&input_tee, &srt_queue, &srtsink])?;
 
         let pipeline_weak = pipeline.downgrade();
         // Connect to tsdemux's no-more-pads signal, that is emitted when the element
