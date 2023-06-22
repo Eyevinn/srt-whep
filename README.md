@@ -3,6 +3,8 @@ This application ingests one MPEG-TS over SRT stream and outputs to WebRTC recvo
 
 Supports SRT streams in caller and listener mode.
 
+![screenshot](docs/screenshot.png)
+
 ### Pre-req OSX
 Requirements:
 - XCode command line tools installed
