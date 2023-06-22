@@ -5,13 +5,13 @@ Supports SRT streams in caller and listener mode.
 
 ![screenshot](docs/screenshot.png)
 
-### Pre-req OSX
+## Build from Source
+### OSX
+
 Requirements:
 - XCode command line tools installed
 - Install GStreamer [binaries](https://gstreamer.freedesktop.org/data/pkg/osx/) from GStreamer's website
 - Install Rust using rustup
-
-## Build and Install Dependencies
 
 Build with Cargo
 
@@ -20,14 +20,66 @@ cargo update
 cargo build --release
 ```
 
-The binary is then available at `./target/release/srt-whep`
+The binary is then available at `./target/release/srt-whep`. See below for how to run it.
+
+### Debian (bullseye)
+
+Install build dependencies.
+
+```
+apt-get update
+apt-get -y install libgstreamer1.0-0 \
+  gstreamer1.0-plugins-bad \
+  gstreamer1.0-plugins-good \
+  gstreamer1.0-libav \
+  gstreamer1.0-plugins-rtp \
+  gstreamer1.0-nice \
+  build-essential \
+  curl \
+  libglib2.0-dev \
+  libgstreamer1.0-dev \
+  libgstreamer-plugins-bad1.0-dev
+```
+
+Install Rust
+
+```
+curl https://sh.rustup.rs -sSf | bash -s -- -y
+export PATH="/root/.cargo/bin:${PATH}"
+```
+
+Build with Cargo
+
+```
+cargo update
+cargo build --release
+```
+
+The binary is then available at `./target/release/srt-whep`. See below for how to run it.
+
+## Docker Container
+
+Build container (uses multi-stage builds):
+
+```
+docker build -t srt-whep:dev .
+```
+
+Container must be running in host-mode
+
+```
+docker run --rm --network host srt-whep:dev \
+  -i <SRT_SOURCE_IP>:<SRT_SOURCE_PORT> \
+  -o 0.0.0.0:8888 \
+  -p 8000 -s caller
+```
 
 ## Usage
 
 To ingest an SRT stream with address `srt://127.0.0.1:1234` in listener mode and expose WHEP endpoint on port 8000 run the application with this command.
 
 ```
-cargo run -- -i 127.0.0.1:1234 -o 127.0.0.1:8888 -p 8000 -s caller
+./target/release/srt-whep -i 127.0.0.1:1234 -o 127.0.0.1:8888 -p 8000 -s caller
 ```
 
 This will also make a pass-through of the SRT stream on `srt://127.0.0.1:8888` in listener mode. To watch the pass-through stream in ffplay or VLC you run:
@@ -41,7 +93,7 @@ WHEP endpoint is available then at `http://localhost:8000/channel`. You can then
 If the SRT stream to ingest is in caller mode you run the application with this command.
 
 ```
-cargo run -- -i 127.0.0.1:1234 -o 127.0.0.1:8888 -p 8000 -s listener
+./target/release/srt-whep -i 127.0.0.1:1234 -o 127.0.0.1:8888 -p 8000 -s listener
 ```
 
 This also expects the SRT address `127.0.0.1:8888` to be running in listener mode.
