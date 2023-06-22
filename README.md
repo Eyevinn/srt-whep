@@ -1,5 +1,8 @@
 # SRT to WHEP
-This application ingests one MPEG-TS over SRT stream and outputs to WebRTC recvonly clients using WHEP as signaling protocol.
+This application ingests one MPEG-TS over SRT stream and outputs to WebRTC recvonly clients using WHEP as signaling protocol. Example of use cases:
+
+- Browser based confidence monitor of an incoming stream
+- Program or preview output monitor in a browser or tablet
 
 Supports SRT streams in caller and listener mode.
 
