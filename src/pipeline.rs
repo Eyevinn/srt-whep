@@ -86,7 +86,7 @@ impl SharablePipeline {
             .by_name("output_tee_video")
             .expect("pipeline has no element with name output_tee_video");
 
-            let output_tee_audio = pipeline
+        let output_tee_audio = pipeline
             .by_name("output_tee_audio")
             .expect("pipeline has no element with name output_tee_audio");
 
@@ -99,8 +99,8 @@ impl SharablePipeline {
             e.sync_state_with_parent()?;
         }
 
-        let video_elements = &[&output_tee_audio, &queue_audio, &whipsink];
-        for e in video_elements {
+        let audio_elements = &[&output_tee_audio, &queue_audio, &whipsink];
+        for e in audio_elements {
             e.sync_state_with_parent()?;
         }
 
@@ -142,8 +142,10 @@ impl SharablePipeline {
         // Create a pipeline (WebRTC branch)
         let pipeline = gst::Pipeline::default();
 
+        let uri = format!("srt://{}?mode={}", args.input_address, args.srt_mode.to_str());
+        println!("SRT URI: {}", uri);
         let src = gst::ElementFactory::make("srtsrc")
-            .property("uri", format!("srt://{}?mode={}", args.input_address, args.srt_mode.to_str()))
+            .property("uri", uri)
             .build()?;
         let input_tee = gst::ElementFactory::make("tee").name("input_tee").build()?;
 

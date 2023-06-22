@@ -24,7 +24,7 @@ pub async fn whip_request(
         return Ok(HttpResponse::Ok()
             .append_header((
                 "Location",
-                format!("http://0.0.0.0:8000/channel/{}", resource_id),
+                format!("http://localhost:8000/channel/{}", resource_id),
             ))
             .content_type("application/sdp")
             .body(whip_answer.as_ref().to_string()));

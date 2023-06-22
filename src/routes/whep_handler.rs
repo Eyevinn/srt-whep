@@ -41,7 +41,7 @@ pub async fn subscribe(
         return Ok(HttpResponse::Created()
             .append_header((
                 "Location",
-                format!("http://0.0.0.0:8000/channel/{}", resource_id),
+                format!("http://localhost:8000/channel/{}", resource_id),
             ))
             .content_type("application/sdp")
             .body(sdp.as_ref().to_string()));
