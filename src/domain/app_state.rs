@@ -1,21 +1,37 @@
 use super::{MyError, SessionDescription};
 use std::{
-    collections::HashMap,
+    collections::{hash_map::Entry, HashMap},
+    result::Result::Ok,
     sync::{Arc, Mutex},
 };
-#[derive(Debug, Clone)]
+
+// A struct to hold offer&answer for a webrtc connection
+#[derive(Debug)]
 struct Connection {
     whip_offer: Option<SessionDescription>,
     whep_offer: Option<SessionDescription>,
 }
 
+impl Connection {
+    fn new() -> Self {
+        Self {
+            whip_offer: None,
+            whep_offer: None,
+        }
+    }
+}
+
+// A struct to hold all the connections.
+// The connections are stored in a hashmap with a unique id as the key
 struct AppState {
+    whep_port: u32,
     connections: HashMap<String, Connection>,
 }
 
 impl AppState {
-    fn new() -> Self {
+    fn new(whep_port: u32) -> Self {
         Self {
+            whep_port,
             connections: HashMap::new(),
         }
     }
@@ -25,99 +41,81 @@ impl AppState {
 pub struct SharableAppState(Arc<Mutex<AppState>>);
 
 impl SharableAppState {
-    pub fn new() -> Self {
-        Self(Arc::new(Mutex::new(AppState::new())))
+    pub fn new(whep_port: u32) -> Self {
+        Self(Arc::new(Mutex::new(AppState::new(whep_port))))
     }
 
-    pub async fn remove_connection(
-        &self,
-        resource_id: String,
-    ) -> Result<(), MyError> {
+    pub fn get_port(&self) -> u32 {
+        let app_state = self.0.lock().unwrap();
+        app_state.whep_port
+    }
+
+    pub fn remove_connection(&self, connection_id: String) -> Result<(), MyError> {
         let mut app_state = self.0.lock().unwrap();
         let connections = &mut app_state.connections;
 
-        if let Some(_) = connections.remove_entry(&resource_id) {
-           return Ok(());
+        connections
+            .remove(&connection_id)
+            .map(|_| ())
+            .ok_or(MyError::ResourceNotFound)
+    }
+
+    pub fn list_connections(&self) -> Result<Vec<String>, MyError> {
+        let mut app_state = self.0.lock().unwrap();
+        let connections = &mut app_state.connections;
+
+        let keys = connections.keys().cloned().collect::<Vec<_>>();
+        Ok(keys)
+    }
+
+    pub fn add_resource(&self, connection_id: String) -> Result<(), MyError> {
+        let mut app_state = self.0.lock().unwrap();
+        let connections = &mut app_state.connections;
+
+        match connections.entry(connection_id.clone()) {
+            Entry::Occupied(_) => Err(MyError::RepeatedResourceIdError(connection_id)),
+            Entry::Vacant(entry) => {
+                entry.insert(Connection::new());
+                Ok(())
+            }
         }
-
-        return Err(MyError::ResourceNotFound)
     }
 
-    pub fn list_connections(
-        &self,
-    ) -> Result<Vec<String>, MyError> {
+    pub fn save_whip_offer(&self, offer: SessionDescription) -> Result<String, MyError> {
         let mut app_state = self.0.lock().unwrap();
         let connections = &mut app_state.connections;
 
-        let keys = connections.clone().into_keys().collect();
+        for (id, conn) in connections.iter_mut() {
+            if conn.whep_offer.is_none() {
+                conn.whip_offer = Some(offer);
 
-        return Ok(keys);
-    }
-
-    pub fn add_resource(&self, resource_id: String) -> Result<(), MyError>  {
-
-        let mut app_state = self.0.lock().unwrap();
-        let connections = &mut app_state.connections;
-
-        if let Some(_) = connections.get_mut(&resource_id) {
-            return Err(MyError::RepeatedResourceIdError);
-        }
-
-        let temp = Connection {
-            whip_offer: None,
-            whep_offer: None,
-        };
-
-        connections.insert(resource_id, temp);
-
-        return Ok(());
-    } 
-
-    pub fn save_whip_offer(
-        &self,
-        offer: SessionDescription,
-    ) -> Result<String, MyError> {
-        let mut app_state = self.0.lock().unwrap();
-        let connections = &mut app_state.connections;
-
-        let mut key_value = "".to_string();
-
-        for (key, value) in &mut *connections {
-            if !Option::is_some(&value.whep_offer) {
-                key_value = key.to_string();
+                return Ok(id.clone());
             }
         }
 
-        if let Some(con) = connections.get_mut(&key_value) {
-            if con.whip_offer.is_some() {
-            return Err(MyError::RepeatedWhipOffer);
-            }
-            con.whip_offer = Some(offer);
-        }
-
-        Ok(key_value)
+        Err(MyError::ResourceNotFound)
     }
 
     pub async fn wait_on_whep_offer(
         &self,
-        resource_id: String,
+        connection_id: String,
     ) -> Result<SessionDescription, MyError> {
         // Check every second if an offer is ready
         // If the offer is ready, return it
         loop {
-            let mut app_state = self.0.lock().unwrap();
-            let connections = &mut app_state.connections;
+            {
+                let mut app_state = self.0.lock().unwrap();
+                let connections = &mut app_state.connections;
 
-            if let Some(con) = connections.get_mut(&resource_id) {
-                let whip_offer = con.whip_offer.as_mut().unwrap();
-                whip_offer.set_as_active();
+                if let Some(con) = connections.get_mut(&connection_id) {
+                    if con.whep_offer.is_some() {
+                        let whep_offer = con.whep_offer.as_mut().unwrap();
+                        whep_offer.set_as_passive();
 
-                if con.whep_offer.is_some() {
-                    return Ok(con.whep_offer.clone().unwrap());
+                        return Ok(con.whep_offer.clone().unwrap());
+                    }
                 }
             }
-
-            drop(app_state);
 
             tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
         }
@@ -126,44 +124,39 @@ impl SharableAppState {
     pub fn save_whep_offer(
         &self,
         offer: SessionDescription,
-        resource_id: Option<String>,
+        connection_id: String,
     ) -> Result<(), MyError> {
-        if resource_id.is_none() {
-            return Err(MyError::ResourceNotFound);
-        }
-
         let mut app_state = self.0.lock().unwrap();
-
         let connections = &mut app_state.connections;
-        let rid = resource_id.unwrap();
 
-        if let Some(con) = connections.get_mut(&rid) {
-            if con.whep_offer.is_some() {
-                return Err(MyError::RepeatedWhepError);
-            }
+        if let Some(con) = connections.get_mut(&connection_id) {
             con.whep_offer = Some(offer);
+            Ok(())
+        } else {
+            Err(MyError::ResourceNotFound)
         }
-
-        Ok(())
     }
 
-    pub async fn wait_on_whip_offer(&self, resource_id: String) -> Result<SessionDescription, MyError> {
+    pub async fn wait_on_whip_offer(
+        &self,
+        connection_id: String,
+    ) -> Result<SessionDescription, MyError> {
         // Check every second if an offer is ready
         // If the offer is ready, return it
         loop {
-            let mut app_state = self.0.lock().unwrap();
-            let connections = &mut app_state.connections;
+            {
+                let mut app_state = self.0.lock().unwrap();
+                let connections = &mut app_state.connections;
 
-            if let Some(con) = connections.get_mut(&resource_id) {
-                if con.whip_offer.is_some() {
-                    let whip_offer = con.whip_offer.as_mut().unwrap();
-                    whip_offer.set_as_active();
+                if let Some(con) = connections.get_mut(&connection_id) {
+                    if con.whip_offer.is_some() {
+                        let whip_offer = con.whip_offer.as_mut().unwrap();
+                        whip_offer.set_as_active();
 
-                    return Ok(con.whip_offer.clone().unwrap());
+                        return Ok(con.whip_offer.clone().unwrap());
+                    }
                 }
             }
-
-            drop(app_state);
 
             tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
         }

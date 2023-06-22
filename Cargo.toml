@@ -1,7 +1,7 @@
 [package]
-name = "hello_world"
+name = "srt_whep"
 version = "0.1.0"
-authors = ["Kun Wu <kunwu@kth.se>"]
+authors = ["Kun Wu <kun.wu@eyevinn.se>"]
 edition = "2021"
 
 [lib]

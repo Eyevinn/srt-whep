@@ -4,16 +4,6 @@ use actix_web::{web, HttpResponse};
 use anyhow::Context;
 use chrono::Utc;
 use uuid::Uuid;
-use std::convert::{TryFrom, TryInto};
-
-impl TryFrom<String> for SessionDescription {
-    type Error = String;
-
-    fn try_from(value: String) -> Result<Self, Self::Error> {
-        let sdp = SessionDescription::parse(value)?;
-        Ok(sdp)
-    }
-}
 
 #[allow(clippy::async_yields_async)]
 #[tracing::instrument(
@@ -25,29 +15,40 @@ pub async fn subscribe(
     app_state: web::Data<SharableAppState>,
     pipeline_state: web::Data<SharablePipeline>,
 ) -> Result<HttpResponse, SubscribeError> {
-    tracing::info!("Received SDP at time: {:?}", Utc::now());
-
-    if form.is_empty() {
-
-        let resource_id = Uuid::new_v4().to_string();
-        pipeline_state.add_client(resource_id.clone()).unwrap();
-        app_state.add_resource(resource_id.clone()).expect(MyError::RepeatedResourceIdError.to_string().as_str());
-        
-        let sdp = app_state
-            .wait_on_whip_offer(resource_id.clone())
-            .await
-            .context("Failed to receive a whip offer")?;
-
-        return Ok(HttpResponse::Created()
-            .append_header((
-                "Location",
-                format!("http://localhost:8000/channel/{}", resource_id),
-            ))
-            .content_type("application/sdp")
-            .body(sdp.as_ref().to_string()));
+    if !form.is_empty() {
+        return Err(SubscribeError::ValidationError(MyError::InvalidSDP(
+            "Client initialization not supported.".to_string(),
+        )));
     }
 
-    return Ok(HttpResponse::BadRequest().body("Client initialization not supported"));
+    let resource_id = Uuid::new_v4().to_string();
+    tracing::info!(
+        "Create connection {} at time: {:?}",
+        resource_id.clone(),
+        Utc::now()
+    );
+
+    pipeline_state
+        .add_client(resource_id.clone())
+        .context("Failed to add client")?;
+
+    app_state
+        .add_resource(resource_id.clone())
+        .context("Failed to add resource")?;
+
+    let sdp = app_state
+        .wait_on_whip_offer(resource_id.clone())
+        .await
+        .context("Failed to receive a whip offer")?;
+
+    let whep_port = app_state.get_port();
+    let url = format!("http://localhost:{}/channel/{}", whep_port, resource_id);
+    tracing::info!("Receiving streaming from: {}", url);
+
+    Ok(HttpResponse::Created()
+        .append_header(("Location", url))
+        .content_type("application/sdp")
+        .body(sdp.as_ref().to_string()))
 }
 
 #[allow(clippy::async_yields_async)]
@@ -55,14 +56,17 @@ pub async fn subscribe(
 pub async fn patch(
     form: String,
     path: web::Path<String>,
-    app_state: web::Data<SharableAppState>
+    app_state: web::Data<SharableAppState>,
 ) -> Result<HttpResponse, SubscribeError> {
     let sdp: SessionDescription = form.try_into().map_err(SubscribeError::ValidationError)?;
     let id = path.into_inner();
+    if id.is_empty() {
+        return Err(SubscribeError::ValidationError(MyError::ResourceNotFound));
+    }
 
     app_state
-        .save_whep_offer(sdp, Some(id))
+        .save_whep_offer(sdp, id)
         .context("Failed to save whep offer")?;
 
-    return Ok(HttpResponse::NoContent().into());
+    Ok(HttpResponse::NoContent().into())
 }

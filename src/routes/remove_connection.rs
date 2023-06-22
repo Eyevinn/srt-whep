@@ -1,24 +1,24 @@
-use actix_web::{HttpResponse, web};
-use crate::{domain::SharableAppState, pipeline::SharablePipeline};
+use crate::domain::*;
+use crate::pipeline::SharablePipeline;
+
+use actix_web::{web, HttpResponse};
+use anyhow::Context;
 
 #[allow(clippy::async_yields_async)]
 pub async fn remove_connection(
-  path: web::Path<String>,
-  app_state: web::Data<SharableAppState>,
-  pipeline_state: web::Data<SharablePipeline>) -> HttpResponse {
-
+    path: web::Path<String>,
+    app_state: web::Data<SharableAppState>,
+    pipeline_state: web::Data<SharablePipeline>,
+) -> Result<HttpResponse, SubscribeError> {
     let id = path.into_inner();
-    match pipeline_state.remove_connection(id.clone()) {
-      Ok(()) => {},
-      Err(error) =>  return HttpResponse::InternalServerError().body(error.to_string()),
-    }
-    match app_state.remove_connection(id.clone()).await {
-      Ok(()) => {},
-      Err(error) =>  return HttpResponse::InternalServerError().body(error.to_string()),
-     
-    };
-    
-    
 
-    HttpResponse::Ok().finish()
+    pipeline_state
+        .remove_connection(id.clone())
+        .context("Failed to remove connection from pipeline")?;
+
+    app_state
+        .remove_connection(id)
+        .context("Failed to remove connection from app")?;
+
+    Ok(HttpResponse::Ok().finish())
 }

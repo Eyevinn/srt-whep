@@ -1209,41 +1209,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "95505c38b4572b2d910cecb0281560f54b440a19336cbbcb27bf6ce6adc6f5a8"
 
 [[package]]
-name = "hello_world"
-version = "0.1.0"
-dependencies = [
- "actix-cors",
- "actix-web",
- "anyhow",
- "chrono",
- "claims",
- "clap",
- "config",
- "futures",
- "gstreamer",
- "gstreamer-pbutils",
- "linkify",
- "log",
- "once_cell",
- "reqwest",
- "secrecy",
- "serde",
- "serde-aux",
- "serde_json",
- "thiserror",
- "tokio",
- "tracing",
- "tracing-actix-web",
- "tracing-bunyan-formatter",
- "tracing-log",
- "tracing-subscriber",
- "unicode-segmentation",
- "uuid",
- "validator",
- "wiremock",
-]
-
-[[package]]
 name = "hermit-abi"
 version = "0.2.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2354,6 +2319,41 @@ name = "spin"
 version = "0.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6e63cff320ae2c57904679ba7cb63280a3dc4613885beafb148ee7bf9aa9042d"
+
+[[package]]
+name = "srt_whep"
+version = "0.1.0"
+dependencies = [
+ "actix-cors",
+ "actix-web",
+ "anyhow",
+ "chrono",
+ "claims",
+ "clap",
+ "config",
+ "futures",
+ "gstreamer",
+ "gstreamer-pbutils",
+ "linkify",
+ "log",
+ "once_cell",
+ "reqwest",
+ "secrecy",
+ "serde",
+ "serde-aux",
+ "serde_json",
+ "thiserror",
+ "tokio",
+ "tracing",
+ "tracing-actix-web",
+ "tracing-bunyan-formatter",
+ "tracing-log",
+ "tracing-subscriber",
+ "unicode-segmentation",
+ "uuid",
+ "validator",
+ "wiremock",
+]
 
 [[package]]
 name = "strsim"
