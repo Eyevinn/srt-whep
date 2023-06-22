@@ -1,25 +1,30 @@
+use std::convert::TryFrom;
+use std::fmt::{Debug, Display};
+
+use super::MyError;
+
 #[derive(Debug, Clone)]
 pub struct SessionDescription(String);
 
 impl SessionDescription {
     /// Returns an instance of `SessionDescription` if the input satisfies all our validation constraints.
-    pub fn parse(s: String) -> Result<SessionDescription, String> {
+    pub fn parse(s: String) -> Result<SessionDescription, MyError> {
         // `.trim()` returns a view over the input `s` without trailing
         // whitespace-like characters.
         // `.is_empty` checks if the view contains any character.
-        //let is_empty_or_whitespace = s.trim().is_empty();
+        let is_empty_or_whitespace = s.trim().is_empty();
 
         // sdp should start with v=0
-        /*let starts_with_v0 = s.starts_with("v=0");
+        let starts_with_v0 = s.starts_with("v=0");
 
         // sdp should contain 'a=sendonly' or 'a=recvonly'
-        let sendonly_or_recvonly = s.contains("a=sendonly") || s.contains("a=recvonly");*
+        let sendonly_or_recvonly = s.contains("a=sendonly") || s.contains("a=recvonly");
 
         if is_empty_or_whitespace || !starts_with_v0 || !sendonly_or_recvonly {
-            Err(format!("Invalid Sdp: {}", s))
-        } else {*/
-        Ok(Self(s))
-        //}
+            Err(MyError::InvalidSDP(s))
+        } else {
+            Ok(Self(s))
+        }
     }
 
     pub fn is_sendonly(&self) -> bool {
@@ -39,13 +44,28 @@ impl SessionDescription {
     }
 }
 
+impl TryFrom<String> for SessionDescription {
+    type Error = MyError;
+
+    fn try_from(value: String) -> Result<Self, Self::Error> {
+        let sdp = SessionDescription::parse(value)?;
+        Ok(sdp)
+    }
+}
+
 impl AsRef<str> for SessionDescription {
     fn as_ref(&self) -> &str {
         &self.0
     }
 }
 
-pub const VALID_WHIP_OFFER: &'static str = "v=0
+impl Display for SessionDescription {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
+pub const VALID_WHIP_OFFER: &str = "v=0
     o=- 8119464979627461093 0 IN IP4 0.0.0.0
     s=-
     t=0 0
@@ -77,7 +97,7 @@ pub const VALID_WHIP_OFFER: &'static str = "v=0
     a=candidate:5 1 TCP 1015022079 10.247.169.107 9 typ host tcptype active
     a=candidate:6 1 TCP 1010827775 10.247.169.107 56567 typ host tcptype passive";
 
-pub const VALID_WHEP_OFFER: &'static str = "v=0
+pub const VALID_WHEP_OFFER: &str = "v=0
     o=- 4658353067706891397 0 IN IP4 0.0.0.0
     s=-
     t=0 0

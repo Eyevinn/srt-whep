@@ -1,7 +1,6 @@
 use anyhow::{Error, Ok};
 use clap::{Parser, ValueEnum};
-use gst::{prelude::*, DebugGraphDetails, Pipeline};
-use gstreamer::message::Eos;
+use gst::{message::Eos, prelude::*, DebugGraphDetails, Pipeline};
 use gstreamer as gst;
 use std::sync::{Arc, Mutex};
 
@@ -28,7 +27,7 @@ pub struct Args {
 #[derive(ValueEnum, Clone, Debug)]
 pub enum SRTMode {
     Caller,
-    Listener
+    Listener,
 }
 
 impl SRTMode {
@@ -74,9 +73,14 @@ impl SharablePipeline {
         let pipeline_state = self.0.lock().unwrap();
         let pipeline = pipeline_state.pipeline.as_ref().unwrap();
 
-        let queue_video: gst::Element = gst::ElementFactory::make("queue").name("video-queue-".to_string() + &resource_id.to_owned()).build()?;
-        let queue_audio: gst::Element = gst::ElementFactory::make("queue").name("audio-queue-".to_string() + &resource_id.to_owned()).build()?;
-        let whipsink = gst::ElementFactory::make("whipsink").name(("whip-sink-".to_owned() +  &resource_id.clone()).as_str(),)
+        let queue_video: gst::Element = gst::ElementFactory::make("queue")
+            .name("video-queue-".to_string() + &resource_id)
+            .build()?;
+        let queue_audio: gst::Element = gst::ElementFactory::make("queue")
+            .name("audio-queue-".to_string() + &resource_id)
+            .build()?;
+        let whipsink = gst::ElementFactory::make("whipsink")
+            .name("whip-sink-".to_string() + &resource_id)
             .property(
                 "whip-endpoint",
                 format!("http://localhost:{}/whip_sink", pipeline_state.port),
@@ -90,9 +94,9 @@ impl SharablePipeline {
             .by_name("output_tee_audio")
             .expect("pipeline has no element with name output_tee_audio");
 
-        pipeline.add_many(&[&queue_video, &queue_audio, &whipsink]).unwrap();
-        gst::Element::link_many(&[&output_tee_video, &queue_video, &whipsink]).unwrap();
-        gst::Element::link_many(&[&output_tee_audio, &queue_audio, &whipsink]).unwrap();
+        pipeline.add_many(&[&queue_video, &queue_audio, &whipsink])?;
+        gst::Element::link_many(&[&output_tee_video, &queue_video, &whipsink])?;
+        gst::Element::link_many(&[&output_tee_audio, &queue_audio, &whipsink])?;
 
         let video_elements = &[&output_tee_video, &queue_video, &whipsink];
         for e in video_elements {
@@ -105,34 +109,49 @@ impl SharablePipeline {
         }
 
         pipeline.debug_to_dot_file(DebugGraphDetails::all(), "add-client");
+
         Ok(())
     }
 
     pub fn remove_connection(&self, id: String) -> Result<(), Error> {
         let pipeline_state = self.0.lock().unwrap();
         let pipeline = pipeline_state.pipeline.as_ref().unwrap();
-        
+
         let video_queue = pipeline
-            .by_name(("video-queue-".to_string() + &id.clone()).as_str())
-            .expect(("pipeline has no element with name video-queue-".to_owned() + &id.clone()).as_str());
+            .by_name(("video-queue-".to_string() + &id).as_str())
+            .unwrap_or_else(|| {
+                panic!(
+                    "{}",
+                    ("pipeline has no element with name video-queue-".to_owned() + &id.clone())
+                )
+            });
         let audio_queue = pipeline
-            .by_name(("audio-queue-".to_string() + &id.clone()).as_str())
-            .expect(("pipeline has no element with name output_tee_video".to_owned() + &id.clone()).as_str());
+            .by_name(("audio-queue-".to_string() + &id).as_str())
+            .unwrap_or_else(|| {
+                panic!(
+                    "{}",
+                    ("pipeline has no element with name audio-queue-".to_owned() + &id.clone())
+                )
+            });
         let whip_sink = pipeline
-            .by_name(("whip-sink-".to_owned() + &id.clone()).as_str())
-            .expect(("pipeline has no element with name output_tee_video".to_owned() + &id.clone()).as_str());
+            .by_name(("whip-sink-".to_owned() + &id).as_str())
+            .unwrap_or_else(|| {
+                panic!(
+                    "{}",
+                    ("pipeline has no element with name whip-sink-".to_owned() + &id.clone())
+                )
+            });
 
-        video_queue.set_state(gst::State::Null).unwrap();
-        audio_queue.set_state(gst::State::Null).unwrap();
-        whip_sink.set_state(gst::State::Null).unwrap();
+        video_queue.set_state(gst::State::Null)?;
+        audio_queue.set_state(gst::State::Null)?;
+        whip_sink.set_state(gst::State::Null)?;
 
-        pipeline.remove(&whip_sink).expect("Failed to remove element");
-        pipeline.remove(&video_queue).expect("Failed to remove element");
-        pipeline.remove(&audio_queue).expect("Failed to remove element");
-        
+        pipeline.remove(&whip_sink)?;
+        pipeline.remove(&video_queue)?;
+        pipeline.remove(&audio_queue)?;
+
         pipeline.debug_to_dot_file(DebugGraphDetails::all(), "after-remove");
-
-        return Ok(());
+        Ok(())
     }
 
     pub fn setup_pipeline(&self, args: &Args) -> Result<(), Error> {
@@ -142,8 +161,12 @@ impl SharablePipeline {
         // Create a pipeline (WebRTC branch)
         let pipeline = gst::Pipeline::default();
 
-        let uri = format!("srt://{}?mode={}", args.input_address, args.srt_mode.to_str());
-        println!("SRT URI: {}", uri);
+        let uri = format!(
+            "srt://{}?mode={}",
+            args.input_address,
+            args.srt_mode.to_str()
+        );
+        tracing::info!("SRT URI: {}", uri);
         let src = gst::ElementFactory::make("srtsrc")
             .property("uri", uri)
             .build()?;
@@ -183,7 +206,14 @@ impl SharablePipeline {
         let opusenc = gst::ElementFactory::make("opusenc").build()?;
         let rtpopuspay = gst::ElementFactory::make("rtpopuspay").build()?;
         let srtsink = gst::ElementFactory::make("srtsink")
-            .property("uri", format!("srt://{}?mode={}", args.output_address, args.srt_mode.reverse().to_str()))
+            .property(
+                "uri",
+                format!(
+                    "srt://{}?mode={}",
+                    args.output_address,
+                    args.srt_mode.reverse().to_str()
+                ),
+            )
             .property("async", false) // to not block tee
             .property("wait-for-connection", false)
             .build()?;
@@ -226,28 +256,27 @@ impl SharablePipeline {
             };
 
             let link_sink = || -> Result<(), Error> {
-
                 let queue = gst::ElementFactory::make("queue").build()?;
                 let fakesink = gst::ElementFactory::make("fakesink").build()?;
                 let output_tee_video = pipeline
                     .by_name("output_tee_video")
                     .expect("pipeline has no element with name output_tee_video");
-        
+
                 pipeline.add_many(&[&queue, &fakesink])?;
                 gst::Element::link_many(&[&output_tee_video, &queue, &fakesink])?;
-                
+
                 let video_elements = &[
                     &video_queue,
-                    &h264parse, 
-                    &rtph264pay, 
+                    &h264parse,
+                    &rtph264pay,
                     &output_tee_video,
                     &queue,
                     &fakesink,
                 ];
 
                 let output_tee_audio = pipeline
-                .by_name("output_tee_audio")
-                .expect("pipeline has no element with name output_tee_audio");
+                    .by_name("output_tee_audio")
+                    .expect("pipeline has no element with name output_tee_audio");
 
                 let audio_elements = &[
                     &audio_queue,
@@ -257,7 +286,7 @@ impl SharablePipeline {
                     &audioresample,
                     &opusenc,
                     &rtpopuspay,
-                    &output_tee_audio
+                    &output_tee_audio,
                 ];
                 gst::Element::link_many(audio_elements).expect("Failed to link audio elements");
 
@@ -278,10 +307,9 @@ impl SharablePipeline {
             if let Err(err) = link_sink() {
                 // The following sends a message of type Error on the bus, containing our detailed
                 // error information.
-                println!("Failed to link demux: {}", err);
+                tracing::error!("Failed to link demux: {}", err);
             } else {
-                println!("Successfully linked demux");
-
+                tracing::info!("Successfully linked demux");
                 // export GST_DEBUG_DUMP_DOT_DIR=/tmp
                 pipeline.debug_to_dot_file(DebugGraphDetails::all(), "pipeline");
             }
@@ -312,7 +340,7 @@ impl SharablePipeline {
 
                 match media_type {
                     None => {
-                        println!("Unknown pad added {:?}", src_pad);
+                        tracing::error!("Unknown pad added {:?}", src_pad);
                         return;
                     }
                     Some(media_type) => media_type,
@@ -349,12 +377,12 @@ impl SharablePipeline {
             if let Err(err) = insert_sink(is_audio, is_video) {
                 // The following sends a message of type Error on the bus, containing our detailed
                 // error information.
-                println!("Failed to insert sink: {}", err);
+                tracing::error!("Failed to insert sink: {}", err);
             } else {
-                println!("Successfully inserted sink");
+                tracing::info!("Successfully inserted sink");
             }
         });
-        
+
         // Start playing
         // Wait until an EOS or error message appears
         let bus = pipeline.bus().unwrap();
@@ -379,9 +407,9 @@ impl SharablePipeline {
 
         let eos_message = Eos::new();
         let bus = pipeline.bus().unwrap();
-        bus.post(eos_message).unwrap();
-        
-        pipeline.set_state(gst::State::Null).unwrap();
-        return Ok(());
+        bus.post(eos_message)?;
+
+        pipeline.set_state(gst::State::Null)?;
+        Ok(())
     }
 }

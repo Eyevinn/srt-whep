@@ -1,22 +1,20 @@
-use actix_web::ResponseError;
 use actix_web::http::StatusCode;
+use actix_web::ResponseError;
+use std::fmt::Debug;
+use thiserror::Error;
 
-#[derive(thiserror::Error)]
+#[derive(Error)]
 pub enum MyError {
-    #[error("Invalid SDP")]
-    InvalidSDP,
-    #[error("Repeated WHIP offer exists")]
-    RepeatedWhipOffer,
-    #[error("Repeated WHEP offer exists")]
-    RepeatedWhepError,
-    #[error("Repeated resource id")]
-    RepeatedResourceIdError,
+    #[error("Invalid SDP: {0}")]
+    InvalidSDP(String),
+    #[error("Repeated resource id: {0}")]
+    RepeatedResourceIdError(String),
     #[error("Resource not found")]
     ResourceNotFound,
 }
 
-// We are still using a bespoke implementation of `Debug` // to get a nice report using the error source chain
-impl std::fmt::Debug for MyError {
+// We are still using a bespoke implementation of `Debug` to get a nice report using the error source chain
+impl Debug for MyError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         error_chain_fmt(self, f)
     }
@@ -35,16 +33,15 @@ pub fn error_chain_fmt(
     Ok(())
 }
 
-
-#[derive(thiserror::Error)]
+#[derive(Error)]
 pub enum SubscribeError {
-    #[error("{0}")]
-    ValidationError(String),
+    #[error("Failed to process request: {0}")]
+    ValidationError(MyError),
     #[error(transparent)]
     UnexpectedError(#[from] anyhow::Error),
 }
 
-impl std::fmt::Debug for SubscribeError {
+impl Debug for SubscribeError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         error_chain_fmt(self, f)
     }
