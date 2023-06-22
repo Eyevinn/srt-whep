@@ -1,86 +1,69 @@
-# SRT to WebRTC
+# SRT to WHEP
 This application ingests one MPEG-TS over SRT stream and outputs to WebRTC recvonly clients using WHEP as signaling protocol.
 
-## Build
-### OSX
+Supports SRT streams in caller and listener mode.
+
+### Pre-req OSX
 Requirements:
 - XCode command line tools installed
 - Install GStreamer using Homebrew or from GStreamer's website
 - Install Rust using rustup
 
-If you want nicely formatted output you need to install bunyan
+## Build and Install Dependencies
 
-`cargo install bunyan`
+GStreamer installation via brew
 
-Verify your installation with
-
-`bunyan --help`
-
-
-Gstreamer install via brew
 ```
-
 brew install gstreamer gst-plugins-bad gst-plugins-good gst-plugins-ugly gst-libav
 ```
 
-## Run
-
-To generate SRT stream, you need to set the `GST_PLUGIN_PATH`, `GIO_EXTRA_MODULES` and `DYLD_LIBRARY_PATH` environment variable to where you have the gstreamer plugins installed, e.g:
+Build with Cargo
 
 ```
-export PATH=/Library/Frameworks/GStreamer.framework/Versions/Current/bin:$PATH
-export GST_PLUGIN_PATH=/Library/Frameworks/GStreamer.framework/Versions/Current/lib:$GST_PLUGIN_PATH
-export GIO_EXTRA_MODULES=/Library/Frameworks/GStreamer.framework/Libraries/gio/modules/ 
-export DYLD_LIBRARY_PATH=$DYLD_LIBRARY_PATH:$GST_PLUGIN_PATH
+cargo build --release
 ```
 
-Example command for starting a srt stream with screen captured video and a constant tone as audio.
-```
-gst-launch-1.0 -v \
-    avfvideosrc capture-screen=true ! video/x-raw,framerate=20/1 ! timeoverlay ! videoscale ! videoconvert ! x264enc tune=zerolatency ! video/x-h264, profile=main ! mux. \
-    audiotestsrc ! audio/x-raw, format=S16LE, channels=2, rate=44100 ! audioconvert ! voaacenc ! aacparse ! mux. \
-    mpegtsmux name=mux ! queue ! srtsink uri="srt://127.0.0.1:1234?mode=caller" wait-for-connection=false
-```
-We are setting the srt sink as 'caller' mode, so our application needs to be in 'listener' mode. If srt sink is in 'listener' mode, the application needs to be in 'caller' mode.
+The binary is then available at `./target/release/srt-whep`
 
-Then run the application. 
+## Usage
+
+To ingest an SRT stream with address `srt://127.0.0.1:1234` in listener mode and expose WHEP endpoint on port 8000 run the application with this command.
+
+```
+cargo run -- -i 127.0.0.1:1234 -o 127.0.0.1:8888 -p 8000 -s caller
+```
+
+This will also make a pass-through of the SRT stream on `srt://127.0.0.1:8888` in listener mode. To watch the pass-through stream in ffplay or VLC you run:
+
+```
+ffplay srt://127.0.0.1:8888
+```
+
+WHEP endpoint is available then at `http://localhost:8000/channel`. You can then play it for example using the WHEP [Player](https://webrtc.player.eyevinn.technology/?type=whep). 
+
+If the SRT stream to ingest is in caller mode you run the application with this command.
+
 ```
 cargo run -- -i 127.0.0.1:1234 -o 127.0.0.1:8888 -p 8000 -s listener
 ```
-With pretty print
-```
-cargo run -- -i 127.0.0.1:1234 -o :8888 -p 8000 -s listener | bunyan
-```
 
-The whep server will be started on port 8000. You can then play it out using WHEP [Player](https://webrtc.player.eyevinn.technology/?type=whep). 
+This also expects the SRT address `127.0.0.1:8888` to be running in listener mode.
 
-The pass-through SRT stream can be viewed using the following command:
-```
-gst-launch-1.0 -v playbin uri="srt://127.0.0.1:8888?mode=listener"
-```
+## License (Apache-2.0)
 
-## Example
-![Example](./docs/Example.gif)
+Copyright 2023 Eyevinn Technology AB
 
-## Plans
-- [x] Understand WHEP endpoint for WebRTC based streaming.
-- [x] Check available tools for SRT to WebRTC
-- [x] Build a prototype server for WHEP
-- [x] Build the HTTP server in Rust
-- [x] Add support for audio
-- [x] Check the format/codec of the SRT stream
-- [x] Write the pipeline in Rust
-- [x] Add optional pass-through to another SRT receiver
-- [x] Test with browser
-- [x] Add support for graceful shutdown
-- [x] Add support for multiple WebRTC clients
-- [x] Add support for different SRT stream modes (caller/listener)
-- [ ] Add support for different browsers
-- [ ] Improve the error handling & logging
-- [ ] Add support for cloud deployment
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
 
-## Sample Pipeline
-![Pipeline](./docs/pipeline.svg)
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
 
 ## Issues
 All relevant discussions are tracked in the [issues](https://github.com/Eyevinn/srt-whep/issues/)
