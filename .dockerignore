@@ -1,0 +1,5 @@
+/target
+/dot
+.vscode
+.DS_Store
+docs/.DS_Store
