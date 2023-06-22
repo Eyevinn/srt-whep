@@ -17,7 +17,7 @@ async fn main() -> std::io::Result<()> {
     let app_data = SharableAppState::new();
     let pipeline_data = SharablePipeline::new(args.clone());
     let listener =
-        TcpListener::bind(format!("127.0.0.1:{}", args.port)).expect("Whep port is already in use");
+        TcpListener::bind(format!("0.0.0.0:{}", args.port)).expect("Whep port is already in use");
 
     let p2 = pipeline_data.clone();
     // Run the pipeline in a separate thread
