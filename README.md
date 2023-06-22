@@ -6,20 +6,15 @@ Supports SRT streams in caller and listener mode.
 ### Pre-req OSX
 Requirements:
 - XCode command line tools installed
-- Install GStreamer using Homebrew or from GStreamer's website
+- Install GStreamer [binaries](https://gstreamer.freedesktop.org/data/pkg/osx/) from GStreamer's website
 - Install Rust using rustup
 
 ## Build and Install Dependencies
 
-GStreamer installation via brew
-
-```
-brew install gstreamer gst-plugins-bad gst-plugins-good gst-plugins-ugly gst-libav
-```
-
 Build with Cargo
 
 ```
+cargo update
 cargo build --release
 ```
 
