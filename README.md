@@ -10,8 +10,8 @@ Supports SRT streams in caller and listener mode.
 
 Requirements:
 - XCode command line tools installed
-- Install GStreamer [binaries](https://gstreamer.freedesktop.org/data/pkg/osx/) from GStreamer's website
-- Install Rust using rustup
+- GStreamer [binaries](https://gstreamer.freedesktop.org/data/pkg/osx/) from GStreamer's website installed
+- Rust and cargo installed
 
 Build with Cargo
 
@@ -24,7 +24,10 @@ The binary is then available at `./target/release/srt-whep`. See below for how t
 
 ### Debian (bullseye)
 
-Install build dependencies.
+Requirements:
+- Rust and cargo installed
+
+Install GStreamer build dependencies.
 
 ```
 apt-get update
@@ -39,13 +42,6 @@ apt-get -y install libgstreamer1.0-0 \
   libglib2.0-dev \
   libgstreamer1.0-dev \
   libgstreamer-plugins-bad1.0-dev
-```
-
-Install Rust
-
-```
-curl https://sh.rustup.rs -sSf | bash -s -- -y
-export PATH="/root/.cargo/bin:${PATH}"
 ```
 
 Build with Cargo
