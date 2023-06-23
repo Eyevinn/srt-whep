@@ -47,12 +47,12 @@ impl SRTMode {
 }
 
 #[derive(Clone)]
-struct PipelineStruct {
+struct GPipeline {
     pipeline: Option<Pipeline>,
     port: u32,
 }
 
-impl PipelineStruct {
+impl GPipeline {
     fn new(_args: Args) -> Self {
         Self {
             pipeline: None,
@@ -62,17 +62,20 @@ impl PipelineStruct {
 }
 
 #[derive(Clone)]
-pub struct SharablePipeline(Arc<Mutex<PipelineStruct>>);
+pub struct SharablePipeline(Arc<Mutex<GPipeline>>);
 
 impl SharablePipeline {
     pub fn new(_args: Args) -> Self {
-        Self(Arc::new(Mutex::new(PipelineStruct::new(_args))))
+        Self(Arc::new(Mutex::new(GPipeline::new(_args))))
     }
 
     pub fn add_client(&self, resource_id: String) -> Result<(), Error> {
         let pipeline_state = self.0.lock().unwrap();
         let pipeline = pipeline_state.pipeline.as_ref().unwrap();
 
+        let demux = pipeline
+            .by_name("demux")
+            .expect("pipeline has no element with name demux");
         let queue_video: gst::Element = gst::ElementFactory::make("queue")
             .name("video-queue-".to_string() + &resource_id)
             .build()?;
@@ -86,30 +89,41 @@ impl SharablePipeline {
                 format!("http://localhost:{}/whip_sink", pipeline_state.port),
             )
             .build()?;
-        let output_tee_video = pipeline
-            .by_name("output_tee_video")
-            .expect("pipeline has no element with name output_tee_video");
-
-        let output_tee_audio = pipeline
-            .by_name("output_tee_audio")
-            .expect("pipeline has no element with name output_tee_audio");
-
         pipeline.add_many(&[&queue_video, &queue_audio, &whipsink])?;
-        gst::Element::link_many(&[&output_tee_video, &queue_video, &whipsink])?;
-        gst::Element::link_many(&[&output_tee_audio, &queue_audio, &whipsink])?;
 
-        let video_elements = &[&output_tee_video, &queue_video, &whipsink];
-        for e in video_elements {
-            e.sync_state_with_parent()?;
+        if demux
+            .pads()
+            .into_iter()
+            .any(|pad| pad.name().starts_with("video"))
+        {
+            let output_tee_video = pipeline
+                .by_name("output_tee_video")
+                .expect("pipeline has no element with name output_tee_video");
+            gst::Element::link_many(&[&output_tee_video, &queue_video, &whipsink])?;
+
+            let video_elements = &[&output_tee_video, &queue_video, &whipsink];
+            for e in video_elements {
+                e.sync_state_with_parent()?;
+            }
         }
 
-        let audio_elements = &[&output_tee_audio, &queue_audio, &whipsink];
-        for e in audio_elements {
-            e.sync_state_with_parent()?;
+        if demux
+            .pads()
+            .into_iter()
+            .any(|pad| pad.name().starts_with("audio"))
+        {
+            let output_tee_audio = pipeline
+                .by_name("output_tee_audio")
+                .expect("pipeline has no element with name output_tee_audio");
+            gst::Element::link_many(&[&output_tee_audio, &queue_audio, &whipsink])?;
+
+            let audio_elements = &[&output_tee_audio, &queue_audio, &whipsink];
+            for e in audio_elements {
+                e.sync_state_with_parent()?;
+            }
         }
 
         pipeline.debug_to_dot_file(DebugGraphDetails::all(), "add-client");
-
         Ok(())
     }
 
@@ -117,38 +131,23 @@ impl SharablePipeline {
         let pipeline_state = self.0.lock().unwrap();
         let pipeline = pipeline_state.pipeline.as_ref().unwrap();
 
-        let video_queue = pipeline
-            .by_name(("video-queue-".to_string() + &id).as_str())
-            .unwrap_or_else(|| {
-                panic!(
-                    "{}",
-                    ("pipeline has no element with name video-queue-".to_owned() + &id.clone())
-                )
-            });
-        let audio_queue = pipeline
-            .by_name(("audio-queue-".to_string() + &id).as_str())
-            .unwrap_or_else(|| {
-                panic!(
-                    "{}",
-                    ("pipeline has no element with name audio-queue-".to_owned() + &id.clone())
-                )
-            });
-        let whip_sink = pipeline
-            .by_name(("whip-sink-".to_owned() + &id).as_str())
-            .unwrap_or_else(|| {
-                panic!(
-                    "{}",
-                    ("pipeline has no element with name whip-sink-".to_owned() + &id.clone())
-                )
-            });
+        let remove_element = |name| -> Result<(), Error> {
+            if let Some(element) = pipeline.by_name(name) {
+                element.set_state(gst::State::Null)?;
+                pipeline.remove(&element)?;
+            } else {
+                tracing::warn!("Element {} not found", name);
+            }
+            Ok(())
+        };
 
-        video_queue.set_state(gst::State::Null)?;
-        audio_queue.set_state(gst::State::Null)?;
-        whip_sink.set_state(gst::State::Null)?;
+        let video_element_name = "video-queue-".to_string() + &id;
+        let audio_element_name = "audio-queue-".to_string() + &id;
+        let whip_sink_name = "whip-sink-".to_string() + &id;
 
-        pipeline.remove(&whip_sink)?;
-        pipeline.remove(&video_queue)?;
-        pipeline.remove(&audio_queue)?;
+        remove_element(&video_element_name)?;
+        remove_element(&audio_element_name)?;
+        remove_element(&whip_sink_name)?;
 
         pipeline.debug_to_dot_file(DebugGraphDetails::all(), "after-remove");
         Ok(())
