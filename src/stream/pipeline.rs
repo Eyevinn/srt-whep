@@ -4,6 +4,9 @@ use gst::{message::Eos, prelude::*, DebugGraphDetails, Pipeline};
 use gstreamer as gst;
 use std::sync::{Arc, Mutex};
 
+use crate::config::DiscoverConfig;
+use crate::stream::helper::run_discoverer;
+
 #[derive(Parser, Debug, Clone)]
 #[command(author, version, about, long_about = None)]
 pub struct Args {
@@ -47,7 +50,7 @@ impl SRTMode {
 }
 
 #[derive(Clone)]
-struct GPipeline {
+pub struct GPipeline {
     pipeline: Option<Pipeline>,
     port: u32,
 }
@@ -69,21 +72,22 @@ impl SharablePipeline {
         Self(Arc::new(Mutex::new(GPipeline::new(_args))))
     }
 
-    pub fn add_client(&self, resource_id: String) -> Result<(), Error> {
+    pub fn add_client(&self, connection_id: String) -> Result<(), Error> {
         let pipeline_state = self.0.lock().unwrap();
         let pipeline = pipeline_state.pipeline.as_ref().unwrap();
+        tracing::debug!("Add connection: {}", connection_id);
 
         let demux = pipeline
             .by_name("demux")
             .expect("pipeline has no element with name demux");
         let queue_video: gst::Element = gst::ElementFactory::make("queue")
-            .name("video-queue-".to_string() + &resource_id)
+            .name("video-queue-".to_string() + &connection_id)
             .build()?;
         let queue_audio: gst::Element = gst::ElementFactory::make("queue")
-            .name("audio-queue-".to_string() + &resource_id)
+            .name("audio-queue-".to_string() + &connection_id)
             .build()?;
         let whipsink = gst::ElementFactory::make("whipsink")
-            .name("whip-sink-".to_string() + &resource_id)
+            .name("whip-sink-".to_string() + &connection_id)
             .property(
                 "whip-endpoint",
                 format!("http://localhost:{}/whip_sink", pipeline_state.port),
@@ -105,6 +109,8 @@ impl SharablePipeline {
             for e in video_elements {
                 e.sync_state_with_parent()?;
             }
+
+            tracing::debug!("Successfully linked video sink");
         }
 
         if demux
@@ -121,6 +127,8 @@ impl SharablePipeline {
             for e in audio_elements {
                 e.sync_state_with_parent()?;
             }
+
+            tracing::debug!("Successfully linked audio sink");
         }
 
         pipeline.debug_to_dot_file(DebugGraphDetails::all(), "add-client");
@@ -130,6 +138,7 @@ impl SharablePipeline {
     pub fn remove_connection(&self, id: String) -> Result<(), Error> {
         let pipeline_state = self.0.lock().unwrap();
         let pipeline = pipeline_state.pipeline.as_ref().unwrap();
+        tracing::debug!("Remove connection: {}", id);
 
         let remove_element = |name| -> Result<(), Error> {
             if let Some(element) = pipeline.by_name(name) {
@@ -153,9 +162,10 @@ impl SharablePipeline {
         Ok(())
     }
 
-    pub fn setup_pipeline(&self, args: &Args) -> Result<(), Error> {
+    pub fn setup_pipeline(&self, args: &Args, config: &DiscoverConfig) -> Result<(), Error> {
         // Initialize GStreamer (only once)
         gst::init()?;
+        tracing::debug!("Setting up pipeline");
 
         // Create a pipeline (WebRTC branch)
         let pipeline = gst::Pipeline::default();
@@ -165,7 +175,12 @@ impl SharablePipeline {
             args.input_address,
             args.srt_mode.to_str()
         );
-        tracing::info!("SRT URI: {}", uri);
+        tracing::info!("SRT Input uri: {}", uri);
+        if config.enable_discoverer {
+            tracing::info!("Running discoverer...");
+            run_discoverer(&uri, config.discoverer_timeout_sec)?;
+        }
+
         let src = gst::ElementFactory::make("srtsrc")
             .property("uri", uri)
             .build()?;
@@ -173,9 +188,6 @@ impl SharablePipeline {
 
         let whep_queue = gst::ElementFactory::make("queue")
             .name("whep_queue")
-            .build()?;
-        let srt_queue = gst::ElementFactory::make("queue")
-            .name("srt_queue")
             .build()?;
         let typefind = gst::ElementFactory::make("typefind")
             .name("typefind")
@@ -194,7 +206,6 @@ impl SharablePipeline {
         let output_tee_audio = gst::ElementFactory::make("tee")
             .name("output_tee_audio")
             .build()?;
-
         let audio_queue: gst::Element = gst::ElementFactory::make("queue")
             .name("audio-queue")
             .build()?;
@@ -204,15 +215,18 @@ impl SharablePipeline {
         let audioresample = gst::ElementFactory::make("audioresample").build()?;
         let opusenc = gst::ElementFactory::make("opusenc").build()?;
         let rtpopuspay = gst::ElementFactory::make("rtpopuspay").build()?;
+
+        let srt_queue = gst::ElementFactory::make("queue")
+            .name("srt_queue")
+            .build()?;
+        let output_uri = format!(
+            "srt://{}?mode={}",
+            args.output_address,
+            args.srt_mode.reverse().to_str()
+        );
+        tracing::info!("SRT Output uri: {}", output_uri);
         let srtsink = gst::ElementFactory::make("srtsink")
-            .property(
-                "uri",
-                format!(
-                    "srt://{}?mode={}",
-                    args.output_address,
-                    args.srt_mode.reverse().to_str()
-                ),
-            )
+            .property("uri", output_uri)
             .property("async", false) // to not block tee
             .property("wait-for-connection", false)
             .build()?;
@@ -253,6 +267,7 @@ impl SharablePipeline {
                 Some(pipeline) => pipeline,
                 None => return,
             };
+            tracing::info!("No more pads from the stream. Ready to link.");
 
             let link_sink = || -> Result<(), Error> {
                 let queue = gst::ElementFactory::make("queue").build()?;
@@ -306,9 +321,9 @@ impl SharablePipeline {
             if let Err(err) = link_sink() {
                 // The following sends a message of type Error on the bus, containing our detailed
                 // error information.
-                tracing::error!("Failed to link demux: {}", err);
+                tracing::error!("Failed to link: {}", err);
             } else {
-                tracing::info!("Successfully linked demux");
+                tracing::info!("Successfully linked stream. Ready to play.");
                 // export GST_DEBUG_DUMP_DOT_DIR=/tmp
                 pipeline.debug_to_dot_file(DebugGraphDetails::all(), "pipeline");
             }
@@ -357,6 +372,8 @@ impl SharablePipeline {
                         .static_pad("sink")
                         .expect("queue has no sinkpad");
                     src_pad.link(&sink_pad)?;
+
+                    tracing::info!("Successfully inserted audio sink");
                 }
                 if is_video {
                     // Get the queue element's sink pad and link the decodebin's newly created
@@ -368,6 +385,8 @@ impl SharablePipeline {
                         .static_pad("sink")
                         .expect("queue has no sinkpad");
                     src_pad.link(&sink_pad)?;
+
+                    tracing::info!("Successfully inserted video sink");
                 }
 
                 Ok(())
@@ -377,21 +396,19 @@ impl SharablePipeline {
                 // The following sends a message of type Error on the bus, containing our detailed
                 // error information.
                 tracing::error!("Failed to insert sink: {}", err);
-            } else {
-                tracing::info!("Successfully inserted sink");
             }
         });
 
         // Start playing
-        // Wait until an EOS or error message appears
         let bus = pipeline.bus().unwrap();
         pipeline.set_state(gst::State::Playing)?;
-
         {
+            // Store pipeline in state and drop lock
             let mut pipeline_state = self.0.lock().unwrap();
             pipeline_state.pipeline = Some(pipeline);
         }
 
+        // Wait until an EOS or error message appears
         let _msg = bus.timed_pop_filtered(
             gst::ClockTime::NONE,
             &[gst::MessageType::Error, gst::MessageType::Eos],

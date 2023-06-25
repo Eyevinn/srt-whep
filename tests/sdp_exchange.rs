@@ -1,8 +1,8 @@
 use futures::future::join;
 use once_cell::sync::Lazy;
 use srt_whep::domain::{SharableAppState, VALID_WHEP_OFFER, VALID_WHIP_OFFER};
-use srt_whep::pipeline::{Args, SRTMode, SharablePipeline};
 use srt_whep::startup::run;
+use srt_whep::stream::{Args, SRTMode, SharablePipeline};
 use srt_whep::telemetry::{get_subscriber, init_subscriber};
 use std::net::TcpListener;
 
