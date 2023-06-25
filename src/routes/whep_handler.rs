@@ -1,5 +1,5 @@
 use crate::domain::*;
-use crate::pipeline::SharablePipeline;
+use crate::stream::SharablePipeline;
 use actix_web::{web, HttpResponse};
 use anyhow::Context;
 use chrono::Utc;
@@ -21,28 +21,28 @@ pub async fn subscribe(
         )));
     }
 
-    let resource_id = Uuid::new_v4().to_string();
+    let connection_id = Uuid::new_v4().to_string();
     tracing::info!(
         "Create connection {} at time: {:?}",
-        resource_id.clone(),
+        connection_id.clone(),
         Utc::now()
     );
 
     pipeline_state
-        .add_client(resource_id.clone())
+        .add_client(connection_id.clone())
         .context("Failed to add client")?;
 
     app_state
-        .add_resource(resource_id.clone())
+        .add_resource(connection_id.clone())
         .context("Failed to add resource")?;
 
     let sdp = app_state
-        .wait_on_whip_offer(resource_id.clone())
+        .wait_on_whip_offer(connection_id.clone())
         .await
         .context("Failed to receive a whip offer")?;
 
     let whep_port = app_state.get_port();
-    let url = format!("http://localhost:{}/channel/{}", whep_port, resource_id);
+    let url = format!("http://localhost:{}/channel/{}", whep_port, connection_id);
     tracing::info!("Receiving streaming from: {}", url);
 
     Ok(HttpResponse::Created()

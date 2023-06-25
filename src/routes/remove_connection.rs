@@ -1,5 +1,5 @@
 use crate::domain::*;
-use crate::pipeline::SharablePipeline;
+use crate::stream::SharablePipeline;
 
 use actix_web::{web, HttpResponse};
 use anyhow::Context;

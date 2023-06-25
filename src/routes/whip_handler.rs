@@ -20,17 +20,17 @@ pub async fn whip_request(
         )));
     }
 
-    let resource_id = app_state
+    let connection_id = app_state
         .save_whip_offer(sdp)
         .context("Failed to save whip offer")?;
 
     let whip_answer = app_state
-        .wait_on_whep_offer(resource_id.clone())
+        .wait_on_whep_offer(connection_id.clone())
         .await
         .context("Failed to receive a whep offer")?;
 
     let whep_port = app_state.get_port();
-    let url = format!("http://localhost:{}/channel/{}", whep_port, resource_id);
+    let url = format!("http://localhost:{}/channel/{}", whep_port, connection_id);
     tracing::info!("Start streaming at: {}", url);
 
     Ok(HttpResponse::Ok()

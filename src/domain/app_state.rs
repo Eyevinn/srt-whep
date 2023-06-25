@@ -87,9 +87,13 @@ impl SharableAppState {
 
         for (id, conn) in connections.iter_mut() {
             if conn.whep_offer.is_none() {
-                conn.whip_offer = Some(offer);
+                if conn.whip_offer.is_none() {
+                    conn.whip_offer = Some(offer);
 
-                return Ok(id.clone());
+                    return Ok(id.clone());
+                } else {
+                    return Err(MyError::RepeatedResourceIdError(id.clone()));
+                }
             }
         }
 

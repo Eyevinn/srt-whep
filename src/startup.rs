@@ -1,6 +1,6 @@
 use crate::domain::SharableAppState;
-use crate::pipeline::SharablePipeline;
 use crate::routes::{health_check, list, patch, remove_connection, subscribe, whip_request};
+use crate::stream::SharablePipeline;
 use actix_cors::Cors;
 use actix_web::dev::Server;
 use actix_web::{web, App, HttpServer};
