@@ -8,6 +8,19 @@ Supports SRT streams in caller and listener mode.
 
 ![screenshot](docs/screenshot.png)
 
+To quickly try it out you can use the Docker Container image published on Docker Hub:
+
+```
+docker run --rm --network host eyevinntechnology/srt-whep \
+  -i <SRT_SOURCE_IP>:<SRT_SOURCE_PORT> \
+  -o 0.0.0.0:8888 \
+  -p 8000 -s caller
+```
+
+It will connect to SRT on `<SRT_SOURCE_IP>:<SRT_SOURCE_PORT>` in caller mode thus assuming above that the `<SRT_SOURCE_IP>` is in listener mode.
+
+WHEP endpoint is available at `http://localhost:8000/channel`. You can then play it for example using the WHEP [Player](https://webrtc.player.eyevinn.technology/?type=whep). 
+
 ## Build from Source
 ### OSX
 
