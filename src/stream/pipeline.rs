@@ -2,7 +2,7 @@ use anyhow::{Error, Ok};
 use clap::{Parser, ValueEnum};
 use gst::{message::Eos, prelude::*, DebugGraphDetails, Pipeline};
 use gstreamer as gst;
-use gstwebrtchttp::plugin_register_static;
+use gstwebrtchttp;
 use std::sync::{Arc, Mutex};
 
 use crate::config::DiscoverConfig;
@@ -167,7 +167,7 @@ impl SharablePipeline {
         // Initialize GStreamer (only once)
         gst::init()?;
         // Load whipsink
-        plugin_register_static()?;
+        gstwebrtchttp::plugin_register_static()?;
 
         tracing::debug!("Setting up pipeline");
 
