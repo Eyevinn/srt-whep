@@ -34,6 +34,7 @@ secrecy = { version = "0.8", features = ["serde"] }
 futures = "0.3.28"
 gstreamer = "0.20.5"
 gstreamer-pbutils = "0.20.5"
+gst-plugin-webrtchttp = "0.10.8"
 clap = { version = "4.3.0", features = ["derive"] }
 actix-cors = "0.6.4"
 serde_json = "1.0.61"

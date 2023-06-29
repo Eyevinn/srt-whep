@@ -2,6 +2,7 @@ use anyhow::{Error, Ok};
 use clap::{Parser, ValueEnum};
 use gst::{message::Eos, prelude::*, DebugGraphDetails, Pipeline};
 use gstreamer as gst;
+use gstwebrtchttp;
 use std::sync::{Arc, Mutex};
 
 use crate::config::DiscoverConfig;
@@ -165,6 +166,9 @@ impl SharablePipeline {
     pub fn setup_pipeline(&self, args: &Args, config: &DiscoverConfig) -> Result<(), Error> {
         // Initialize GStreamer (only once)
         gst::init()?;
+        // Load whipsink
+        gstwebrtchttp::plugin_register_static()?;
+
         tracing::debug!("Setting up pipeline");
 
         // Create a pipeline (WebRTC branch)
