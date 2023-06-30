@@ -12,5 +12,4 @@
 - [x] Add support for multiple WebRTC clients
 - [x] Add support for different SRT stream modes (caller/listener)
 - [ ] Add support for different browsers
-- [ ] Improve the error handling & logging
-- [ ] Add support for cloud deployment
+- [ ] Add support for cloud deployment (Docker for Ubuntu, MacOS)
