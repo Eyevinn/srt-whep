@@ -9,6 +9,19 @@ Runs on MacOS and Ubuntu.
 
 ![screenshot](docs/screenshot.png)
 
+To quickly try it out on Linux machine, you can use the Docker Container image published on Docker Hub:
+
+```
+docker run --rm --network host eyevinntechnology/srt-whep \
+  -i <SRT_SOURCE_IP>:<SRT_SOURCE_PORT> \
+  -o 0.0.0.0:8888 \
+  -p 8000 -s caller
+```
+
+It will connect to SRT on `<SRT_SOURCE_IP>:<SRT_SOURCE_PORT>` in caller mode thus assuming above that the `<SRT_SOURCE_IP>` is in listener mode.
+
+WHEP endpoint is available at `http://localhost:8000/channel`. You can then play it for example using the WHEP [Player](https://webrtc.player.eyevinn.technology/?type=whep). Possible issues are discussed in [Issues](#issues).
+
 ## Build from Source
 ### OSX
 
@@ -36,18 +49,27 @@ Install GStreamer build dependencies.
 
 ```
 apt-get update
-apt-get -y install pkg-config \
+apt-get -y install build-essential \
+  curl \
+  pkg-config \
   libssl-dev \
   libunwind-dev \
   libgstreamer1.0-dev \
   libgstreamer-plugins-base1.0-dev \
+  libgstreamer-plugins-bad1.0-dev \
   gstreamer1.0-plugins-base \
   gstreamer1.0-plugins-good \
   gstreamer1.0-plugins-bad \
   gstreamer1.0-plugins-ugly \
   gstreamer1.0-libav \
-  libgstrtspserver-1.0-dev \
-  libges-1.0-dev
+  gstreamer1.0-tools \
+  gstreamer1.0-x \
+  gstreamer1.0-alsa \
+  gstreamer1.0-gl \
+  gstreamer1.0-gtk3 \
+  gstreamer1.0-qt5 \
+  gstreamer1.0-pulseaudio \
+  gstreamer1.0-nice
 ```
 
 Build with Cargo
@@ -59,6 +81,23 @@ cargo build --release
 ```
 
 The binary is then available at `./target/release/srt-whep`. See below for how to run it.
+
+## Docker Container
+
+Build container (uses multi-stage builds):
+
+```
+docker build -t srt-whep:dev .
+```
+
+Container must be running in host-mode (only works on Linux hosts, and is not supported on Docker Desktop for Mac, Docker Desktop for Windows)
+
+```
+docker run --rm --network host srt-whep:dev \
+  -i <SRT_SOURCE_IP>:<SRT_SOURCE_PORT> \
+  -o 0.0.0.0:8888 \
+  -p 8000 -s caller
+```
 
 ## Usage
 
@@ -96,9 +135,8 @@ This also expects the SRT address `127.0.0.1:8888` to be running in listener mod
 ## Issues
 All relevant discussions are tracked in [issues](https://github.com/Eyevinn/srt-whep/issues/). Please feel free to open a new issue if you have any questions or problems.
 
-- For Ubuntu users, please notice that `high` video profile is not supported by broswers. Related discussions can be found [here](https://askubuntu.com/questions/1412934/webrtc-h-264-high-profile-doesnt-want-to-play-in-browser).
-- For Ubuntu users, if you run into issues with the discoverer, please try to turn it off by setting `enable_discoverer` into `false` in `src/discover.conf` (This should be fixed in the future).
-- The application runs only on Chrome now but we will try to support more browsers.
+- For Ubuntu users, please notice that H264 video of `high` profile is not supported by broswers. Related discussions can be found [here](https://askubuntu.com/questions/1412934/webrtc-h-264-high-profile-doesnt-want-to-play-in-browser).
+- For Ubuntu users, please notice issues related to hostname resolution. It can be dodged by disabling `Anonymize local IPs exposed by WebRTC` on Chrome. Related discussions can be found [here](https://support.ipconfigure.com/hc/en-us/articles/360031237552-WebRTC-not-working-in-Google-Chrome-over-local-network-mDNS-)
 - We don't support the client side init mode of WHEP. This is under discussion but as the server knows what streams it has we believe the server should provide the SDP offer. Related discussions can be found [here](docs/whep.md).
 
 ## License (Apache-2.0)
