@@ -29,8 +29,7 @@ pub async fn whip_request(
         .await
         .context("Failed to receive a whep offer")?;
 
-    let whep_port = app_state.get_port();
-    let url = format!("http://localhost:{}/channel/{}", whep_port, connection_id);
+    let url = format!("/channel/{}", connection_id);
     tracing::info!("Start streaming at: {}", url);
 
     Ok(HttpResponse::Ok()
