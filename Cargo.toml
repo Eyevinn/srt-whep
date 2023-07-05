@@ -1,6 +1,6 @@
 [package]
 name = "srt_whep"
-version = "0.1.0"
+version = "1.0.1"
 authors = ["Kun Wu <kun.wu@eyevinn.se>"]
 edition = "2021"
 

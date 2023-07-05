@@ -3,6 +3,7 @@ use clap::{Parser, ValueEnum};
 use gst::{message::Eos, prelude::*, DebugGraphDetails, Pipeline};
 use gstreamer as gst;
 use gstwebrtchttp;
+use std::ops::{Deref, DerefMut};
 use std::sync::{Arc, Mutex};
 
 use crate::stream::utils::run_discoverer;
@@ -11,26 +12,25 @@ use crate::stream::utils::run_discoverer;
 #[command(author, version, about, long_about = None)]
 pub struct Args {
     /// SRT source stream address(ip:port)
-    #[arg(short, long)]
+    #[clap(short, long)]
     pub input_address: String,
 
-    /// SRT mode to use
-    /// caller: run a discoverer and then connect to a listener
-    /// listener: wait for a caller to connect
-    #[arg(short, long)]
-    #[clap(value_enum)]
+    /// SRT mode to use:
+    /// 1) caller - run a discoverer and then connect to the SRT stream (in listener mode).
+    /// 2) listener - wait for a SRT stream (in caller mode) to connect.
+    #[clap(short, long, value_enum, verbatim_doc_comment)]
     pub srt_mode: SRTMode,
 
     /// Timeout for discoverer in seconds
-    #[arg(short, long, default_value_t = 10)]
+    #[clap(short, long, default_value_t = 10)]
     pub discoverer_timeout_sec: u64,
 
     /// SRT output stream address(ip:port)
-    #[arg(short, long)]
+    #[clap(short, long)]
     pub output_address: String,
 
     /// Port for whep client
-    #[arg(short, long, default_value_t = 8000)]
+    #[clap(short, long, default_value_t = 8000)]
     pub port: u32,
 }
 
@@ -74,13 +74,27 @@ impl GPipeline {
 #[derive(Clone)]
 pub struct SharablePipeline(Arc<Mutex<GPipeline>>);
 
+impl Deref for SharablePipeline {
+    type Target = Arc<Mutex<GPipeline>>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl DerefMut for SharablePipeline {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
+
 impl SharablePipeline {
     pub fn new(args: Args) -> Self {
         Self(Arc::new(Mutex::new(GPipeline::new(args))))
     }
 
     pub fn add_client(&self, connection_id: String) -> Result<(), Error> {
-        let pipeline_state = self.0.lock().unwrap();
+        let pipeline_state = self.lock().unwrap();
         let pipeline = pipeline_state.pipeline.as_ref().unwrap();
         tracing::debug!("Add connection: {}", connection_id);
 
@@ -143,7 +157,7 @@ impl SharablePipeline {
     }
 
     pub fn remove_connection(&self, id: String) -> Result<(), Error> {
-        let pipeline_state = self.0.lock().unwrap();
+        let pipeline_state = self.lock().unwrap();
         let pipeline = pipeline_state.pipeline.as_ref().unwrap();
         tracing::debug!("Remove connection: {}", id);
 
@@ -413,7 +427,7 @@ impl SharablePipeline {
         pipeline.set_state(gst::State::Playing)?;
         {
             // Store pipeline in state and drop lock
-            let mut pipeline_state = self.0.lock().unwrap();
+            let mut pipeline_state = self.lock().unwrap();
             pipeline_state.pipeline = Some(pipeline);
         }
 
@@ -427,7 +441,7 @@ impl SharablePipeline {
     }
 
     pub fn close_pipeline(&self) -> Result<(), Error> {
-        let pipeline_state = self.0.lock().unwrap();
+        let pipeline_state = self.lock().unwrap();
         let pipeline = pipeline_state.pipeline.as_ref().unwrap();
 
         let eos_message = Eos::new();

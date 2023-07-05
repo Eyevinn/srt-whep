@@ -20,11 +20,13 @@ pub async fn whip_request(
         )));
     }
 
+    tracing::debug!("Saving whip offer to app");
     let connection_id = app_state
         .save_whip_offer(sdp)
         .await
         .context("Failed to save whip offer")?;
 
+    tracing::debug!("Waiting for a whep offer");
     let whip_answer = app_state
         .wait_on_whep_offer(connection_id.clone())
         .await

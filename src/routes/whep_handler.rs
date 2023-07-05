@@ -28,15 +28,18 @@ pub async fn subscribe(
         Utc::now()
     );
 
+    tracing::debug!("Adding client to pipeline");
     pipeline_state
         .add_client(connection_id.clone())
         .context("Failed to add client")?;
 
+    tracing::debug!("Adding resource to app");
     app_state
         .add_resource(connection_id.clone())
         .await
         .context("Failed to add resource")?;
 
+    tracing::debug!("Waiting for a whip offer");
     let sdp = app_state
         .wait_on_whip_offer(connection_id.clone())
         .await
@@ -64,6 +67,7 @@ pub async fn patch(
         return Err(SubscribeError::ValidationError(MyError::ResourceNotFound));
     }
 
+    tracing::debug!("Saving whep offer to app");
     app_state
         .save_whep_offer(sdp, id)
         .await
