@@ -1,9 +1,12 @@
 use anyhow::{Error, Ok};
+use async_trait::async_trait;
 use gst::{message::Eos, prelude::*, DebugGraphDetails, Pipeline};
 use gstreamer as gst;
 use gstwebrtchttp;
 use std::ops::{Deref, DerefMut};
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
+use std::time::Duration;
+use timed_locks::Mutex;
 
 use crate::stream::pipeline::{Args, PipelineBase, SRTMode};
 use crate::stream::utils::run_discoverer;
@@ -28,7 +31,10 @@ pub struct SharablePipeline(Arc<Mutex<PipelineWrapper>>);
 
 impl SharablePipeline {
     pub fn new(args: Args) -> Self {
-        Self(Arc::new(Mutex::new(PipelineWrapper::new(args))))
+        Self(Arc::new(Mutex::new_with_timeout(
+            PipelineWrapper::new(args),
+            Duration::from_secs(3),
+        )))
     }
 }
 
@@ -46,9 +52,10 @@ impl DerefMut for SharablePipeline {
     }
 }
 
+#[async_trait]
 impl PipelineBase for SharablePipeline {
-    fn add_client(&self, id: String) -> Result<(), Error> {
-        let pipeline_state = self.lock().unwrap();
+    async fn add_connection(&self, id: String) -> Result<(), Error> {
+        let pipeline_state = self.lock_err().await?;
         let pipeline = pipeline_state.pipeline.as_ref().unwrap();
         tracing::debug!("Add connection: {}", id);
 
@@ -110,15 +117,16 @@ impl PipelineBase for SharablePipeline {
         Ok(())
     }
 
-    fn remove_connection(&self, id: String) -> Result<(), Error> {
-        let pipeline_state = self.lock().unwrap();
+    async fn remove_connection(&self, id: String) -> Result<(), Error> {
+        let pipeline_state = self.lock_err().await?;
         let pipeline = pipeline_state.pipeline.as_ref().unwrap();
         tracing::debug!("Remove connection: {}", id);
 
         let remove_element = |name| -> Result<(), Error> {
             if let Some(element) = pipeline.by_name(name) {
-                element.set_state(gst::State::Null)?;
-                pipeline.remove(&element)?;
+                element.set_state(gst::State::Paused)?;
+                // TODO: Find a way to remove element from pipeline without blocking pipeline
+                // pipeline.remove(&element)?;
             } else {
                 tracing::warn!("Element {} not found", name);
             }
@@ -137,7 +145,7 @@ impl PipelineBase for SharablePipeline {
         Ok(())
     }
 
-    fn setup_pipeline(&self, args: &Args) -> Result<(), Error> {
+    async fn setup_pipeline(&self, args: &Args) -> Result<(), Error> {
         // Initialize GStreamer (only once)
         gst::init()?;
         // Load whipsink
@@ -381,7 +389,7 @@ impl PipelineBase for SharablePipeline {
         pipeline.set_state(gst::State::Playing)?;
         {
             // Store pipeline in state and drop lock
-            let mut pipeline_state = self.lock().unwrap();
+            let mut pipeline_state = self.lock_err().await?;
             pipeline_state.pipeline = Some(pipeline);
         }
 
@@ -394,8 +402,8 @@ impl PipelineBase for SharablePipeline {
         Ok(())
     }
 
-    fn close_pipeline(&self) -> Result<(), Error> {
-        let pipeline_state = self.lock().unwrap();
+    async fn close_pipeline(&self) -> Result<(), Error> {
+        let pipeline_state = self.lock_err().await?;
         let pipeline = pipeline_state.pipeline.as_ref().unwrap();
 
         let eos_message = Eos::new();

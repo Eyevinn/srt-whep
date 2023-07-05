@@ -14,6 +14,7 @@ pub async fn remove_connection<T: PipelineBase>(
 
     pipeline_state
         .remove_connection(id.clone())
+        .await
         .context("Failed to remove connection from pipeline")?;
 
     app_state

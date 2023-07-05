@@ -1,4 +1,5 @@
 use crate::domain::*;
+use crate::stream::PipelineBase;
 use actix_web::{web, HttpResponse};
 use anyhow::Context;
 use chrono::Utc;
@@ -6,11 +7,12 @@ use chrono::Utc;
 #[allow(clippy::async_yields_async)]
 #[tracing::instrument(
     name = "Receive the offer from GStreamer pipeline",
-    skip(form, app_state)
+    skip(form, app_state, pipeline_state)
 )]
-pub async fn whip_request(
+pub async fn whip_handler<T: PipelineBase>(
     form: String,
     app_state: web::Data<SharableAppState>,
+    pipeline_state: web::Data<T>,
 ) -> Result<HttpResponse, SubscribeError> {
     tracing::info!("Received SDP at time: {:?}", Utc::now());
     let sdp: SessionDescription = form.try_into().map_err(SubscribeError::ValidationError)?;
@@ -28,13 +30,27 @@ pub async fn whip_request(
     let relative_url = format!("/channel/{}", id);
     tracing::info!("Prepare streaming at: {}", relative_url);
 
-    let whip_answer = app_state
-        .wait_on_whep_offer(id.clone())
-        .await
-        .context("Failed to find a whep offer")?;
+    let sdp = app_state.wait_on_whep_offer(id.clone()).await;
 
-    Ok(HttpResponse::Ok()
-        .append_header(("Location", relative_url))
-        .content_type("application/sdp")
-        .body(whip_answer.as_ref().to_string()))
+    match sdp {
+        Ok(sdp) => Ok(HttpResponse::Ok()
+            .append_header(("Location", relative_url))
+            .content_type("application/sdp")
+            .body(sdp.as_ref().to_string())),
+        Err(err) => {
+            tracing::error!("Failed to receive a whep offer: {}", err);
+
+            pipeline_state
+                .remove_connection(id.clone())
+                .await
+                .context("Failed to remove client")?;
+
+            app_state
+                .remove_connection(id.clone())
+                .await
+                .context("Failed to remove connection")?;
+
+            Err(SubscribeError::ValidationError(MyError::OfferMissing))
+        }
+    }
 }
