@@ -1,4 +1,5 @@
 use super::{MyError, SessionDescription};
+use std::ops::{Deref, DerefMut};
 use std::{
     collections::{hash_map::Entry, HashMap},
     result::Result::Ok,
@@ -25,7 +26,7 @@ impl Connection {
 
 // A struct to hold all the connections.
 // The connections are stored in a hashmap with a unique id as the key
-struct AppState {
+pub struct AppState {
     connections: HashMap<String, Connection>,
 }
 
@@ -46,6 +47,20 @@ impl Default for SharableAppState {
     }
 }
 
+impl Deref for SharableAppState {
+    type Target = Arc<Mutex<AppState>>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl DerefMut for SharableAppState {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
+
 impl SharableAppState {
     pub fn new() -> Self {
         Self(Arc::new(Mutex::new_with_timeout(
@@ -55,7 +70,7 @@ impl SharableAppState {
     }
 
     pub async fn remove_connection(&self, connection_id: String) -> Result<(), MyError> {
-        let mut app_state = self.0.lock().await;
+        let mut app_state = self.lock().await;
         let connections = &mut app_state.connections;
 
         connections
@@ -65,7 +80,7 @@ impl SharableAppState {
     }
 
     pub async fn list_connections(&self) -> Result<Vec<String>, MyError> {
-        let mut app_state = self.0.lock().await;
+        let mut app_state = self.lock().await;
         let connections = &mut app_state.connections;
 
         let keys = connections.keys().cloned().collect::<Vec<_>>();
@@ -73,7 +88,7 @@ impl SharableAppState {
     }
 
     pub async fn add_resource(&self, connection_id: String) -> Result<(), MyError> {
-        let mut app_state = self.0.lock().await;
+        let mut app_state = self.lock().await;
         let connections = &mut app_state.connections;
 
         match connections.entry(connection_id.clone()) {
@@ -86,7 +101,7 @@ impl SharableAppState {
     }
 
     pub async fn save_whip_offer(&self, offer: SessionDescription) -> Result<String, MyError> {
-        let mut app_state = self.0.lock().await;
+        let mut app_state = self.lock().await;
         let connections = &mut app_state.connections;
 
         for (id, conn) in connections.iter_mut() {
@@ -112,7 +127,7 @@ impl SharableAppState {
         // If the offer is ready, return it
         loop {
             {
-                let mut app_state = self.0.lock().await;
+                let mut app_state = self.lock().await;
                 let connections = &mut app_state.connections;
 
                 if let Some(con) = connections.get_mut(&connection_id) {
@@ -134,7 +149,7 @@ impl SharableAppState {
         offer: SessionDescription,
         connection_id: String,
     ) -> Result<(), MyError> {
-        let mut app_state = self.0.lock().await;
+        let mut app_state = self.lock().await;
         let connections = &mut app_state.connections;
 
         if let Some(con) = connections.get_mut(&connection_id) {
@@ -153,7 +168,7 @@ impl SharableAppState {
         // If the offer is ready, return it
         loop {
             {
-                let mut app_state = self.0.lock().await;
+                let mut app_state = self.lock().await;
                 let connections = &mut app_state.connections;
 
                 if let Some(con) = connections.get_mut(&connection_id) {
