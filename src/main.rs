@@ -17,7 +17,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let subscriber = get_subscriber("srt_whep".into(), "info".into(), std::io::stdout);
     init_subscriber(subscriber);
 
-    let app_data = SharableAppState::new(args.port);
+    let app_data = SharableAppState::new();
     let pipeline_data = SharablePipeline::new(args.clone());
     let listener =
         TcpListener::bind(format!("0.0.0.0:{}", args.port)).expect("Whep port is already in use");

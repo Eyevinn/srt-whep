@@ -21,7 +21,7 @@ static _TRACING: Lazy<()> = Lazy::new(|| {
 
 fn spawn_app() -> String {
     let listener = TcpListener::bind("127.0.0.1:0").expect("Failed to bind random port");
-    let app_data = SharableAppState::new(28);
+    let app_data = SharableAppState::new();
 
     let port = listener.local_addr().unwrap().port();
     let args: Args = {

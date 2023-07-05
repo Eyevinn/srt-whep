@@ -24,14 +24,12 @@ impl Connection {
 // A struct to hold all the connections.
 // The connections are stored in a hashmap with a unique id as the key
 struct AppState {
-    whep_port: u32,
     connections: HashMap<String, Connection>,
 }
 
 impl AppState {
-    fn new(whep_port: u32) -> Self {
+    fn new() -> Self {
         Self {
-            whep_port,
             connections: HashMap::new(),
         }
     }
@@ -40,14 +38,15 @@ impl AppState {
 #[derive(Clone)]
 pub struct SharableAppState(Arc<Mutex<AppState>>);
 
-impl SharableAppState {
-    pub fn new(whep_port: u32) -> Self {
-        Self(Arc::new(Mutex::new(AppState::new(whep_port))))
+impl Default for SharableAppState {
+    fn default() -> Self {
+        Self::new()
     }
+}
 
-    pub fn get_port(&self) -> u32 {
-        let app_state = self.0.lock().unwrap();
-        app_state.whep_port
+impl SharableAppState {
+    pub fn new() -> Self {
+        Self(Arc::new(Mutex::new(AppState::new())))
     }
 
     pub fn remove_connection(&self, connection_id: String) -> Result<(), MyError> {
