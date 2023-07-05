@@ -2,6 +2,7 @@ use actix_web::http::StatusCode;
 use actix_web::ResponseError;
 use std::fmt::Debug;
 use thiserror::Error;
+use timed_locks::Error as TimedLockError;
 
 #[derive(Error)]
 pub enum MyError {
@@ -11,6 +12,8 @@ pub enum MyError {
     RepeatedResourceIdError(String),
     #[error("Resource not found")]
     ResourceNotFound,
+    #[error("Lock is timeout")]
+    LockTimeout(#[from] TimedLockError),
 }
 
 // We are still using a bespoke implementation of `Debug` to get a nice report using the error source chain

@@ -1,22 +1,17 @@
-use futures::future::join;
+use actix_web::http::StatusCode;
 use once_cell::sync::Lazy;
 use srt_whep::domain::{SharableAppState, VALID_WHEP_OFFER, VALID_WHIP_OFFER};
 use srt_whep::startup::run;
-use srt_whep::stream::{Args, SRTMode, SharablePipeline};
+use srt_whep::stream::{Args, DumpPipeline, SRTMode};
 use srt_whep::telemetry::{get_subscriber, init_subscriber};
 use std::net::TcpListener;
 
 // Ensure that the `tracing` stack is only initialised once using `once_cell`
 static _TRACING: Lazy<()> = Lazy::new(|| {
-    let default_filter_level = "info".to_string();
+    let default_filter_level = "debug".to_string();
     let subscriber_name = "test".to_string();
-    if std::env::var("TEST_LOG").is_ok() {
-        let subscriber = get_subscriber(subscriber_name, default_filter_level, std::io::stdout);
-        init_subscriber(subscriber);
-    } else {
-        let subscriber = get_subscriber(subscriber_name, default_filter_level, std::io::sink);
-        init_subscriber(subscriber);
-    };
+    let subscriber = get_subscriber(subscriber_name, default_filter_level, std::io::stdout);
+    init_subscriber(subscriber);
 });
 
 fn spawn_app() -> String {
@@ -33,9 +28,9 @@ fn spawn_app() -> String {
             discoverer_timeout_sec: 5,
         }
     };
-    let pipeline_data = SharablePipeline::new(args);
+    let dump_pipeline = DumpPipeline::new(args);
 
-    let server = run(listener, app_data, pipeline_data).expect("Failed to bind address");
+    let server = run(listener, app_data, dump_pipeline).expect("Failed to bind address");
     tokio::spawn(server);
 
     format!("http://127.0.0.1:{}", port)
@@ -59,41 +54,59 @@ async fn health_check_works() {
 #[tokio::test]
 async fn subscribe_returns_a_200_after_exchange_offer() {
     let address = spawn_app();
-    let client = reqwest::Client::new();
     let whip_offer = VALID_WHIP_OFFER;
     let whep_offer = VALID_WHEP_OFFER;
 
-    let whip_response = client
-        .post(address.clone() + "/whip_sink")
+    // Send whip offer
+    let address_clone = address.clone();
+    let handle = tokio::spawn(async move {
+        let whip_client = reqwest::Client::new();
+
+        let whip_response = whip_client
+            .post(address_clone + "/whip_sink")
+            .header("Content-Type", "application/sdp")
+            .body(whip_offer.to_string())
+            .send()
+            .await
+            .expect("Failed to send whip offer");
+
+        assert_eq!(StatusCode::OK, whip_response.status());
+        assert_eq!("application/sdp", whip_response.headers()["content-type"]);
+        assert!(whip_response
+            .text()
+            .await
+            .unwrap()
+            .contains("a=setup:passive"));
+    });
+
+    // Send empty post
+    let whep_client = reqwest::Client::new();
+    let whep_post_response = whep_client
+        .post(address.clone() + "/channel")
         .header("Content-Type", "application/sdp")
-        .body(whip_offer.to_string())
-        .send();
-    let whep_response = client
-        .post(address.clone() + "/whep_sink")
+        .send()
+        .await
+        .expect("Failed to send whep post");
+
+    assert_eq!(StatusCode::CREATED, whep_post_response.status());
+    let header = whep_post_response.headers().clone();
+    assert_eq!("application/sdp", header["content-type"]);
+    let url = header["Location"].to_str().unwrap();
+    assert!(url.starts_with("/channel/"));
+    let body = whep_post_response.text().await.unwrap();
+    assert!(body.contains("a=setup:active"));
+
+    // Send whep offer
+    let whep_patch_response = whep_client
+        .patch(address.clone() + url)
         .header("Content-Type", "application/sdp")
         .body(whep_offer.to_string())
-        .send();
-    let (whip_response, whep_response) = join(whip_response, whep_response).await;
-    let (_whip_response, _whep_response) = (
-        whip_response.expect("Failed to receive whip response"),
-        whep_response.expect("Failed to receive whep response"),
-    );
+        .send()
+        .await
+        .expect("Failed to send whep patch");
 
-    // assert_eq!(StatusCode::OK, whip_response.status());
-    // assert_eq!("application/sdp", whip_response.headers()["content-type"]);
-    // assert!(whip_response
-    //     .text()
-    //     .await
-    //     .unwrap()
-    //     .contains("a=setup:passive"));
-
-    // assert_eq!(StatusCode::CREATED, whep_response.status());
-    // assert_eq!("application/sdp", whep_response.headers()["content-type"]);
-    // assert!(whep_response
-    //     .text()
-    //     .await
-    //     .unwrap()
-    //     .contains("a=setup:active"));
+    assert_eq!(StatusCode::NO_CONTENT, whep_patch_response.status());
+    handle.await.unwrap();
 }
 
 #[tokio::test]
