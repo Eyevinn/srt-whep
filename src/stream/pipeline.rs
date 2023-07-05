@@ -1,4 +1,5 @@
 use anyhow::{Error, Ok};
+use async_trait::async_trait;
 use clap::{Parser, ValueEnum};
 
 #[derive(Parser, Debug, Clone)]
@@ -49,11 +50,12 @@ impl SRTMode {
     }
 }
 
+#[async_trait]
 pub trait PipelineBase: Clone + Send + Sync {
-    fn add_client(&self, id: String) -> Result<(), Error>;
-    fn remove_connection(&self, id: String) -> Result<(), Error>;
-    fn setup_pipeline(&self, args: &Args) -> Result<(), Error>;
-    fn close_pipeline(&self) -> Result<(), Error>;
+    async fn add_connection(&self, id: String) -> Result<(), Error>;
+    async fn remove_connection(&self, id: String) -> Result<(), Error>;
+    async fn setup_pipeline(&self, args: &Args) -> Result<(), Error>;
+    async fn close_pipeline(&self) -> Result<(), Error>;
 }
 
 #[derive(Clone)]
@@ -65,20 +67,21 @@ impl DumpPipeline {
     }
 }
 
+#[async_trait]
 impl PipelineBase for DumpPipeline {
-    fn add_client(&self, _id: String) -> Result<(), Error> {
+    async fn add_connection(&self, _id: String) -> Result<(), Error> {
         Ok(())
     }
 
-    fn remove_connection(&self, _id: String) -> Result<(), Error> {
+    async fn remove_connection(&self, _id: String) -> Result<(), Error> {
         Ok(())
     }
 
-    fn setup_pipeline(&self, _args: &Args) -> Result<(), Error> {
+    async fn setup_pipeline(&self, _args: &Args) -> Result<(), Error> {
         Ok(())
     }
 
-    fn close_pipeline(&self) -> Result<(), Error> {
+    async fn close_pipeline(&self) -> Result<(), Error> {
         Ok(())
     }
 }

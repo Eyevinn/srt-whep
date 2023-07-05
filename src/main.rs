@@ -23,7 +23,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let pipeline_clone = pipeline_data.clone();
     // Run the pipeline in a separate thread
     let pipeline_thread = task::spawn(async move {
-        if let Err(error) = pipeline_clone.setup_pipeline(&args) {
+        if let Err(error) = pipeline_clone.setup_pipeline(&args).await {
             tracing::error!("Failed to setup pipeline: {}", error);
         }
     });
@@ -34,7 +34,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     signal::ctrl_c().await?;
     tracing::debug!("Received Ctrl-C signal");
     // Stop the pipeline
-    if let Err(error) = pipeline_data.close_pipeline() {
+    if let Err(error) = pipeline_data.close_pipeline().await {
         tracing::error!("Failed to close pipeline: {}", error);
     }
     pipeline_thread.abort();

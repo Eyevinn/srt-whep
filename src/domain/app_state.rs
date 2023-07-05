@@ -68,7 +68,7 @@ impl SharableAppState {
     pub fn new() -> Self {
         Self(Arc::new(Mutex::new_with_timeout(
             AppState::new(),
-            Duration::new(5, 0),
+            Duration::from_secs(5),
         )))
     }
 
@@ -157,7 +157,7 @@ impl SharableAppState {
             tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
         }
 
-        Err(MyError::ResourceNotFound)
+        Err(MyError::OfferMissing)
     }
 
     pub async fn save_whep_offer(
@@ -206,6 +206,6 @@ impl SharableAppState {
             tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
         }
 
-        Err(MyError::ResourceNotFound)
+        Err(MyError::OfferMissing)
     }
 }

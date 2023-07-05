@@ -14,6 +14,8 @@ pub enum MyError {
     ResourceNotFound,
     #[error("Lock is timeout")]
     LockTimeout(#[from] TimedLockError),
+    #[error("Offer not found")]
+    OfferMissing,
 }
 
 // We are still using a bespoke implementation of `Debug` to get a nice report using the error source chain
