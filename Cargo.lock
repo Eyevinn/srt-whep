@@ -2439,6 +2439,7 @@ dependencies = [
  "serde-aux",
  "serde_json",
  "thiserror",
+ "timed-locks",
  "tokio",
  "toml",
  "tracing",
@@ -2568,6 +2569,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "372950940a5f07bf38dbe211d7283c9e6d7327df53794992d293e534c733d09b"
 dependencies = [
  "time-core",
+]
+
+[[package]]
+name = "timed-locks"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e70ab652a1e0c2ccc438672650ff7498c5b60525e209df78b862e4dae72bbe2b"
+dependencies = [
+ "thiserror",
+ "tokio",
 ]
 
 [[package]]

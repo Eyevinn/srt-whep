@@ -34,6 +34,7 @@ pub async fn subscribe(
 
     app_state
         .add_resource(connection_id.clone())
+        .await
         .context("Failed to add resource")?;
 
     let sdp = app_state
@@ -65,6 +66,7 @@ pub async fn patch(
 
     app_state
         .save_whep_offer(sdp, id)
+        .await
         .context("Failed to save whep offer")?;
 
     Ok(HttpResponse::NoContent().into())
