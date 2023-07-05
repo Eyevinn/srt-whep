@@ -132,7 +132,7 @@ If the SRT stream to ingest is in caller mode you run the application with this 
 cargo run --release -- -i 127.0.0.1:1234 -o 127.0.0.1:8888 -p 8000 -s listener | bunyan
 ```
 
-This also expects the SRT address `127.0.0.1:8888` to be running in listener mode.
+This also expects the SRT address `127.0.0.1:8888` to be running in caller mode.
 
 ## Debugging
 

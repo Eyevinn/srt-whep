@@ -2,8 +2,10 @@ use super::{MyError, SessionDescription};
 use std::{
     collections::{hash_map::Entry, HashMap},
     result::Result::Ok,
-    sync::{Arc, Mutex},
+    sync::Arc,
+    time::Duration,
 };
+use timed_locks::Mutex;
 
 // A struct to hold offer&answer for a webrtc connection
 #[derive(Debug)]
@@ -46,11 +48,14 @@ impl Default for SharableAppState {
 
 impl SharableAppState {
     pub fn new() -> Self {
-        Self(Arc::new(Mutex::new(AppState::new())))
+        Self(Arc::new(Mutex::new_with_timeout(
+            AppState::new(),
+            Duration::new(5, 0),
+        )))
     }
 
-    pub fn remove_connection(&self, connection_id: String) -> Result<(), MyError> {
-        let mut app_state = self.0.lock().unwrap();
+    pub async fn remove_connection(&self, connection_id: String) -> Result<(), MyError> {
+        let mut app_state = self.0.lock().await;
         let connections = &mut app_state.connections;
 
         connections
@@ -59,16 +64,16 @@ impl SharableAppState {
             .ok_or(MyError::ResourceNotFound)
     }
 
-    pub fn list_connections(&self) -> Result<Vec<String>, MyError> {
-        let mut app_state = self.0.lock().unwrap();
+    pub async fn list_connections(&self) -> Result<Vec<String>, MyError> {
+        let mut app_state = self.0.lock().await;
         let connections = &mut app_state.connections;
 
         let keys = connections.keys().cloned().collect::<Vec<_>>();
         Ok(keys)
     }
 
-    pub fn add_resource(&self, connection_id: String) -> Result<(), MyError> {
-        let mut app_state = self.0.lock().unwrap();
+    pub async fn add_resource(&self, connection_id: String) -> Result<(), MyError> {
+        let mut app_state = self.0.lock().await;
         let connections = &mut app_state.connections;
 
         match connections.entry(connection_id.clone()) {
@@ -80,8 +85,8 @@ impl SharableAppState {
         }
     }
 
-    pub fn save_whip_offer(&self, offer: SessionDescription) -> Result<String, MyError> {
-        let mut app_state = self.0.lock().unwrap();
+    pub async fn save_whip_offer(&self, offer: SessionDescription) -> Result<String, MyError> {
+        let mut app_state = self.0.lock().await;
         let connections = &mut app_state.connections;
 
         for (id, conn) in connections.iter_mut() {
@@ -107,7 +112,7 @@ impl SharableAppState {
         // If the offer is ready, return it
         loop {
             {
-                let mut app_state = self.0.lock().unwrap();
+                let mut app_state = self.0.lock().await;
                 let connections = &mut app_state.connections;
 
                 if let Some(con) = connections.get_mut(&connection_id) {
@@ -124,12 +129,12 @@ impl SharableAppState {
         }
     }
 
-    pub fn save_whep_offer(
+    pub async fn save_whep_offer(
         &self,
         offer: SessionDescription,
         connection_id: String,
     ) -> Result<(), MyError> {
-        let mut app_state = self.0.lock().unwrap();
+        let mut app_state = self.0.lock().await;
         let connections = &mut app_state.connections;
 
         if let Some(con) = connections.get_mut(&connection_id) {
@@ -148,7 +153,7 @@ impl SharableAppState {
         // If the offer is ready, return it
         loop {
             {
-                let mut app_state = self.0.lock().unwrap();
+                let mut app_state = self.0.lock().await;
                 let connections = &mut app_state.connections;
 
                 if let Some(con) = connections.get_mut(&connection_id) {

@@ -22,6 +22,7 @@ pub async fn whip_request(
 
     let connection_id = app_state
         .save_whip_offer(sdp)
+        .await
         .context("Failed to save whip offer")?;
 
     let whip_answer = app_state
