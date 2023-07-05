@@ -1,14 +1,14 @@
 use crate::domain::*;
-use crate::stream::SharablePipeline;
+use crate::stream::PipelineBase;
 
 use actix_web::{web, HttpResponse};
 use anyhow::Context;
 
 #[allow(clippy::async_yields_async)]
-pub async fn remove_connection(
+pub async fn remove_connection<T: PipelineBase>(
     path: web::Path<String>,
     app_state: web::Data<SharableAppState>,
-    pipeline_state: web::Data<SharablePipeline>,
+    pipeline_state: web::Data<T>,
 ) -> Result<HttpResponse, SubscribeError> {
     let id = path.into_inner();
 

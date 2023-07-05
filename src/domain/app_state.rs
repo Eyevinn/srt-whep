@@ -8,6 +8,9 @@ use std::{
 };
 use timed_locks::Mutex;
 
+// The maximum times to wait for an offer
+static MAXWAITTIMES: u32 = 5;
+
 // A struct to hold offer&answer for a webrtc connection
 #[derive(Debug)]
 struct Connection {
@@ -69,30 +72,35 @@ impl SharableAppState {
         )))
     }
 
-    pub async fn remove_connection(&self, connection_id: String) -> Result<(), MyError> {
-        let mut app_state = self.lock().await;
+    pub async fn remove_connection(&self, id: String) -> Result<(), MyError> {
+        tracing::debug!("Remove connection: {}", id);
+
+        // Try to hold the lock and remove the connection
+        let mut app_state = self.lock_err().await?;
         let connections = &mut app_state.connections;
 
         connections
-            .remove(&connection_id)
+            .remove(&id)
             .map(|_| ())
             .ok_or(MyError::ResourceNotFound)
     }
 
     pub async fn list_connections(&self) -> Result<Vec<String>, MyError> {
-        let mut app_state = self.lock().await;
+        // Try to hold the lock and return a list of the connections
+        let mut app_state = self.lock_err().await?;
         let connections = &mut app_state.connections;
-
         let keys = connections.keys().cloned().collect::<Vec<_>>();
         Ok(keys)
     }
 
-    pub async fn add_resource(&self, connection_id: String) -> Result<(), MyError> {
-        let mut app_state = self.lock().await;
+    pub async fn add_connection(&self, id: String) -> Result<(), MyError> {
+        tracing::debug!("Add connection: {}", id);
+
+        let mut app_state = self.lock_err().await?;
         let connections = &mut app_state.connections;
 
-        match connections.entry(connection_id.clone()) {
-            Entry::Occupied(_) => Err(MyError::RepeatedResourceIdError(connection_id)),
+        match connections.entry(id.clone()) {
+            Entry::Occupied(_) => Err(MyError::RepeatedResourceIdError(id)),
             Entry::Vacant(entry) => {
                 entry.insert(Connection::new());
                 Ok(())
@@ -101,7 +109,9 @@ impl SharableAppState {
     }
 
     pub async fn save_whip_offer(&self, offer: SessionDescription) -> Result<String, MyError> {
-        let mut app_state = self.lock().await;
+        tracing::debug!("Save whip offer: {:?}", offer);
+
+        let mut app_state = self.lock_err().await?;
         let connections = &mut app_state.connections;
 
         for (id, conn) in connections.iter_mut() {
@@ -119,40 +129,48 @@ impl SharableAppState {
         Err(MyError::ResourceNotFound)
     }
 
-    pub async fn wait_on_whep_offer(
-        &self,
-        connection_id: String,
-    ) -> Result<SessionDescription, MyError> {
+    pub async fn wait_on_whep_offer(&self, id: String) -> Result<SessionDescription, MyError> {
         // Check every second if an offer is ready
         // If the offer is ready, return it
-        loop {
-            {
-                let mut app_state = self.lock().await;
-                let connections = &mut app_state.connections;
+        // If not, wait for a second and check again
+        // If the offer is not ready after several tries, return an error
+        for i in 0..MAXWAITTIMES {
+            tracing::debug!(
+                "Wait on whep offer: {} for {}/{} times",
+                id,
+                i,
+                MAXWAITTIMES
+            );
 
-                if let Some(con) = connections.get_mut(&connection_id) {
-                    if con.whep_offer.is_some() {
-                        let whep_offer = con.whep_offer.as_mut().unwrap();
-                        whep_offer.set_as_passive();
+            let mut app_state = self.lock_err().await?;
+            let connections = &mut app_state.connections;
 
-                        return Ok(con.whep_offer.clone().unwrap());
-                    }
+            if let Some(con) = connections.get_mut(&id) {
+                if con.whep_offer.is_some() {
+                    let whep_offer = con.whep_offer.as_mut().unwrap();
+                    whep_offer.set_as_passive();
+
+                    return Ok(con.whep_offer.clone().unwrap());
                 }
             }
 
             tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
         }
+
+        Err(MyError::ResourceNotFound)
     }
 
     pub async fn save_whep_offer(
         &self,
         offer: SessionDescription,
-        connection_id: String,
+        id: String,
     ) -> Result<(), MyError> {
-        let mut app_state = self.lock().await;
+        tracing::debug!("Save whep offer: {:?}", offer);
+
+        let mut app_state = self.lock_err().await?;
         let connections = &mut app_state.connections;
 
-        if let Some(con) = connections.get_mut(&connection_id) {
+        if let Some(con) = connections.get_mut(&id) {
             con.whep_offer = Some(offer);
             Ok(())
         } else {
@@ -160,28 +178,34 @@ impl SharableAppState {
         }
     }
 
-    pub async fn wait_on_whip_offer(
-        &self,
-        connection_id: String,
-    ) -> Result<SessionDescription, MyError> {
+    pub async fn wait_on_whip_offer(&self, id: String) -> Result<SessionDescription, MyError> {
         // Check every second if an offer is ready
         // If the offer is ready, return it
-        loop {
-            {
-                let mut app_state = self.lock().await;
-                let connections = &mut app_state.connections;
+        // If not, wait for a second and check again
+        // If the offer is not ready after several tries, return an error
+        for i in 0..MAXWAITTIMES {
+            tracing::debug!(
+                "Wait on whip offer: {} for {}/{} times",
+                id,
+                i,
+                MAXWAITTIMES
+            );
 
-                if let Some(con) = connections.get_mut(&connection_id) {
-                    if con.whip_offer.is_some() {
-                        let whip_offer = con.whip_offer.as_mut().unwrap();
-                        whip_offer.set_as_active();
+            let mut app_state = self.lock_err().await?;
+            let connections = &mut app_state.connections;
 
-                        return Ok(con.whip_offer.clone().unwrap());
-                    }
+            if let Some(con) = connections.get_mut(&id) {
+                if con.whip_offer.is_some() {
+                    let whip_offer = con.whip_offer.as_mut().unwrap();
+                    whip_offer.set_as_active();
+
+                    return Ok(con.whip_offer.clone().unwrap());
                 }
             }
 
             tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
         }
+
+        Err(MyError::ResourceNotFound)
     }
 }

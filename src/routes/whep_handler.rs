@@ -1,5 +1,5 @@
 use crate::domain::*;
-use crate::stream::SharablePipeline;
+use crate::stream::PipelineBase;
 use actix_web::{web, HttpResponse};
 use anyhow::Context;
 use chrono::Utc;
@@ -10,10 +10,10 @@ use uuid::Uuid;
     name = "Receive an offer from a client",
     skip(form, app_state, pipeline_state)
 )]
-pub async fn subscribe(
+pub async fn subscribe<T: PipelineBase>(
     form: String,
     app_state: web::Data<SharableAppState>,
-    pipeline_state: web::Data<SharablePipeline>,
+    pipeline_state: web::Data<T>,
 ) -> Result<HttpResponse, SubscribeError> {
     if !form.is_empty() {
         return Err(SubscribeError::ValidationError(MyError::InvalidSDP(
@@ -21,31 +21,27 @@ pub async fn subscribe(
         )));
     }
 
-    let connection_id = Uuid::new_v4().to_string();
-    tracing::info!(
-        "Create connection {} at time: {:?}",
-        connection_id.clone(),
-        Utc::now()
-    );
+    let id = Uuid::new_v4().to_string();
+    tracing::info!("Create connection {} at time: {:?}", id.clone(), Utc::now());
 
     tracing::debug!("Adding client to pipeline");
     pipeline_state
-        .add_client(connection_id.clone())
+        .add_client(id.clone())
         .context("Failed to add client")?;
 
-    tracing::debug!("Adding resource to app");
+    tracing::debug!("Adding connection to app");
     app_state
-        .add_resource(connection_id.clone())
+        .add_connection(id.clone())
         .await
-        .context("Failed to add resource")?;
+        .context("Failed to add connection")?;
 
     tracing::debug!("Waiting for a whip offer");
     let sdp = app_state
-        .wait_on_whip_offer(connection_id.clone())
+        .wait_on_whip_offer(id.clone())
         .await
         .context("Failed to receive a whip offer")?;
 
-    let relative_url = format!("/channel/{}", connection_id);
+    let relative_url = format!("/channel/{}", id);
     tracing::info!("Receiving streaming from: {}", relative_url);
 
     Ok(HttpResponse::Created()

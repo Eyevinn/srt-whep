@@ -20,20 +20,18 @@ pub async fn whip_request(
         )));
     }
 
-    tracing::debug!("Saving whip offer to app");
-    let connection_id = app_state
+    let id = app_state
         .save_whip_offer(sdp)
         .await
         .context("Failed to save whip offer")?;
 
-    tracing::debug!("Waiting for a whep offer");
-    let whip_answer = app_state
-        .wait_on_whep_offer(connection_id.clone())
-        .await
-        .context("Failed to receive a whep offer")?;
+    let relative_url = format!("/channel/{}", id);
+    tracing::info!("Prepare streaming at: {}", relative_url);
 
-    let relative_url = format!("/channel/{}", connection_id);
-    tracing::info!("Start streaming at: {}", relative_url);
+    let whip_answer = app_state
+        .wait_on_whep_offer(id.clone())
+        .await
+        .context("Failed to find a whep offer")?;
 
     Ok(HttpResponse::Ok()
         .append_header(("Location", relative_url))

@@ -1,7 +1,7 @@
 use clap::Parser;
 use srt_whep::domain::SharableAppState;
 use srt_whep::startup::run;
-use srt_whep::stream::{Args, SharablePipeline};
+use srt_whep::stream::{Args, PipelineBase, SharablePipeline};
 use srt_whep::telemetry::{get_subscriber, init_subscriber};
 use std::error::Error;
 use std::net::TcpListener;
