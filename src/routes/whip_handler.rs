@@ -29,11 +29,11 @@ pub async fn whip_request(
         .await
         .context("Failed to receive a whep offer")?;
 
-    let url = format!("/channel/{}", connection_id);
-    tracing::info!("Start streaming at: {}", url);
+    let relative_url = format!("/channel/{}", connection_id);
+    tracing::info!("Start streaming at: {}", relative_url);
 
     Ok(HttpResponse::Ok()
-        .append_header(("Location", url))
+        .append_header(("Location", relative_url))
         .content_type("application/sdp")
         .body(whip_answer.as_ref().to_string()))
 }

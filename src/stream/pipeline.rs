@@ -69,8 +69,8 @@ impl GPipeline {
 pub struct SharablePipeline(Arc<Mutex<GPipeline>>);
 
 impl SharablePipeline {
-    pub fn new(_args: Args) -> Self {
-        Self(Arc::new(Mutex::new(GPipeline::new(_args))))
+    pub fn new(args: Args) -> Self {
+        Self(Arc::new(Mutex::new(GPipeline::new(args))))
     }
 
     pub fn add_client(&self, connection_id: String) -> Result<(), Error> {

@@ -41,11 +41,11 @@ pub async fn subscribe(
         .await
         .context("Failed to receive a whip offer")?;
 
-    let url = format!("/channel/{}", connection_id);
-    tracing::info!("Receiving streaming from: {}", url);
+    let relative_url = format!("/channel/{}", connection_id);
+    tracing::info!("Receiving streaming from: {}", relative_url);
 
     Ok(HttpResponse::Created()
-        .append_header(("Location", url))
+        .append_header(("Location", relative_url))
         .content_type("application/sdp")
         .body(sdp.as_ref().to_string()))
 }
