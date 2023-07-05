@@ -42,7 +42,7 @@ export DYLD_LIBRARY_PATH=$DYLD_LIBRARY_PATH:$GST_PLUGIN_PATH
 Build with Cargo
 
 ```
-cargo update
+cargo check
 cargo install bunyan # Optional, for pretty printing of logs
 cargo build --release
 ```
@@ -84,7 +84,7 @@ apt-get -y install build-essential \
 Build with Cargo
 
 ```
-cargo update
+cargo check
 cargo install bunyan # Optional, for pretty printing of logs
 cargo build --release
 ```
