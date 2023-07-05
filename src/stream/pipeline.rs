@@ -5,8 +5,7 @@ use gstreamer as gst;
 use gstwebrtchttp;
 use std::sync::{Arc, Mutex};
 
-use crate::config::DiscoverConfig;
-use crate::stream::helper::run_discoverer;
+use crate::stream::utils::run_discoverer;
 
 #[derive(Parser, Debug, Clone)]
 #[command(author, version, about, long_about = None)]
@@ -15,9 +14,16 @@ pub struct Args {
     #[arg(short, long)]
     pub input_address: String,
 
+    /// SRT mode to use
+    /// caller: run a discoverer and then connect to a listener
+    /// listener: wait for a caller to connect
     #[arg(short, long)]
     #[clap(value_enum)]
     pub srt_mode: SRTMode,
+
+    /// Timeout for discoverer in seconds
+    #[arg(short, long, default_value_t = 10)]
+    pub discoverer_timeout_sec: u64,
 
     /// SRT output stream address(ip:port)
     #[arg(short, long)]
@@ -28,7 +34,7 @@ pub struct Args {
     pub port: u32,
 }
 
-#[derive(ValueEnum, Clone, Debug)]
+#[derive(ValueEnum, Clone, Debug, PartialEq)]
 pub enum SRTMode {
     Caller,
     Listener,
@@ -163,12 +169,11 @@ impl SharablePipeline {
         Ok(())
     }
 
-    pub fn setup_pipeline(&self, args: &Args, config: &DiscoverConfig) -> Result<(), Error> {
+    pub fn setup_pipeline(&self, args: &Args) -> Result<(), Error> {
         // Initialize GStreamer (only once)
         gst::init()?;
         // Load whipsink
         gstwebrtchttp::plugin_register_static()?;
-
         tracing::debug!("Setting up pipeline");
 
         // Create a pipeline (WebRTC branch)
@@ -180,9 +185,9 @@ impl SharablePipeline {
             args.srt_mode.to_str()
         );
         tracing::info!("SRT Input uri: {}", uri);
-        if config.enable_discoverer {
+        if args.srt_mode == SRTMode::Caller {
             tracing::info!("Running discoverer...");
-            run_discoverer(&uri, config.discoverer_timeout_sec)?;
+            run_discoverer(&uri, args.discoverer_timeout_sec)?;
         }
 
         let src = gst::ElementFactory::make("srtsrc")

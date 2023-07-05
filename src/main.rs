@@ -1,5 +1,4 @@
 use clap::Parser;
-use srt_whep::config::DiscoverConfig;
 use srt_whep::domain::SharableAppState;
 use srt_whep::startup::run;
 use srt_whep::stream::{Args, SharablePipeline};
@@ -12,7 +11,6 @@ use tokio::task;
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
     let args = Args::parse();
-    let config: DiscoverConfig = toml::from_str(include_str!("discover.conf"))?;
 
     let subscriber = get_subscriber("srt_whep".into(), "info".into(), std::io::stdout);
     init_subscriber(subscriber);
@@ -25,7 +23,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let pipeline_clone = pipeline_data.clone();
     // Run the pipeline in a separate thread
     let pipeline_thread = task::spawn(async move {
-        if let Err(error) = pipeline_clone.setup_pipeline(&args, &config) {
+        if let Err(error) = pipeline_clone.setup_pipeline(&args) {
             tracing::error!("Failed to setup pipeline: {}", error);
         }
     });

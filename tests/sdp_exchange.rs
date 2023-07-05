@@ -30,6 +30,7 @@ fn spawn_app() -> String {
             input_address: "127.0.0.1:1234".to_string(),
             output_address: "127.0.0.1:1234".to_string(),
             srt_mode: SRTMode::Caller,
+            discoverer_timeout_sec: 5,
         }
     };
     let pipeline_data = SharablePipeline::new(args);
