@@ -30,6 +30,15 @@ Requirements:
 - GStreamer [binaries](https://gstreamer.freedesktop.org/data/pkg/osx/) from GStreamer's website installed
 - Rust and cargo installed
 
+Make sure you have the following env variables defined:
+
+```
+export PATH=$PATH:/Library/Frameworks/GStreamer.framework/Versions/Current/bin
+export PKG_CONFIG_PATH=/Library/Frameworks/GStreamer.framework/Versions/Current/lib/pkgconfig
+export GST_PLUGIN_PATH=/Library/Frameworks/GStreamer.framework/Versions/Current/lib:$GST_PLUGIN_PATH
+export DYLD_LIBRARY_PATH=$DYLD_LIBRARY_PATH:$GST_PLUGIN_PATH
+```
+
 Build with Cargo
 
 ```
