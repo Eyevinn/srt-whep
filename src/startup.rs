@@ -20,7 +20,7 @@ pub fn run<T: PipelineBase + 'static>(
             .route("/health_check", web::get().to(health_check))
             .route("/list", web::get().to(list))
             .route("/channel", web::post().to(whep_handler::<T>))
-            .route("/channel/{id}", web::patch().to(patch_handler))
+            .route("/channel/{id}", web::patch().to(whep_patch_handler))
             .route("/channel/{id}", web::delete().to(remove_connection::<T>))
             .route("/whip_sink", web::post().to(whip_handler::<T>))
             .app_data(web::Data::new(app_state.clone()))

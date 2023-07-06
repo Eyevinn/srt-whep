@@ -15,14 +15,14 @@ static MAXWAITTIMES: u32 = 5;
 #[derive(Debug)]
 struct Connection {
     whip_offer: Option<SessionDescription>,
-    whep_offer: Option<SessionDescription>,
+    whep_answer: Option<SessionDescription>,
 }
 
 impl Connection {
     fn new() -> Self {
         Self {
             whip_offer: None,
-            whep_offer: None,
+            whep_answer: None,
         }
     }
 }
@@ -73,7 +73,7 @@ impl SharableAppState {
     }
 
     pub async fn remove_connection(&self, id: String) -> Result<(), MyError> {
-        tracing::debug!("Remove connection: {}", id);
+        tracing::debug!("Remove connection {} from app state", id);
 
         // Try to hold the lock and remove the connection
         let mut app_state = self.lock_err().await?;
@@ -94,7 +94,7 @@ impl SharableAppState {
     }
 
     pub async fn add_connection(&self, id: String) -> Result<(), MyError> {
-        tracing::debug!("Add connection: {}", id);
+        tracing::debug!("Add connection {} to app state", id);
 
         let mut app_state = self.lock_err().await?;
         let connections = &mut app_state.connections;
@@ -109,13 +109,13 @@ impl SharableAppState {
     }
 
     pub async fn save_whip_offer(&self, offer: SessionDescription) -> Result<String, MyError> {
-        tracing::debug!("Save whip offer: {:?}", offer);
+        tracing::debug!("Save WHIP SDP offer: {:?}", offer);
 
         let mut app_state = self.lock_err().await?;
         let connections = &mut app_state.connections;
 
         for (id, conn) in connections.iter_mut() {
-            if conn.whep_offer.is_none() {
+            if conn.whep_answer.is_none() {
                 if conn.whip_offer.is_none() {
                     conn.whip_offer = Some(offer);
 
@@ -129,14 +129,14 @@ impl SharableAppState {
         Err(MyError::ResourceNotFound)
     }
 
-    pub async fn wait_on_whep_offer(&self, id: String) -> Result<SessionDescription, MyError> {
-        // Check every second if an offer is ready
-        // If the offer is ready, return it
+    pub async fn wait_on_whep_answer(&self, id: String) -> Result<SessionDescription, MyError> {
+        // Check every second if an answer is ready
+        // If the answer is ready, return it
         // If not, wait for a second and check again
-        // If the offer is not ready after several tries, return an error
+        // If the answer is not ready after several tries, return an error
         for i in 0..MAXWAITTIMES {
             tracing::debug!(
-                "Wait on whep offer: {} for {}/{} times",
+                "Wait on WHEP SDP answer: {} for {}/{} times",
                 id,
                 i,
                 MAXWAITTIMES
@@ -146,32 +146,32 @@ impl SharableAppState {
             let connections = &mut app_state.connections;
 
             if let Some(con) = connections.get_mut(&id) {
-                if con.whep_offer.is_some() {
-                    let whep_offer = con.whep_offer.as_mut().unwrap();
-                    whep_offer.set_as_passive();
+                if con.whep_answer.is_some() {
+                    let whep_answer = con.whep_answer.as_mut().unwrap();
+                    whep_answer.set_as_passive();
 
-                    return Ok(con.whep_offer.clone().unwrap());
+                    return Ok(con.whep_answer.clone().unwrap());
                 }
             }
 
             tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
         }
 
-        Err(MyError::OfferMissing)
+        Err(MyError::AnswerMissing)
     }
 
-    pub async fn save_whep_offer(
+    pub async fn save_whep_answer(
         &self,
         offer: SessionDescription,
         id: String,
     ) -> Result<(), MyError> {
-        tracing::debug!("Save whep offer: {:?}", offer);
+        tracing::debug!("Save WHEP SDP answer: {:?}", offer);
 
         let mut app_state = self.lock_err().await?;
         let connections = &mut app_state.connections;
 
         if let Some(con) = connections.get_mut(&id) {
-            con.whep_offer = Some(offer);
+            con.whep_answer = Some(offer);
             Ok(())
         } else {
             Err(MyError::ResourceNotFound)
@@ -185,7 +185,7 @@ impl SharableAppState {
         // If the offer is not ready after several tries, return an error
         for i in 0..MAXWAITTIMES {
             tracing::debug!(
-                "Wait on whip offer: {} for {}/{} times",
+                "Wait on WHIP SDP offer: {} for {}/{} times",
                 id,
                 i,
                 MAXWAITTIMES

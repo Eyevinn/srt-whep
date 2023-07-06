@@ -57,7 +57,7 @@ impl PipelineBase for SharablePipeline {
     async fn add_connection(&self, id: String) -> Result<(), Error> {
         let pipeline_state = self.lock_err().await?;
         let pipeline = pipeline_state.pipeline.as_ref().unwrap();
-        tracing::debug!("Add connection: {}", id);
+        tracing::debug!("Add connection {} to pipeline", id);
 
         let demux = pipeline
             .by_name("demux")

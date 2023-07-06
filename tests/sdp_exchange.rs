@@ -1,6 +1,6 @@
 use actix_web::http::StatusCode;
 use once_cell::sync::Lazy;
-use srt_whep::domain::{SharableAppState, VALID_WHEP_OFFER, VALID_WHIP_OFFER};
+use srt_whep::domain::{SharableAppState, VALID_WHEP_ANSWER, VALID_WHIP_OFFER};
 use srt_whep::startup::run;
 use srt_whep::stream::{Args, DumpPipeline, SRTMode};
 use srt_whep::telemetry::{get_subscriber, init_subscriber};
@@ -55,7 +55,7 @@ async fn health_check_works() {
 async fn subscribe_returns_a_200_after_exchange_offer() {
     let address = spawn_app();
     let whip_offer = VALID_WHIP_OFFER;
-    let whep_offer = VALID_WHEP_OFFER;
+    let whep_answer = VALID_WHEP_ANSWER;
 
     // Send whip offer
     let address_clone = address.clone();
@@ -100,7 +100,7 @@ async fn subscribe_returns_a_200_after_exchange_offer() {
     let whep_patch_response = whep_client
         .patch(address.clone() + url)
         .header("Content-Type", "application/sdp")
-        .body(whep_offer.to_string())
+        .body(whep_answer.to_string())
         .send()
         .await
         .expect("Failed to send whep patch");
