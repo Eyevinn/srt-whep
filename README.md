@@ -144,7 +144,8 @@ This also expects the SRT address `127.0.0.1:8888` to be running in caller mode.
 ## Issues
 All relevant discussions are tracked in [issues](https://github.com/Eyevinn/srt-whep/issues/). Please feel free to open a new issue if you have any questions or problems.
 
-- For Ubuntu users, please notice that H264 video of `high` profile is not supported by broswers. Related discussions can be found [here](https://askubuntu.com/questions/1412934/webrtc-h-264-high-profile-doesnt-want-to-play-in-browser).
+- For Mac users, please notice that only H264 video of `constrained-baseline` profile is supported by Safari.
+- For Ubuntu users, please notice that H264 video of `high` profile is not supported by broswers (`baseline` or `main` is supported). Related discussions can be found [here](https://askubuntu.com/questions/1412934/webrtc-h-264-high-profile-doesnt-want-to-play-in-browser).
 - For Ubuntu users, please notice issues related to hostname resolution. It can be dodged by disabling `Anonymize local IPs exposed by WebRTC` on Chrome. Related discussions can be found [here](https://support.ipconfigure.com/hc/en-us/articles/360031237552-WebRTC-not-working-in-Google-Chrome-over-local-network-mDNS-)
 - We don't support the client side init mode of WHEP. This is under discussion but as the server knows what streams it has we believe the server should provide the SDP offer. Related discussions can be found [here](docs/whep.md).
 
