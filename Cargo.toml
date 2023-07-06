@@ -32,6 +32,7 @@ validator = "0.16"
 tracing-actix-web = "0.7"
 secrecy = { version = "0.8", features = ["serde"] }
 futures = "0.3.28"
+glib = "0.17.10"
 gstreamer = "0.20.5"
 gstreamer-pbutils = "0.20.5"
 gst-plugin-webrtchttp = "0.10.8"

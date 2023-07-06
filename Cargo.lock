@@ -2429,6 +2429,7 @@ dependencies = [
  "config",
  "derive_more",
  "futures",
+ "glib",
  "gst-plugin-webrtchttp",
  "gstreamer",
  "gstreamer-pbutils",

@@ -9,8 +9,8 @@ gst-launch-1.0 srtsrc uri="srt://" ! \
 ### Video Only
 #### producer
 gst-launch-1.0 -v videotestsrc ! clockoverlay ! video/x-raw, height=360, width=640 ! videoconvert ! \
-    x264enc tune=zerolatency ! video/x-h264, profile=main ! \
-    mpegtsmux ! srtsink uri=srt://:8888 wait-for-connection=false
+    x264enc tune=zerolatency ! video/x-h264, profile=constrained-baseline ! \
+    mpegtsmux ! srtsink uri=srt://:1234 wait-for-connection=false
 
 #### trasmitter
 gst-launch-1.0 srtsrc uri="srt://127.0.0.1:8888" ! queue !  srtserversink uri="srt://:1234" wait-for-connection=false

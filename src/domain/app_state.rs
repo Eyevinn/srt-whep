@@ -108,7 +108,11 @@ impl SharableAppState {
         }
     }
 
-    pub async fn save_whip_offer(&self, conn_id: String, offer: SessionDescription) -> Result<String, MyError> {
+    pub async fn save_whip_offer(
+        &self,
+        conn_id: String,
+        offer: SessionDescription,
+    ) -> Result<String, MyError> {
         tracing::debug!("Save WHIP SDP offer: {:?}", offer);
 
         let mut app_state = self.lock_err().await?;

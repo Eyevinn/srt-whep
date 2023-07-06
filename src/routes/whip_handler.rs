@@ -6,10 +6,7 @@ use chrono::Utc;
 use uuid::Uuid;
 
 #[allow(clippy::async_yields_async)]
-#[tracing::instrument(
-    name = "WHIP SINK",
-    skip(form, app_state, pipeline_state)
-)]
+#[tracing::instrument(name = "WHIP SINK", skip(form, app_state, pipeline_state))]
 pub async fn whip_handler<T: PipelineBase>(
     form: String,
     path: web::Path<String>,
@@ -21,7 +18,11 @@ pub async fn whip_handler<T: PipelineBase>(
         return Err(SubscribeError::ValidationError(MyError::ResourceNotFound));
     }
 
-    tracing::info!("Received SDP offer for connection {} at time: {:?}", conn_id, Utc::now());
+    tracing::info!(
+        "Received SDP offer for connection {} at time: {:?}",
+        conn_id,
+        Utc::now()
+    );
     let sdp_offer: SessionDescription = form.try_into().map_err(SubscribeError::ValidationError)?;
     if !sdp_offer.is_sendonly() {
         return Err(SubscribeError::ValidationError(MyError::InvalidSDP(
@@ -30,7 +31,7 @@ pub async fn whip_handler<T: PipelineBase>(
     }
 
     let resource_id = Uuid::new_v4().to_string();
-    
+
     app_state
         .save_whip_offer(conn_id.clone(), sdp_offer)
         .await
@@ -44,8 +45,8 @@ pub async fn whip_handler<T: PipelineBase>(
 
             let relative_url = format!("/whip_sink/{}/{}", conn_id, resource_id);
             tracing::info!("WHIP connection resource: {}", relative_url);
-        
-            Ok(HttpResponse::Created() 
+
+            Ok(HttpResponse::Created()
                 .append_header(("Location", relative_url))
                 .content_type("application/sdp")
                 .body(sdp_answer.as_ref().to_string()))

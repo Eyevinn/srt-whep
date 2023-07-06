@@ -33,7 +33,7 @@ impl SharablePipeline {
     pub fn new(args: Args) -> Self {
         Self(Arc::new(Mutex::new_with_timeout(
             PipelineWrapper::new(args),
-            Duration::from_secs(3),
+            Duration::from_secs(1),
         )))
     }
 }
@@ -123,10 +123,14 @@ impl PipelineBase for SharablePipeline {
         tracing::debug!("Remove connection {} from pipeline", id);
 
         let remove_element = |name| -> Result<(), Error> {
-            if let Some(element) = pipeline.by_name(name) {
-                element.set_state(gst::State::Paused)?;
+            if let Some(_element) = pipeline.by_name(name) {
+                // element.set_state(gst::State::Paused)?;
                 // TODO: Find a way to remove element from pipeline without blocking pipeline
                 //pipeline.remove(&element)?;
+                tracing::warn!(
+                    "We should have removed element with name {} but not yet",
+                    name
+                );
             } else {
                 tracing::warn!("Element {} not found", name);
             }
@@ -153,6 +157,7 @@ impl PipelineBase for SharablePipeline {
         tracing::debug!("Setting up pipeline");
 
         // Create a pipeline (WebRTC branch)
+        let main_loop = glib::MainLoop::new(None, false);
         let pipeline = gst::Pipeline::default();
 
         let uri = format!(
@@ -391,13 +396,41 @@ impl PipelineBase for SharablePipeline {
             // Store pipeline in state and drop lock
             let mut pipeline_state = self.lock_err().await?;
             pipeline_state.pipeline = Some(pipeline);
+            drop(pipeline_state)
         }
 
         // Wait until an EOS or error message appears
-        let _msg = bus.timed_pop_filtered(
-            gst::ClockTime::NONE,
-            &[gst::MessageType::Error, gst::MessageType::Eos],
-        );
+        let main_loop_clone = main_loop.clone();
+        let _bus_watch = bus.add_watch(move |_, msg| {
+            use gst::MessageView;
+
+            let main_loop = &main_loop_clone;
+            match msg.view() {
+                MessageView::Eos(..) => {
+                    tracing::info!("received eos");
+                    // An EndOfStream event was sent to the pipeline, so we tell our main loop
+                    // to stop execution here.
+                    main_loop.quit()
+                }
+                MessageView::Error(err) => {
+                    tracing::error!(
+                        "Error from {:?}: {} ({:?})",
+                        err.src().map(|s| s.path_string()),
+                        err.error(),
+                        err.debug()
+                    );
+                    main_loop.quit();
+                }
+                _ => (),
+            };
+
+            // Tell the mainloop to continue executing this callback.
+            glib::Continue(true)
+        })?;
+
+        // Operate GStreamer's bus, facilliating GLib's mainloop here.
+        // This function call will block until you tell the mainloop to quit
+        main_loop.run();
 
         Ok(())
     }
@@ -411,6 +444,7 @@ impl PipelineBase for SharablePipeline {
         bus.post(eos_message)?;
 
         pipeline.set_state(gst::State::Null)?;
+
         Ok(())
     }
 }

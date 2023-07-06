@@ -6,10 +6,7 @@ use chrono::Utc;
 use uuid::Uuid;
 
 #[allow(clippy::async_yields_async)]
-#[tracing::instrument(
-    name = "WHEP",
-    skip(form, app_state, pipeline_state)
-)]
+#[tracing::instrument(name = "WHEP", skip(form, app_state, pipeline_state))]
 pub async fn whep_handler<T: PipelineBase>(
     form: String,
     app_state: web::Data<SharableAppState>,
@@ -59,9 +56,9 @@ pub async fn whep_handler<T: PipelineBase>(
                 .await
                 .context("Failed to remove connection from app state")?;
 
-            Err(SubscribeError::ValidationError(MyError::PipelineConnectFailed(
-                "No SDP offer from WHIP sink".to_string()
-            )))
+            Err(SubscribeError::ValidationError(
+                MyError::PipelineConnectFailed("No SDP offer from WHIP sink".to_string()),
+            ))
         }
     }
 }
@@ -73,7 +70,8 @@ pub async fn whep_patch_handler(
     path: web::Path<String>,
     app_state: web::Data<SharableAppState>,
 ) -> Result<HttpResponse, SubscribeError> {
-    let sdp_answer: SessionDescription = form.try_into().map_err(SubscribeError::ValidationError)?;
+    let sdp_answer: SessionDescription =
+        form.try_into().map_err(SubscribeError::ValidationError)?;
     let id = path.into_inner();
     if id.is_empty() {
         return Err(SubscribeError::ValidationError(MyError::ResourceNotFound));
@@ -87,5 +85,5 @@ pub async fn whep_patch_handler(
         .await
         .context("Failed to save WHEP SDP answer")?;
 
-    Ok(HttpResponse::NoContent().into())    
+    Ok(HttpResponse::NoContent().into())
 }
