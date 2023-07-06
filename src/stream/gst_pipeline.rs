@@ -122,6 +122,8 @@ impl PipelineBase for SharablePipeline {
         let pipeline = pipeline_state.pipeline.as_ref().unwrap();
         tracing::debug!("Remove connection {} from pipeline", id);
 
+        std::process::exit(0);
+
         let remove_element = |name| -> Result<(), Error> {
             if let Some(_element) = pipeline.by_name(name) {
                 // element.set_state(gst::State::Paused)?;
