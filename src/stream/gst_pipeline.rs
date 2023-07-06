@@ -122,7 +122,7 @@ impl PipelineBase for SharablePipeline {
         let pipeline = pipeline_state.pipeline.as_ref().unwrap();
         tracing::debug!("Remove connection {} from pipeline", id);
 
-        let remove_element = |name| -> Result<(), Error> {
+        let _remove_element = |name| -> Result<(), Error> {
             if let Some(_element) = pipeline.by_name(name) {
                 // element.set_state(gst::State::Paused)?;
                 // TODO: Find a way to remove element from pipeline without blocking pipeline
@@ -137,15 +137,101 @@ impl PipelineBase for SharablePipeline {
             Ok(())
         };
 
-        let video_element_name = "video-queue-".to_string() + &id;
-        let audio_element_name = "audio-queue-".to_string() + &id;
-        let whip_sink_name = "whip-sink-".to_string() + &id;
+        let output_tee_video = pipeline
+            .by_name("output_tee_video")
+            .expect("pipeline has no element with name output_tee_video");
+        let output_tee_audio = pipeline
+            .by_name("output_tee_audio")
+            .expect("pipeline has no element with name output_tee_audio");
 
-        remove_element(&video_element_name)?;
-        remove_element(&audio_element_name)?;
-        remove_element(&whip_sink_name)?;
+        tracing::debug!("Block source pad of output video and audio tee with a blocking pad probe");
+        // Video tee
+        let pad_templ_video = output_tee_video
+            .pad_template("src_%u").unwrap();
+        let pad_video = output_tee_video
+            .request_pad(&pad_templ_video, None, None)
+            .expect("no source pad for video tee found");
+        let probe_id_video = pad_video
+            .add_probe(gst::PadProbeType::BLOCK_DOWNSTREAM, |_pad, _info| {
+                gst::PadProbeReturn::Ok
+            });
+        
+        // Audio tee
+        let pad_templ_audio = output_tee_audio
+            .pad_template("src_%u").unwrap();
+        let pad_audio = output_tee_audio
+            .request_pad(&pad_templ_audio, None, None)
+            .expect("no source pad for audio tee found");
+        let probe_id_audio = pad_audio            
+            .add_probe(gst::PadProbeType::BLOCK_DOWNSTREAM, |_pad, _info| {
+                gst::PadProbeReturn::Ok
+            });
 
-        tracing::debug!("Removed elements from pipeline for connection {}", id);
+
+        // Block source pad of audio and video queue with a blocking pad probe
+        // Once blocked their state can be changed to null
+        tracing::debug!("Block source pad of audio and video queue with a blocking pad probe");
+
+        let whip_sink_element = pipeline
+            .by_name(&("whip-sink-".to_string() + &id))
+            .expect("whip sink for connection not found");
+
+        // Audio queue
+        let audio_element = pipeline
+            .by_name(&("audio-queue-".to_string() + &id))
+            .expect("audio queue for connection not found");
+        audio_element
+            .static_pad("src")
+            .expect("src pad for audio queue not available")
+            .add_probe(gst::PadProbeType::BLOCK_DOWNSTREAM, |_pad, _info| {
+                gst::PadProbeReturn::Ok                
+            });
+
+        // Video queue
+        let video_element = pipeline
+            .by_name(&("video-queue-".to_string() + &id))
+            .expect("video queue for connection not found");
+        video_element
+            .static_pad("src")
+            .expect("src pad for video queue not available")
+            .add_probe(gst::PadProbeType::BLOCK_DOWNSTREAM, move |_pad, _info| {
+                gst::PadProbeReturn::Ok
+            });
+
+        // Unblock and unpause audio and video tee
+        if let Some(probe_id) = probe_id_video {
+            pad_video.remove_probe(probe_id);
+        }
+        if let Some(probe_id) = probe_id_audio {
+            pad_audio.remove_probe(probe_id);
+        }
+
+        tracing::debug!("Unlink audio element from the pipeline");
+        if let Err(err) = audio_element.set_state(gst::State::Null) {
+            tracing::error!("Error changing state {}", err);
+        }
+        pipeline.remove(&audio_element)?;
+
+        tracing::debug!("Unlink video element from the pipeline");
+        if let Err(err) = video_element.set_state(gst::State::Null) {
+            tracing::error!("Error changing state {}", err);
+        }
+        pipeline.remove(&video_element)?;
+
+        tracing::debug!("Unlink whipsink from video and audio queue");
+        if let Err(err) = whip_sink_element.set_state(gst::State::Null) {
+            tracing::error!("Error changing state {}", err);
+        }
+        pipeline.remove(&whip_sink_element)?;
+
+        tracing::debug!("Resume audio and video tee");
+        if let Err(err) = output_tee_video.set_state(gst::State::Playing) {
+            tracing::error!("Error changing video tee to playing {}", err);
+        }
+        if let Err(err) = output_tee_audio.set_state(gst::State::Playing) {
+            tracing::error!("Error changing audio tee to playing {}", err);
+        }
+
         pipeline.debug_to_dot_file(DebugGraphDetails::all(), "after-remove");
         Ok(())
     }
