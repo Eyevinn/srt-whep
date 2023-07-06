@@ -72,7 +72,7 @@ impl PipelineBase for SharablePipeline {
             .name("whip-sink-".to_string() + &id)
             .property(
                 "whip-endpoint",
-                format!("http://localhost:{}/whip_sink", pipeline_state.port),
+                format!("http://localhost:{}/whip_sink/{}", pipeline_state.port, id),
             )
             .build()?;
         pipeline.add_many(&[&queue_video, &queue_audio, &whipsink])?;
@@ -120,13 +120,13 @@ impl PipelineBase for SharablePipeline {
     async fn remove_connection(&self, id: String) -> Result<(), Error> {
         let pipeline_state = self.lock_err().await?;
         let pipeline = pipeline_state.pipeline.as_ref().unwrap();
-        tracing::debug!("Remove connection: {}", id);
+        tracing::debug!("Remove connection {} from pipeline", id);
 
         let remove_element = |name| -> Result<(), Error> {
             if let Some(element) = pipeline.by_name(name) {
                 element.set_state(gst::State::Paused)?;
                 // TODO: Find a way to remove element from pipeline without blocking pipeline
-                // pipeline.remove(&element)?;
+                //pipeline.remove(&element)?;
             } else {
                 tracing::warn!("Element {} not found", name);
             }

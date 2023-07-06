@@ -60,7 +60,7 @@ pub async fn whep_handler<T: PipelineBase>(
                 .context("Failed to remove connection from app state")?;
 
             Err(SubscribeError::ValidationError(MyError::PipelineConnectFailed(
-                "No SDP offer from WHIP sink"
+                "No SDP offer from WHIP sink".to_string()
             )))
         }
     }

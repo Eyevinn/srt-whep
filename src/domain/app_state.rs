@@ -108,7 +108,7 @@ impl SharableAppState {
         }
     }
 
-    pub async fn save_whip_offer(&self, offer: SessionDescription) -> Result<String, MyError> {
+    pub async fn save_whip_offer(&self, conn_id: String, offer: SessionDescription) -> Result<String, MyError> {
         tracing::debug!("Save WHIP SDP offer: {:?}", offer);
 
         let mut app_state = self.lock_err().await?;
@@ -116,12 +116,12 @@ impl SharableAppState {
 
         for (id, conn) in connections.iter_mut() {
             if conn.whep_answer.is_none() {
-                if conn.whip_offer.is_none() {
+                if conn.whip_offer.is_none() && &conn_id == id {
                     conn.whip_offer = Some(offer);
 
-                    return Ok(id.clone());
+                    return Ok(conn_id.clone());
                 } else {
-                    return Err(MyError::RepeatedResourceIdError(id.clone()));
+                    return Err(MyError::RepeatedResourceIdError(conn_id.clone()));
                 }
             }
         }

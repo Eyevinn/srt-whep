@@ -19,7 +19,7 @@ pub enum MyError {
     #[error("Answer not found")]
     AnswerMissing,
     #[error("Pipeline connection failed: {0}")]
-    PipelineConnectFailed,
+    PipelineConnectFailed(String),
 }
 
 // We are still using a bespoke implementation of `Debug` to get a nice report using the error source chain
