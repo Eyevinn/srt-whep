@@ -14,9 +14,9 @@ pub enum MyError {
     ResourceNotFound,
     #[error("Lock is timeout")]
     LockTimeout(#[from] TimedLockError),
-    #[error("Offer not found")]
+    #[error("SDP offer not found")]
     OfferMissing,
-    #[error("Answer not found")]
+    #[error("SDP answer not found")]
     AnswerMissing,
     #[error("Pipeline connection failed: {0}")]
     PipelineConnectFailed(String),

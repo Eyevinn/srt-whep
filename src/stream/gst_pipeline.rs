@@ -145,6 +145,7 @@ impl PipelineBase for SharablePipeline {
         remove_element(&audio_element_name)?;
         remove_element(&whip_sink_name)?;
 
+        tracing::debug!("Removed elements from pipeline for connection {}", id);
         pipeline.debug_to_dot_file(DebugGraphDetails::all(), "after-remove");
         Ok(())
     }
