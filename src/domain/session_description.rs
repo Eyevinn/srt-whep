@@ -97,7 +97,7 @@ pub const VALID_WHIP_OFFER: &str = "v=0
     a=candidate:5 1 TCP 1015022079 10.247.169.107 9 typ host tcptype active
     a=candidate:6 1 TCP 1010827775 10.247.169.107 56567 typ host tcptype passive";
 
-pub const VALID_WHEP_OFFER: &str = "v=0
+pub const VALID_WHEP_ANSWER: &str = "v=0
     o=- 4658353067706891397 0 IN IP4 0.0.0.0
     s=-
     t=0 0
@@ -127,7 +127,7 @@ pub const VALID_WHEP_OFFER: &str = "v=0
 
 #[cfg(test)]
 mod tests {
-    use super::{SessionDescription, VALID_WHEP_OFFER, VALID_WHIP_OFFER};
+    use super::{SessionDescription, VALID_WHEP_ANSWER, VALID_WHIP_OFFER};
     use claims::{assert_err, assert_ok};
 
     #[test]
@@ -159,7 +159,7 @@ mod tests {
         let whip_sdp = VALID_WHIP_OFFER.to_string();
         assert_ok!(SessionDescription::parse(whip_sdp));
 
-        let whep_sdp = VALID_WHEP_OFFER.to_string();
+        let whep_sdp = VALID_WHEP_ANSWER.to_string();
         assert_ok!(SessionDescription::parse(whep_sdp));
     }
 }

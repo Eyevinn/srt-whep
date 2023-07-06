@@ -7,7 +7,7 @@ use uuid::Uuid;
 
 #[allow(clippy::async_yields_async)]
 #[tracing::instrument(
-    name = "Receive an offer from a client",
+    name = "WHEP",
     skip(form, app_state, pipeline_state)
 )]
 pub async fn whep_handler<T: PipelineBase>(
@@ -17,40 +17,38 @@ pub async fn whep_handler<T: PipelineBase>(
 ) -> Result<HttpResponse, SubscribeError> {
     if !form.is_empty() {
         return Err(SubscribeError::ValidationError(MyError::InvalidSDP(
-            "Client initialization not supported.".to_string(),
+            "Empty body expected. Client initialization not supported.".to_string(),
         )));
     }
 
     let id = Uuid::new_v4().to_string();
     tracing::info!("Create connection {} at time: {:?}", id.clone(), Utc::now());
 
-    tracing::debug!("Adding connection to pipeline");
     pipeline_state
         .add_connection(id.clone())
         .await
         .context("Failed to add connection to pipeline")?;
 
-    tracing::debug!("Adding connection to app state");
     app_state
         .add_connection(id.clone())
         .await
         .context("Failed to add connection to app state")?;
 
-    tracing::debug!("Waiting for a whip offer");
-    let sdp = app_state.wait_on_whip_offer(id.clone()).await;
+    tracing::debug!("Waiting for SDP offer from WHIP sink");
+    let sdp_offer = app_state.wait_on_whip_offer(id.clone()).await;
 
-    match sdp {
-        Ok(sdp) => {
+    match sdp_offer {
+        Ok(sdp_offer) => {
             let relative_url = format!("/channel/{}", id);
-            tracing::info!("Receiving streaming from: {}", relative_url);
+            tracing::info!("WHEP connection resource: {}", relative_url);
 
             Ok(HttpResponse::Created()
                 .append_header(("Location", relative_url))
                 .content_type("application/sdp")
-                .body(sdp.as_ref().to_string()))
+                .body(sdp_offer.as_ref().to_string()))
         }
         Err(err) => {
-            tracing::error!("Failed to receive a whip offer: {}", err);
+            tracing::error!("Failed to receive SDP offer from WHIP sink: {}", err);
             pipeline_state
                 .remove_connection(id.clone())
                 .await
@@ -61,29 +59,33 @@ pub async fn whep_handler<T: PipelineBase>(
                 .await
                 .context("Failed to remove connection from app state")?;
 
-            Err(SubscribeError::ValidationError(MyError::OfferMissing))
+            Err(SubscribeError::ValidationError(MyError::PipelineConnectFailed(
+                "No SDP offer from WHIP sink".to_string()
+            )))
         }
     }
 }
 
 #[allow(clippy::async_yields_async)]
-#[tracing::instrument(name = "Receive an answer from a client", skip(form, app_state))]
-pub async fn patch_handler(
+#[tracing::instrument(name = "WHEP PATCH", skip(form, app_state))]
+pub async fn whep_patch_handler(
     form: String,
     path: web::Path<String>,
     app_state: web::Data<SharableAppState>,
 ) -> Result<HttpResponse, SubscribeError> {
-    let sdp: SessionDescription = form.try_into().map_err(SubscribeError::ValidationError)?;
+    let sdp_answer: SessionDescription = form.try_into().map_err(SubscribeError::ValidationError)?;
     let id = path.into_inner();
     if id.is_empty() {
         return Err(SubscribeError::ValidationError(MyError::ResourceNotFound));
     }
 
-    tracing::debug!("Saving whep offer to app");
-    app_state
-        .save_whep_offer(sdp, id)
-        .await
-        .context("Failed to save whep offer")?;
+    // TODO: check content type for trickle-ice and return not supported
 
-    Ok(HttpResponse::NoContent().into())
+    tracing::debug!("Saving WHEP SDP answer to app");
+    app_state
+        .save_whep_answer(sdp_answer, id)
+        .await
+        .context("Failed to save WHEP SDP answer")?;
+
+    Ok(HttpResponse::NoContent().into())    
 }

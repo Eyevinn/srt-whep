@@ -16,6 +16,10 @@ pub enum MyError {
     LockTimeout(#[from] TimedLockError),
     #[error("Offer not found")]
     OfferMissing,
+    #[error("Answer not found")]
+    AnswerMissing,
+    #[error("Pipeline connection failed: {0}")]
+    PipelineConnectFailed(String),
 }
 
 // We are still using a bespoke implementation of `Debug` to get a nice report using the error source chain
@@ -44,6 +48,8 @@ pub enum SubscribeError {
     ValidationError(MyError),
     #[error(transparent)]
     UnexpectedError(#[from] anyhow::Error),
+    #[error("Method not allowed: {0}")]
+    UnsupportedMethod(String),
 }
 
 impl Debug for SubscribeError {
@@ -57,6 +63,7 @@ impl ResponseError for SubscribeError {
         match self {
             SubscribeError::ValidationError(_) => StatusCode::BAD_REQUEST,
             SubscribeError::UnexpectedError(_) => StatusCode::INTERNAL_SERVER_ERROR,
+            SubscribeError::UnsupportedMethod(_) => StatusCode::METHOD_NOT_ALLOWED,
         }
     }
 }
