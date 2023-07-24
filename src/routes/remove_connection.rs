@@ -12,6 +12,15 @@ pub async fn remove_connection<T: PipelineBase>(
 ) -> Result<HttpResponse, SubscribeError> {
     let id = path.into_inner();
 
+    // Check if connection exists in app state
+    if !app_state
+        .has_connection(id.clone())
+        .await
+        .context("Failed to check connection in app")?
+    {
+        return Err(SubscribeError::ValidationError(MyError::ResourceNotFound));
+    }
+
     pipeline_state
         .remove_connection(id.clone())
         .await

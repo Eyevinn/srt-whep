@@ -56,6 +56,7 @@ pub trait PipelineBase: Clone + Send + Sync {
     async fn remove_connection(&self, id: String) -> Result<(), Error>;
     async fn setup_pipeline(&self, args: &Args) -> Result<(), Error>;
     async fn close_pipeline(&self) -> Result<(), Error>;
+    async fn print_pipeline(&self) -> Result<(), Error>;
 }
 
 #[derive(Clone)]
@@ -82,6 +83,10 @@ impl PipelineBase for DumpPipeline {
     }
 
     async fn close_pipeline(&self) -> Result<(), Error> {
+        Ok(())
+    }
+
+    async fn print_pipeline(&self) -> Result<(), Error> {
         Ok(())
     }
 }

@@ -72,6 +72,14 @@ impl SharableAppState {
         )))
     }
 
+    pub async fn has_connection(&self, id: String) -> Result<bool, MyError> {
+        // Try to hold the lock and check if the connection exists
+        let mut app_state = self.lock_err().await?;
+        let connections = &mut app_state.connections;
+
+        Ok(connections.contains_key(&id))
+    }
+
     pub async fn remove_connection(&self, id: String) -> Result<(), MyError> {
         tracing::debug!("Remove connection {} from app state", id);
 

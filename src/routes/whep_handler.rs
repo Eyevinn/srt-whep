@@ -46,6 +46,8 @@ pub async fn whep_handler<T: PipelineBase>(
         }
         Err(err) => {
             tracing::error!("Failed to receive SDP offer from WHIP sink: {}", err);
+
+            // Remove connection from pipeline and app state if SDP offer is not received
             pipeline_state
                 .remove_connection(id.clone())
                 .await
