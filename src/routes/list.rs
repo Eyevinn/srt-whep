@@ -10,7 +10,7 @@ pub async fn list<T: PipelineBase>(
 ) -> Result<HttpResponse, SubscribeError> {
     // print pipeline for debugging
     pipeline_state
-        .print_pipeline()
+        .print()
         .await
         .context("Failed to print pipeline")?;
 
