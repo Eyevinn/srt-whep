@@ -1,4 +1,4 @@
-use anyhow::{Error, Ok};
+use anyhow::{Error, Ok, Result};
 use async_trait::async_trait;
 use gst::{message::Eos, prelude::*, DebugGraphDetails, Pipeline};
 use gstreamer as gst;
@@ -224,17 +224,15 @@ impl PipelineBase for SharablePipeline {
     /// * `args` - Pipeline arguments
     ///
     /// Create a pipeline with the all needed elements and register callbacks for dynamic pads
-    /// Link them together when the demux element generates all dynamic pads
-    /// Start playing and wait until the message bus receives an EOS or error message
-    async fn setup_pipeline(&self, args: &Args) -> Result<(), Error> {
+    /// Link them together when the demux element generates all dynamic pads and start playing
+    async fn init(&mut self, args: &Args) -> Result<(), Error> {
         // Initialize GStreamer (only once)
         gst::init()?;
         // Load whipsink
         gstwebrtchttp::plugin_register_static()?;
         tracing::debug!("Setting up pipeline");
 
-        // Create a pipeline (WebRTC branch)
-        let main_loop = glib::MainLoop::new(None, false);
+        // Create a pipeline
         let pipeline = gst::Pipeline::default();
 
         let uri = format!(
@@ -324,43 +322,25 @@ impl PipelineBase for SharablePipeline {
         gst::Element::link_many(&[&src, &input_tee])?;
         gst::Element::link_many(&[&input_tee, &whep_queue, &typefind, &tsdemux])?;
         gst::Element::link_many(&[&video_queue, &h264parse, &rtph264pay, &output_tee_video])?;
+        gst::Element::link_many(&[
+            &audio_queue,
+            &aacparse,
+            &avdec_aac,
+            &audioconvert,
+            &audioresample,
+            &opusenc,
+            &rtpopuspay,
+            &output_tee_audio,
+        ])?;
         gst::Element::link_many(&[&input_tee, &srt_queue, &srtsink])?;
 
-        let pipeline_weak = pipeline.downgrade();
         // Connect to tsdemux's no-more-pads signal, that is emitted when the element
         // will not generate more dynamic pads.
         tsdemux.connect_no_more_pads(move |_| {
-            // Here we temporarily retrieve a strong reference on the pipeline from the weak one
-            // we moved into this callback.
-            let pipeline = match pipeline_weak.upgrade() {
-                Some(pipeline) => pipeline,
-                None => return,
-            };
             tracing::info!("No more pads from the stream. Ready to link.");
 
             let link_sink = || -> Result<(), Error> {
-                let queue = gst::ElementFactory::make("queue").build()?;
-                let fakesink = gst::ElementFactory::make("fakesink").build()?;
-                let output_tee_video = pipeline
-                    .by_name("output_tee_video")
-                    .expect("pipeline has no element with name output_tee_video");
-
-                pipeline.add_many(&[&queue, &fakesink])?;
-                gst::Element::link_many(&[&output_tee_video, &queue, &fakesink])?;
-
-                let video_elements = &[
-                    &video_queue,
-                    &h264parse,
-                    &rtph264pay,
-                    &output_tee_video,
-                    &queue,
-                    &fakesink,
-                ];
-
-                let output_tee_audio = pipeline
-                    .by_name("output_tee_audio")
-                    .expect("pipeline has no element with name output_tee_audio");
-
+                let video_elements = &[&video_queue, &h264parse, &rtph264pay, &output_tee_video];
                 let audio_elements = &[
                     &audio_queue,
                     &aacparse,
@@ -371,7 +351,6 @@ impl PipelineBase for SharablePipeline {
                     &rtpopuspay,
                     &output_tee_audio,
                 ];
-                gst::Element::link_many(audio_elements).expect("Failed to link audio elements");
 
                 // This is quite important and people forget it often. Without making sure that
                 // the new elements have the same state as the pipeline, things will fail later.
@@ -464,16 +443,26 @@ impl PipelineBase for SharablePipeline {
             }
         });
 
-        // Start playing
-        let bus = pipeline.bus().unwrap();
+        // Set to playing
         pipeline.set_state(gst::State::Playing)?;
         {
-            // Store pipeline in state and drop lock
-            let mut pipeline_state = self.lock_err().await?;
-            pipeline_state.pipeline = Some(pipeline);
-            drop(pipeline_state)
+            self.lock_err().await?.pipeline = Some(pipeline);
         }
 
+        Ok(())
+    }
+
+    /// Run pipeline and wait until the message bus receives an EOS or error message
+    async fn run(&self) -> Result<(), Error> {
+        let pipeline_state = self.lock_err().await?;
+        let pipeline = pipeline_state
+            .pipeline
+            .as_ref()
+            .expect("Pipeline is not initialized");
+        let bus = pipeline.bus().unwrap();
+        drop(pipeline_state);
+
+        let main_loop = glib::MainLoop::new(None, false);
         // Wait until an EOS or error message appears
         let main_loop_clone = main_loop.clone();
         let _bus_watch = bus.add_watch(move |_, msg| {
@@ -485,7 +474,7 @@ impl PipelineBase for SharablePipeline {
                     tracing::info!("received eos");
                     // An EndOfStream event was sent to the pipeline, so we tell our main loop
                     // to stop execution here.
-                    main_loop.quit()
+                    main_loop.quit();
                 }
                 MessageView::Error(err) => {
                     tracing::error!(
@@ -511,25 +500,38 @@ impl PipelineBase for SharablePipeline {
     }
 
     /// Close pipeline by sending EOS message
-    async fn close_pipeline(&self) -> Result<(), Error> {
+    async fn end(&self) -> Result<(), Error> {
         let pipeline_state = self.lock_err().await?;
-        let pipeline = pipeline_state.pipeline.as_ref().unwrap();
-
-        let eos_message = Eos::new();
-        let bus = pipeline.bus().unwrap();
-        bus.post(eos_message)?;
-
-        pipeline.set_state(gst::State::Null)?;
+        if let Some(pipeline) = pipeline_state.pipeline.as_ref() {
+            let eos_message = Eos::new();
+            let bus = pipeline.bus().expect("Pipeline has no bus");
+            bus.post(eos_message)?;
+        }
 
         Ok(())
     }
 
+    /// Clean up all elements in the pipeline and reset state
+    async fn clean_up(&self) -> Result<(), Error> {
+        let mut pipeline_state = self.lock_err().await?;
+        if let Some(pipeline) = pipeline_state.pipeline.as_ref() {
+            pipeline.set_state(gst::State::Null)?;
+            pipeline_state.pipeline = None;
+        }
+
+        Ok(())
+    }
+
+    /// Helper function for debugging
     /// Print pipeline to dot file
     /// Warning: this function should not be called when the pipeline is in locked state
-    async fn print_pipeline(&self) -> Result<(), Error> {
+    async fn print(&self) -> Result<(), Error> {
         let pipeline_state = self.lock_err().await?;
-        let pipeline = pipeline_state.pipeline.as_ref().unwrap();
-        pipeline.debug_to_dot_file(DebugGraphDetails::all(), "pipeline");
+        if let Some(pipeline) = pipeline_state.pipeline.as_ref() {
+            pipeline.debug_to_dot_file(DebugGraphDetails::all(), "pipeline");
+        } else {
+            tracing::warn!("Pipeline does not exist");
+        }
 
         Ok(())
     }

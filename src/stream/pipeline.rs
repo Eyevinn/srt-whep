@@ -54,9 +54,13 @@ impl SRTMode {
 pub trait PipelineBase: Clone + Send + Sync {
     async fn add_connection(&self, id: String) -> Result<(), Error>;
     async fn remove_connection(&self, id: String) -> Result<(), Error>;
-    async fn setup_pipeline(&self, args: &Args) -> Result<(), Error>;
-    async fn close_pipeline(&self) -> Result<(), Error>;
-    async fn print_pipeline(&self) -> Result<(), Error>;
+
+    async fn init(&mut self, args: &Args) -> Result<(), Error>;
+    async fn run(&self) -> Result<(), Error>;
+    async fn end(&self) -> Result<(), Error>;
+    async fn clean_up(&self) -> Result<(), Error>;
+
+    async fn print(&self) -> Result<(), Error>;
 }
 
 #[derive(Clone)]
@@ -78,15 +82,23 @@ impl PipelineBase for DumpPipeline {
         Ok(())
     }
 
-    async fn setup_pipeline(&self, _args: &Args) -> Result<(), Error> {
+    async fn init(&mut self, _args: &Args) -> Result<(), Error> {
         Ok(())
     }
 
-    async fn close_pipeline(&self) -> Result<(), Error> {
+    async fn run(&self) -> Result<(), Error> {
         Ok(())
     }
 
-    async fn print_pipeline(&self) -> Result<(), Error> {
+    async fn end(&self) -> Result<(), Error> {
+        Ok(())
+    }
+
+    async fn clean_up(&self) -> Result<(), Error> {
+        Ok(())
+    }
+
+    async fn print(&self) -> Result<(), Error> {
         Ok(())
     }
 }
