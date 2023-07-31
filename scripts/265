@@ -1,0 +1,82 @@
+## Offer
+v=0 (5 more lines)
+o=- 3101436544556918439 0 IN IP4 0.0.0.0
+s=-
+t=0 0
+a=ice-options:trickle
+a=group:BUNDLE video0 audio1
+m=video 9 UDP/TLS/RTP/SAVPF 96 (23 more lines) mid=video0
+c=IN IP4 0.0.0.0
+a=setup:active
+a=ice-ufrag:O71sLb6lEkIQu8C/UhwjZrL2WY7CdQGU
+a=ice-pwd:lvX5ZhzK8L/l6SoMeyaU1kPV531tFwPP
+a=rtcp-mux
+a=rtcp-rsize
+a=sendonly
+a=rtpmap:96 H265/90000
+a=rtcp-fb:96 nack pli
+a=rtcp-fb:96 transport-cc
+a=framerate:30
+a=fmtp:96 sprop-vps=QAEMAf//AWAAAAMAkAAAAwAAAwA/koCQ;sprop-sps=QgEBAWAAAAMAkAAAAwAAAwA/oAUCAWllkqSTK//AAEAAWoMDAwIAAAMAAgAAAwA8EA==;sprop-pps=RAHBcrRiQA==
+a=ssrc:448558886 msid:user3263822281@host-cdaa990a webrtctransceiver0
+a=ssrc:448558886 cname:user3263822281@host-cdaa990a
+a=mid:video0
+a=fingerprint:sha-256 7F:A8:CB:2B:43:43:D0:6C:FC:CA:AD:08:E4:AF:8D:83:57:21:33:27:A4:AF:42:DC:80:73:AA:2A:DC:B2:BA:7B
+a=rtcp-mux-only
+a=candidate:1 1 UDP 2015363327 192.168.1.206 48013 typ host
+a=candidate:2 1 TCP 1015021823 192.168.1.206 9 typ host tcptype active
+a=candidate:3 1 TCP 1010827519 192.168.1.206 55415 typ host tcptype passive
+a=candidate:4 1 UDP 2015363583 fe80::9ad6:854:4877:629d 49654 typ host
+a=candidate:5 1 TCP 1015022079 fe80::9ad6:854:4877:629d 9 typ host tcptype active
+a=candidate:6 1 TCP 1010827775 fe80::9ad6:854:4877:629d 36005 typ host tcptype passive
+m=audio 0 UDP/TLS/RTP/SAVPF 96 (16 more lines) mid=audio1
+c=IN IP4 0.0.0.0
+a=setup:active
+a=ice-ufrag:O71sLb6lEkIQu8C/UhwjZrL2WY7CdQGU
+a=ice-pwd:lvX5ZhzK8L/l6SoMeyaU1kPV531tFwPP
+a=bundle-only
+a=rtcp-mux
+a=rtcp-rsize
+a=sendonly
+a=rtpmap:96 OPUS/48000/2
+a=rtcp-fb:96 transport-cc
+a=fmtp:96 sprop-stereo=1;sprop-maxcapturerate=48000
+a=ssrc:542125135 msid:user3263822281@host-cdaa990a webrtctransceiver1
+a=ssrc:542125135 cname:user3263822281@host-cdaa990a
+a=mid:audio1
+a=fingerprint:sha-256 7F:A8:CB:2B:43:43:D0:6C:FC:CA:AD:08:E4:AF:8D:83:57:21:33:27:A4:AF:42:DC:80:73:AA:2A:DC:B2:BA:7B
+a=rtcp-mux-only
+
+## Answer
+v=0 (5 more lines)
+o=- 3904584575845103325 2 IN IP4 127.0.0.1
+s=-
+t=0 0
+a=group:BUNDLE audio1
+a=msid-semantic: WMS
+m=video 0 UDP/TLS/RTP/SAVPF 0 (11 more lines) mid=video0
+c=IN IP4 0.0.0.0
+a=rtcp:9 IN IP4 0.0.0.0
+a=ice-ufrag:ZNEU
+a=ice-pwd:xzjkJ6jj2sHjKEKuzc2yYvSD
+a=ice-options:trickle
+a=fingerprint:sha-256 43:0B:6A:C3:5F:3F:FA:D1:37:45:BF:03:55:5D:CE:73:D2:C9:69:13:34:B9:FD:59:37:33:50:F5:BE:89:82:4D
+a=setup:passive
+a=mid:video0
+a=recvonly
+a=rtcp-mux
+a=rtcp-rsize
+m=audio 9 UDP/TLS/RTP/SAVPF 96 (13 more lines) mid=audio1
+c=IN IP4 0.0.0.0
+a=rtcp:9 IN IP4 0.0.0.0
+a=ice-ufrag:IJVA
+a=ice-pwd:XU8EQDIyLYLEF1sr0P+sqihj
+a=ice-options:trickle
+a=fingerprint:sha-256 43:0B:6A:C3:5F:3F:FA:D1:37:45:BF:03:55:5D:CE:73:D2:C9:69:13:34:B9:FD:59:37:33:50:F5:BE:89:82:4D
+a=setup:passive
+a=mid:audio1
+a=recvonly
+a=rtcp-mux
+a=rtpmap:96 OPUS/48000/2
+a=rtcp-fb:96 transport-cc
+a=fmtp:96 minptime=10;useinbandfec=1

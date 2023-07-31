@@ -98,7 +98,7 @@ impl PipelineBase for SharablePipeline {
                 e.sync_state_with_parent()?;
             }
 
-            tracing::debug!("Successfully linked video sink");
+            tracing::debug!("Successfully linked video to whip sink");
         }
 
         if demux
@@ -116,7 +116,7 @@ impl PipelineBase for SharablePipeline {
                 e.sync_state_with_parent()?;
             }
 
-            tracing::debug!("Successfully linked audio sink");
+            tracing::debug!("Successfully linked audio to whip sink");
         }
 
         if !demux
@@ -264,24 +264,9 @@ impl PipelineBase for SharablePipeline {
         let video_queue: gst::Element = gst::ElementFactory::make("queue")
             .name("video-queue")
             .build()?;
-        let h264parse = gst::ElementFactory::make("h264parse").build()?;
-        let rtph264pay = gst::ElementFactory::make("rtph264pay").build()?;
-        let output_tee_video = gst::ElementFactory::make("tee")
-            .name("output_tee_video")
-            .build()?;
-
-        let output_tee_audio = gst::ElementFactory::make("tee")
-            .name("output_tee_audio")
-            .build()?;
         let audio_queue: gst::Element = gst::ElementFactory::make("queue")
             .name("audio-queue")
             .build()?;
-        let aacparse = gst::ElementFactory::make("aacparse").build()?;
-        let avdec_aac = gst::ElementFactory::make("avdec_aac").build()?;
-        let audioconvert = gst::ElementFactory::make("audioconvert").build()?;
-        let audioresample = gst::ElementFactory::make("audioresample").build()?;
-        let opusenc = gst::ElementFactory::make("opusenc").build()?;
-        let rtpopuspay = gst::ElementFactory::make("rtpopuspay").build()?;
 
         let srt_queue = gst::ElementFactory::make("queue")
             .name("srt_queue")
@@ -307,66 +292,141 @@ impl PipelineBase for SharablePipeline {
             &tsdemux,
             &video_queue,
             &audio_queue,
-            &h264parse,
-            &aacparse,
-            &avdec_aac,
-            &audioconvert,
-            &audioresample,
-            &rtph264pay,
-            &output_tee_video,
-            &output_tee_audio,
-            &opusenc,
-            &rtpopuspay,
             &srtsink,
         ])?;
         gst::Element::link_many(&[&src, &input_tee])?;
         gst::Element::link_many(&[&input_tee, &whep_queue, &typefind, &tsdemux])?;
-        gst::Element::link_many(&[&video_queue, &h264parse, &rtph264pay, &output_tee_video])?;
-        gst::Element::link_many(&[
-            &audio_queue,
-            &aacparse,
-            &avdec_aac,
-            &audioconvert,
-            &audioresample,
-            &opusenc,
-            &rtpopuspay,
-            &output_tee_audio,
-        ])?;
         gst::Element::link_many(&[&input_tee, &srt_queue, &srtsink])?;
 
+        let pipeline_weak = pipeline.downgrade();
         // Connect to tsdemux's no-more-pads signal, that is emitted when the element
         // will not generate more dynamic pads.
-        tsdemux.connect_no_more_pads(move |_| {
+        tsdemux.connect_no_more_pads(move |dbin| {
             tracing::info!("No more pads from the stream. Ready to link.");
+            // Here we temporarily retrieve a strong reference on the pipeline from the weak one
+            // we moved into this callback.
+            let pipeline = match pipeline_weak.upgrade() {
+                Some(pipeline) => pipeline,
+                None => return,
+            };
 
-            let link_sink = || -> Result<(), Error> {
-                let video_elements = &[&video_queue, &h264parse, &rtph264pay, &output_tee_video];
-                let audio_elements = &[
-                    &audio_queue,
-                    &aacparse,
-                    &avdec_aac,
-                    &audioconvert,
-                    &audioresample,
-                    &opusenc,
-                    &rtpopuspay,
-                    &output_tee_audio,
-                ];
+            let link_sink = |bin: &gst::Element| -> Result<(), Error> {
+                bin.foreach_src_pad(|_, pad| {
+                    if let Some(media_type) = pad
+                        .current_caps()
+                        .and_then(|caps| caps.structure(0).map(|s| s.name()))
+                    {
+                        tracing::debug!("linking to media {}", media_type);
 
-                // This is quite important and people forget it often. Without making sure that
-                // the new elements have the same state as the pipeline, things will fail later.
-                // They would still be in Null state and can't process data.
-                for e in video_elements {
-                    e.sync_state_with_parent()?;
-                }
+                        if media_type.starts_with("video/x-h264") {
+                            // Create h264 video elements
+                            let h264parse = gst::ElementFactory::make("h264parse")
+                                .build()
+                                .expect("Failed to create h264parse");
+                            let rtph264pay = gst::ElementFactory::make("rtph264pay")
+                                .build()
+                                .expect("Failed to create rtph264pay");
+                            let output_tee_video = gst::ElementFactory::make("tee")
+                                .name("output_tee_video")
+                                .build()
+                                .expect("Failed to create output_tee_video");
+                            let video_elements =
+                                &[&video_queue, &h264parse, &rtph264pay, &output_tee_video];
+                            // 'video_queue' has been added to the pipeline already, so we don't add it again.
+                            pipeline
+                                .add_many(&video_elements[1..])
+                                .expect("Failed to add elements to pipeline");
+                            gst::Element::link_many(&video_elements[..])
+                                .expect("Failed to link elements");
+                            // This is quite important and people forget it often. Without making sure that
+                            // the new elements have the same state as the pipeline, things will fail later.
+                            // They would still be in Null state and can't process data.
+                            for e in video_elements {
+                                e.sync_state_with_parent()
+                                    .expect("Failed to sync element with parent");
+                            }
+                        } else if media_type.starts_with("video/x-h265") {
+                            // Create h265 video elements
+                            let h265parse = gst::ElementFactory::make("h265parse")
+                                .build()
+                                .expect("Failed to create h265parse");
+                            let rtph265pay = gst::ElementFactory::make("rtph265pay")
+                                .build()
+                                .expect("Failed to create rtph265pay");
+                            let output_tee_video = gst::ElementFactory::make("tee")
+                                .name("output_tee_video")
+                                .build()
+                                .expect("Failed to create output_tee_video");
 
-                for e in audio_elements {
-                    e.sync_state_with_parent()?;
-                }
+                            let video_elements =
+                                &[&video_queue, &h265parse, &rtph265pay, &output_tee_video];
+                            // 'video_queue' has been added to the pipeline already, so we don't add it again.
+                            pipeline
+                                .add_many(&video_elements[1..])
+                                .expect("Failed to add elements to pipeline");
+                            gst::Element::link_many(&video_elements[..])
+                                .expect("Failed to link elements");
+                            for e in video_elements {
+                                e.sync_state_with_parent()
+                                    .expect("Failed to sync element with parent");
+                            }
+                        } else if media_type.starts_with("audio") {
+                            let aacparse = gst::ElementFactory::make("aacparse")
+                                .build()
+                                .expect("Failed to create aacparse");
+                            let avdec_aac = gst::ElementFactory::make("avdec_aac")
+                                .build()
+                                .expect("Failed to create avdec_aac");
+                            let audioconvert = gst::ElementFactory::make("audioconvert")
+                                .build()
+                                .expect("Failed to create audioconvert");
+                            let audioresample = gst::ElementFactory::make("audioresample")
+                                .build()
+                                .expect("Failed to create audioresample");
+                            let opusenc = gst::ElementFactory::make("opusenc")
+                                .build()
+                                .expect("Failed to create opusenc");
+                            let rtpopuspay = gst::ElementFactory::make("rtpopuspay")
+                                .build()
+                                .expect("Failed to create rtpopuspay");
+                            let output_tee_audio = gst::ElementFactory::make("tee")
+                                .name("output_tee_audio")
+                                .build()
+                                .expect("Failed to create output_tee_audio");
+
+                            let audio_elements = &[
+                                &audio_queue,
+                                &aacparse,
+                                &avdec_aac,
+                                &audioconvert,
+                                &audioresample,
+                                &opusenc,
+                                &rtpopuspay,
+                                &output_tee_audio,
+                            ];
+
+                            // 'audio_queue' has been added to the pipeline already, so we don't add it again.
+                            pipeline
+                                .add_many(&audio_elements[1..])
+                                .expect("Failed to add elements to pipeline");
+                            gst::Element::link_many(&audio_elements[..])
+                                .expect("Failed to link elements");
+                            for e in audio_elements {
+                                e.sync_state_with_parent()
+                                    .expect("Failed to sync element with parent");
+                            }
+                        } else {
+                            tracing::warn!("Unknown media type {}", media_type);
+                        }
+                    }
+
+                    true
+                });
 
                 Ok(())
             };
 
-            if let Err(err) = link_sink() {
+            if let Err(err) = link_sink(dbin) {
                 tracing::error!("Failed to link: {}", err);
             } else {
                 tracing::info!("Successfully linked stream. Ready to play.");
