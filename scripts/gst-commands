@@ -21,9 +21,9 @@ gst-launch-1.0 srtsrc uri="srt://127.0.0.1:1234"  ! tsdemux ! queue ! h264parse 
 ### Video & Audio
 #### producer
 gst-launch-1.0 -v \
-    videotestsrc ! clockoverlay ! video/x-raw, height=360, width=640 ! videoconvert ! x264enc tune=zerolatency ! video/x-h264, profile=constrained-baseline ! mux. \
+    videotestsrc ! clockoverlay ! video/x-raw, height=360, width=640 ! videoconvert ! x265enc tune=zerolatency ! video/x-h265, profile=main ! mux. \
     audiotestsrc ! audio/x-raw, format=S16LE, channels=2, rate=44100 ! audioconvert ! voaacenc ! aacparse ! mux. \
-    mpegtsmux name=mux ! queue ! srtsink uri="srt://127.0.0.1:1234?mode=listener" wait-for-connection=false
+    mpegtsmux name=mux ! queue ! srtsink uri="srt://127.0.0.1:1234?mode=caller" wait-for-connection=false
 
 gst-launch-1.0 -v \
     audiotestsrc ! audio/x-raw, format=S16LE, channels=2, rate=44100 ! audioconvert ! voaacenc ! aacparse ! mux. \
