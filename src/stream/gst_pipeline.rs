@@ -8,6 +8,7 @@ use std::sync::Arc;
 use std::time::Duration;
 use timed_locks::Mutex;
 
+use crate::domain::MyError;
 use crate::stream::pipeline::{Args, PipelineBase, SRTMode};
 use crate::stream::utils::run_discoverer;
 
@@ -67,7 +68,7 @@ impl PipelineBase for SharablePipeline {
 
         let demux = pipeline
             .by_name("demux")
-            .expect("pipeline has no element with name demux");
+            .ok_or(MyError::MissingElement("demux".to_string()))?;
         let queue_video: gst::Element = gst::ElementFactory::make("queue")
             .name("video-queue-".to_string() + &id)
             .build()?;
@@ -90,7 +91,7 @@ impl PipelineBase for SharablePipeline {
         {
             let output_tee_video = pipeline
                 .by_name("output_tee_video")
-                .expect("pipeline has no element with name output_tee_video");
+                .ok_or(MyError::MissingElement("output_tee_video".to_string()))?;
             gst::Element::link_many(&[&output_tee_video, &queue_video, &whipsink])?;
 
             let video_elements = &[&output_tee_video, &queue_video, &whipsink];
@@ -108,7 +109,7 @@ impl PipelineBase for SharablePipeline {
         {
             let output_tee_audio = pipeline
                 .by_name("output_tee_audio")
-                .expect("pipeline has no element with name output_tee_audio");
+                .ok_or(MyError::MissingElement("output_tee_audio".to_string()))?;
             gst::Element::link_many(&[&output_tee_audio, &queue_audio, &whipsink])?;
 
             let audio_elements = &[&output_tee_audio, &queue_audio, &whipsink];
@@ -125,6 +126,7 @@ impl PipelineBase for SharablePipeline {
             .any(|pad| pad.name().starts_with("video") || pad.name().starts_with("audio"))
         {
             tracing::error!("No pad's name starts with 'video' or 'audio'");
+            return Err(MyError::MissingElement("video or audio pad".to_string()).into());
         }
 
         Ok(())
@@ -152,68 +154,74 @@ impl PipelineBase for SharablePipeline {
 
         // Try to remove branch from pipeline
         // Return Ok if branch is removed
-        let try_remove_branch_from_pipeline =
+        let remove_branch_from_pipeline =
             |pipeline: &Pipeline, tee_name: &str, queue_name: &str| -> Result<(), Error> {
-                let tee = pipeline.by_name(tee_name).expect("Failed to get tee");
-                let queue = pipeline.by_name(queue_name).expect("Failed to get queue");
-                let queue_sink_pad = queue
-                    .static_pad("sink")
-                    .expect("Failed to get queue sink pad");
                 tracing::debug!("Removing queue {} from pipeline", queue_name);
+                let queue = pipeline
+                    .by_name(queue_name)
+                    .ok_or(MyError::MissingElement(queue_name.to_string()))?;
+                let queue_sink_pad =
+                    queue
+                        .static_pad("sink")
+                        .ok_or(MyError::MissingElement(format!(
+                            "{}'s sink pad",
+                            queue_name
+                        )))?;
 
                 // Remove src pad from tee if queue is linked
                 let name = queue_name.to_string();
                 if queue_sink_pad.is_linked() {
-                    let tee_src_pad = queue_sink_pad.peer().expect("Failed to get tee src pad");
+                    let tee_src_pad = queue_sink_pad
+                        .peer()
+                        .ok_or(MyError::MissingElement(format!("{}'s src pad", tee_name)))?;
+                    tracing::debug!("Queue {} is linked", queue_name);
 
                     let pipeline_weak = pipeline.downgrade();
                     // Block tee's source pad with a pad probe.
                     // the probe callback is called as soon as the pad becomes idle
-                    tee_src_pad.add_probe(gst::PadProbeType::IDLE, move |pad, _info| {
+                    tee_src_pad.add_probe(gst::PadProbeType::IDLE, move |_pad, _info| {
                         let pipeline = match pipeline_weak.upgrade() {
                             Some(pipeline) => pipeline,
-                            // drop src pad if pipeline is already dropped
-                            None => return gst::PadProbeReturn::Drop,
+                            // do nothing if pipeline is already dropped
+                            None => return gst::PadProbeReturn::Ok,
                         };
 
-                        queue
-                            .set_state(gst::State::Null)
-                            .expect("Failed to clean queue");
-                        pipeline
-                            .remove(&queue)
-                            .expect("Failed to remove queue from pipeline");
-                        tracing::debug!("Queue {} was removed from pipeline", name);
+                        if queue.set_state(gst::State::Null).is_ok()
+                            && pipeline.remove(&queue).is_ok()
+                        {
+                            tracing::debug!("Queue {} is removed from pipeline", name);
+                        } else {
+                            tracing::error!("Failed to remove queue {} from pipeline", name);
+                        }
 
-                        tee.release_request_pad(pad);
-
-                        gst::PadProbeReturn::Ok
+                        // drop src pad afterwards
+                        gst::PadProbeReturn::Drop
                     });
                 } else {
-                    tracing::debug!("Queue {} is not linked", name);
-
-                    // Audio queue is not linked to tee if stream contains no audio
-                    // Remove them directly from pipeline
-                    pipeline
-                        .remove(&queue)
-                        .expect("Failed to remove queue from pipeline");
+                    tracing::error!("Queue {} is not linked", name);
                 }
 
                 Ok(())
             };
 
-        try_remove_branch_from_pipeline(pipeline, video_tee_name, &video_queue_name)?;
-        try_remove_branch_from_pipeline(pipeline, audio_tee_name, &audio_queue_name)?;
+        // TODO: check if the order would cause blocking issues when removing branches
+        remove_branch_from_pipeline(pipeline, audio_tee_name, &audio_queue_name)?;
+        remove_branch_from_pipeline(pipeline, video_tee_name, &video_queue_name)?;
 
         // Remove whip sink from pipeline
         // If whip sink fails to send offer, it is removed from
         // pipeline automatically (so no need to remove it again)
         if let Some(whip_sink) = pipeline.by_name(&whip_sink_name) {
-            whip_sink
-                .set_state(gst::State::Null)
-                .expect("Failed to pause clean whip sink");
-            pipeline
-                .remove(&whip_sink)
-                .expect("Failed to remove whip sink from pipeline");
+            whip_sink.set_state(gst::State::Null).map_err(|_| {
+                MyError::FailedOperation(format!("Failed to set {} to Null state", whip_sink_name))
+            })?;
+
+            pipeline.remove(&whip_sink).map_err(|_| {
+                MyError::FailedOperation(format!(
+                    "Failed to remove {} from pipeline",
+                    whip_sink_name
+                ))
+            })?;
         }
 
         Ok(())
@@ -310,126 +318,108 @@ impl PipelineBase for SharablePipeline {
                 None => return,
             };
 
-            let link_sink = |bin: &gst::Element| -> Result<(), Error> {
-                bin.foreach_src_pad(|_, pad| {
-                    if let Some(media_type) = pad
-                        .current_caps()
-                        .and_then(|caps| caps.structure(0).map(|s| s.name()))
-                    {
-                        tracing::debug!("linking to media {}", media_type);
+            let all_linked = dbin.foreach_src_pad(|_, pad| {
+                let media_type = pad
+                    .current_caps()
+                    .and_then(|caps| caps.structure(0).map(|s| s.name()));
+                if media_type.is_none() {
+                    tracing::warn!("Failed to get media type from demux pad");
+                    return false;
+                }
 
-                        if media_type.starts_with("video/x-h264") {
-                            // Create h264 video elements
-                            let h264parse = gst::ElementFactory::make("h264parse")
-                                .build()
-                                .expect("Failed to create h264parse");
-                            let rtph264pay = gst::ElementFactory::make("rtph264pay")
-                                .build()
-                                .expect("Failed to create rtph264pay");
-                            let output_tee_video = gst::ElementFactory::make("tee")
-                                .name("output_tee_video")
-                                .build()
-                                .expect("Failed to create output_tee_video");
-                            let video_elements =
-                                &[&video_queue, &h264parse, &rtph264pay, &output_tee_video];
-                            // 'video_queue' has been added to the pipeline already, so we don't add it again.
-                            pipeline
-                                .add_many(&video_elements[1..])
-                                .expect("Failed to add elements to pipeline");
-                            gst::Element::link_many(&video_elements[..])
-                                .expect("Failed to link elements");
-                            // This is quite important and people forget it often. Without making sure that
-                            // the new elements have the same state as the pipeline, things will fail later.
-                            // They would still be in Null state and can't process data.
-                            for e in video_elements {
-                                e.sync_state_with_parent()
-                                    .expect("Failed to sync element with parent");
-                            }
-                        } else if media_type.starts_with("video/x-h265") {
-                            // Create h265 video elements
-                            let h265parse = gst::ElementFactory::make("h265parse")
-                                .build()
-                                .expect("Failed to create h265parse");
-                            let rtph265pay = gst::ElementFactory::make("rtph265pay")
-                                .build()
-                                .expect("Failed to create rtph265pay");
-                            let output_tee_video = gst::ElementFactory::make("tee")
-                                .name("output_tee_video")
-                                .build()
-                                .expect("Failed to create output_tee_video");
+                let media_type = media_type.unwrap().as_str();
+                tracing::debug!("linking to media {:?}", media_type);
 
-                            let video_elements =
-                                &[&video_queue, &h265parse, &rtph265pay, &output_tee_video];
-                            // 'video_queue' has been added to the pipeline already, so we don't add it again.
-                            pipeline
-                                .add_many(&video_elements[1..])
-                                .expect("Failed to add elements to pipeline");
-                            gst::Element::link_many(&video_elements[..])
-                                .expect("Failed to link elements");
-                            for e in video_elements {
-                                e.sync_state_with_parent()
-                                    .expect("Failed to sync element with parent");
-                            }
-                        } else if media_type.starts_with("audio") {
-                            let aacparse = gst::ElementFactory::make("aacparse")
-                                .build()
-                                .expect("Failed to create aacparse");
-                            let avdec_aac = gst::ElementFactory::make("avdec_aac")
-                                .build()
-                                .expect("Failed to create avdec_aac");
-                            let audioconvert = gst::ElementFactory::make("audioconvert")
-                                .build()
-                                .expect("Failed to create audioconvert");
-                            let audioresample = gst::ElementFactory::make("audioresample")
-                                .build()
-                                .expect("Failed to create audioresample");
-                            let opusenc = gst::ElementFactory::make("opusenc")
-                                .build()
-                                .expect("Failed to create opusenc");
-                            let rtpopuspay = gst::ElementFactory::make("rtpopuspay")
-                                .build()
-                                .expect("Failed to create rtpopuspay");
-                            let output_tee_audio = gst::ElementFactory::make("tee")
-                                .name("output_tee_audio")
-                                .build()
-                                .expect("Failed to create output_tee_audio");
+                let link_media = |pipeline: &Pipeline, media_type: &str| -> Result<(), Error> {
+                    if media_type.starts_with("video/x-h264") {
+                        // Create h264 video elements
+                        let h264parse = gst::ElementFactory::make("h264parse").build()?;
+                        let rtph264pay = gst::ElementFactory::make("rtph264pay").build()?;
+                        let output_tee_video = gst::ElementFactory::make("tee")
+                            .name("output_tee_video")
+                            .build()?;
 
-                            let audio_elements = &[
-                                &audio_queue,
-                                &aacparse,
-                                &avdec_aac,
-                                &audioconvert,
-                                &audioresample,
-                                &opusenc,
-                                &rtpopuspay,
-                                &output_tee_audio,
-                            ];
-
-                            // 'audio_queue' has been added to the pipeline already, so we don't add it again.
-                            pipeline
-                                .add_many(&audio_elements[1..])
-                                .expect("Failed to add elements to pipeline");
-                            gst::Element::link_many(&audio_elements[..])
-                                .expect("Failed to link elements");
-                            for e in audio_elements {
-                                e.sync_state_with_parent()
-                                    .expect("Failed to sync element with parent");
-                            }
-                        } else {
-                            tracing::warn!("Unknown media type {}", media_type);
+                        let video_elements =
+                            &[&video_queue, &h264parse, &rtph264pay, &output_tee_video];
+                        // 'video_queue' has been added to the pipeline already, so we don't add it again.
+                        pipeline.add_many(&video_elements[1..])?;
+                        gst::Element::link_many(&video_elements[..])?;
+                        // This is quite important and people forget it often. Without making sure that
+                        // the new elements have the same state as the pipeline, things will fail later.
+                        // They would still be in Null state and can't process data.
+                        for e in video_elements {
+                            e.sync_state_with_parent()?;
                         }
-                    }
 
-                    true
+                        Ok(())
+                    } else if media_type.starts_with("video/x-h265") {
+                        // Create h265 video elements
+                        let h265parse = gst::ElementFactory::make("h265parse").build()?;
+                        let rtph265pay = gst::ElementFactory::make("rtph265pay").build()?;
+                        let output_tee_video = gst::ElementFactory::make("tee")
+                            .name("output_tee_video")
+                            .build()?;
+
+                        let video_elements =
+                            &[&video_queue, &h265parse, &rtph265pay, &output_tee_video];
+                        // 'video_queue' has been added to the pipeline already, so we don't add it again.
+                        pipeline.add_many(&video_elements[1..])?;
+                        gst::Element::link_many(&video_elements[..])?;
+                        for e in video_elements {
+                            e.sync_state_with_parent()?;
+                        }
+
+                        Ok(())
+                    } else if media_type.starts_with("audio") {
+                        let aacparse = gst::ElementFactory::make("aacparse").build()?;
+                        let avdec_aac = gst::ElementFactory::make("avdec_aac").build()?;
+                        let audioconvert = gst::ElementFactory::make("audioconvert").build()?;
+                        let audioresample = gst::ElementFactory::make("audioresample").build()?;
+                        let opusenc = gst::ElementFactory::make("opusenc").build()?;
+                        let rtpopuspay = gst::ElementFactory::make("rtpopuspay").build()?;
+                        let output_tee_audio = gst::ElementFactory::make("tee")
+                            .name("output_tee_audio")
+                            .build()?;
+
+                        let audio_elements = &[
+                            &audio_queue,
+                            &aacparse,
+                            &avdec_aac,
+                            &audioconvert,
+                            &audioresample,
+                            &opusenc,
+                            &rtpopuspay,
+                            &output_tee_audio,
+                        ];
+
+                        // 'audio_queue' has been added to the pipeline already, so we don't add it again.
+                        pipeline.add_many(&audio_elements[1..])?;
+                        gst::Element::link_many(&audio_elements[..])?;
+                        for e in audio_elements {
+                            e.sync_state_with_parent()?;
+                        }
+
+                        Ok(())
+                    } else {
+                        Err(
+                            MyError::FailedOperation(format!("Unknown media type {}", media_type))
+                                .into(),
+                        )
+                    }
+                };
+
+                let linked = link_media(&pipeline, media_type).map_err(|err| {
+                    tracing::error!("Failed to link media. {}", err);
+                    err
                 });
 
-                Ok(())
-            };
+                linked.is_ok()
+            });
 
-            if let Err(err) = link_sink(dbin) {
-                tracing::error!("Failed to link: {}", err);
-            } else {
+            if all_linked {
                 tracing::info!("Successfully linked stream. Ready to play.");
+            } else {
+                tracing::error!("Failed to link stream");
             }
         });
 
@@ -471,10 +461,13 @@ impl PipelineBase for SharablePipeline {
                     // src pad for the audio stream to it.
                     let audio_queue = pipeline
                         .by_name("audio-queue")
-                        .expect("pipeline has no element with name audio-queue");
-                    let sink_pad = audio_queue
-                        .static_pad("sink")
-                        .expect("queue has no sinkpad");
+                        .ok_or(MyError::MissingElement("audio-queue".to_string()))?;
+                    let sink_pad =
+                        audio_queue
+                            .static_pad("sink")
+                            .ok_or(MyError::MissingElement(
+                                "audio-queue's sink pad".to_string(),
+                            ))?;
                     src_pad.link(&sink_pad)?;
 
                     tracing::info!("Successfully inserted audio sink");
@@ -484,10 +477,13 @@ impl PipelineBase for SharablePipeline {
                     // src pad for the video stream to it.
                     let video_queue = pipeline
                         .by_name("video-queue")
-                        .expect("pipeline has no element with name video-queue");
-                    let sink_pad = video_queue
-                        .static_pad("sink")
-                        .expect("queue has no sinkpad");
+                        .ok_or(MyError::MissingElement("video-queue".to_string()))?;
+                    let sink_pad =
+                        video_queue
+                            .static_pad("sink")
+                            .ok_or(MyError::MissingElement(
+                                "video-queue's sink pad".to_string(),
+                            ))?;
                     src_pad.link(&sink_pad)?;
 
                     tracing::info!("Successfully inserted video sink");
@@ -497,8 +493,6 @@ impl PipelineBase for SharablePipeline {
             };
 
             if let Err(err) = insert_sink(is_audio, is_video) {
-                // The following sends a message of type Error on the bus, containing our detailed
-                // error information.
                 tracing::error!("Failed to insert sink: {}", err);
             }
         });
@@ -518,7 +512,9 @@ impl PipelineBase for SharablePipeline {
         let pipeline = pipeline_state
             .pipeline
             .as_ref()
-            .expect("Pipeline is not initialized");
+            .ok_or(MyError::FailedOperation(
+                "Pipeline called before initialization".to_string(),
+            ))?;
         let bus = pipeline.bus().unwrap();
         drop(pipeline_state);
 
@@ -564,7 +560,9 @@ impl PipelineBase for SharablePipeline {
         let pipeline_state = self.lock_err().await?;
         if let Some(pipeline) = pipeline_state.pipeline.as_ref() {
             let eos_message = Eos::new();
-            let bus = pipeline.bus().expect("Pipeline has no bus");
+            let bus = pipeline
+                .bus()
+                .ok_or(MyError::FailedOperation("No message bus".to_string()))?;
             bus.post(eos_message)?;
         }
 
@@ -589,8 +587,6 @@ impl PipelineBase for SharablePipeline {
         let pipeline_state = self.lock_err().await?;
         if let Some(pipeline) = pipeline_state.pipeline.as_ref() {
             pipeline.debug_to_dot_file(DebugGraphDetails::all(), "pipeline");
-        } else {
-            tracing::warn!("Pipeline does not exist");
         }
 
         Ok(())
