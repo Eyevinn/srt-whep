@@ -20,6 +20,10 @@ pub enum MyError {
     AnswerMissing,
     #[error("Pipeline connection failed: {0}")]
     PipelineConnectFailed(String),
+    #[error("Failed to find element: {0}")]
+    MissingElement(String),
+    #[error("Failed Operation: {0}")]
+    FailedOperation(String),
 }
 
 // We are still using a bespoke implementation of `Debug` to get a nice report using the error source chain
