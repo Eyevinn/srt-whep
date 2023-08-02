@@ -9,6 +9,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use tokio::signal;
 use tokio::task;
+use tokio::time::{sleep, Duration};
 
 /// Run a pipeline until it encounters EOS or an error. Clean up the pipeline after it finishes.
 /// This function can be called multiple times to handle EOS.
@@ -57,6 +58,8 @@ async fn main() -> Result<(), Box<dyn Error>> {
             };
 
             // Reset and rerun the pipeline when it encounters EOS
+            sleep(Duration::from_secs(3)).await;
+            tracing::error!("Pipeline reaches EOS. Reset and rerun the pipeline");
         }
 
         // Stop the pipeline when the thread is aborted
