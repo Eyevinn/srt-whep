@@ -11,14 +11,22 @@ Runs on MacOS and Ubuntu.
 
 To quickly try it out on Linux machine, you can use the Docker Container image published on Docker Hub:
 
+First, generate an SRT test source stream for example using our testsrc container:
+
+```
+docker run --rm -p 1234:1234/udp eyevinntechnology/testsrc
+```
+
+An SRT stream (in listener mode) is then available at `srt://127.0.0.1:1234`:
+
 ```
 docker run --rm --network host eyevinntechnology/srt-whep \
-  -i <SRT_SOURCE_IP>:<SRT_SOURCE_PORT> \
+  -i 127.0.0.1:1234 \
   -o 0.0.0.0:8888 \
   -p 8000 -s caller
 ```
 
-It will connect to SRT on `<SRT_SOURCE_IP>:<SRT_SOURCE_PORT>` in caller mode thus assuming above that the `<SRT_SOURCE_IP>` is in listener mode.
+It will connect to the SRT test stream in caller mode as the generated SRT stream is in listener mode.
 
 WHEP endpoint is available at `http://localhost:8000/channel`. You can then play it for example using the WHEP [Player](https://webrtc.player.eyevinn.technology/?type=whep). Possible issues are discussed in [Issues](#issues).
 
