@@ -13,6 +13,9 @@ Runs on MacOS and Ubuntu.
 
 ```
 cargo install srt_whep
+
+# recommended for pretty log viewer (optional)
+cargo install bunyan
 ```
 
 Generate an SRT test source for example using our testsrc Docker container:
@@ -24,7 +27,7 @@ docker run --rm -p 1234:1234/udp eyevinntechnology/testsrc
 An SRT stream (in listener mode) is then available at `srt://127.0.0.1:1234`. Then run the `srt-whep` application:
 
 ```
-srt-whep -i 127.0.0.1:1234 -o 0.0.0.0:8888 -p 8000 -s caller
+cargo run --release -- -i 127.0.0.1:1234 -o 127.0.0.1:8888 -p 8000 -s caller | bunyan
 ```
 
 It will connect to the SRT test stream in caller mode as the generated SRT stream is in listener mode.
