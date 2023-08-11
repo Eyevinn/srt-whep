@@ -86,7 +86,7 @@ impl PipelineBase for SharablePipeline {
                 format!("http://localhost:{}/whip_sink/{}", pipeline_state.port, id),
             )
             .build()?;
-        pipeline.add_many(&[&whipsink])?;
+        pipeline.add_many([&whipsink])?;
 
         if demux
             .pads()
@@ -99,8 +99,8 @@ impl PipelineBase for SharablePipeline {
             let queue_video: gst::Element = gst::ElementFactory::make("queue")
                 .name("video-queue-".to_string() + &id)
                 .build()?;
-            pipeline.add_many(&[&queue_video])?;
-            gst::Element::link_many(&[&output_tee_video, &queue_video, &whipsink])?;
+            pipeline.add_many([&queue_video])?;
+            gst::Element::link_many([&output_tee_video, &queue_video, &whipsink])?;
 
             let video_elements = &[&output_tee_video, &queue_video];
             for e in video_elements {
@@ -121,8 +121,8 @@ impl PipelineBase for SharablePipeline {
             let queue_audio: gst::Element = gst::ElementFactory::make("queue")
                 .name("audio-queue-".to_string() + &id)
                 .build()?;
-            pipeline.add_many(&[&queue_audio])?;
-            gst::Element::link_many(&[&output_tee_audio, &queue_audio, &whipsink])?;
+            pipeline.add_many([&queue_audio])?;
+            gst::Element::link_many([&output_tee_audio, &queue_audio, &whipsink])?;
 
             let audio_elements = &[&output_tee_audio, &queue_audio];
             for e in audio_elements {
@@ -304,7 +304,7 @@ impl PipelineBase for SharablePipeline {
             .property("wait-for-connection", false)
             .build()?;
 
-        pipeline.add_many(&[
+        pipeline.add_many([
             &src,
             &input_tee,
             &whep_queue,
@@ -315,9 +315,9 @@ impl PipelineBase for SharablePipeline {
             &audio_queue,
             &srtsink,
         ])?;
-        gst::Element::link_many(&[&src, &input_tee])?;
-        gst::Element::link_many(&[&input_tee, &whep_queue, &typefind, &tsdemux])?;
-        gst::Element::link_many(&[&input_tee, &srt_queue, &srtsink])?;
+        gst::Element::link_many([&src, &input_tee])?;
+        gst::Element::link_many([&input_tee, &whep_queue, &typefind, &tsdemux])?;
+        gst::Element::link_many([&input_tee, &srt_queue, &srtsink])?;
 
         let pipeline_weak = pipeline.downgrade();
         // Connect to tsdemux's no-more-pads signal, that is emitted when the element
@@ -558,7 +558,7 @@ impl PipelineBase for SharablePipeline {
             };
 
             // Tell the mainloop to continue executing this callback.
-            glib::Continue(true)
+            glib::ControlFlow::Continue
         })?;
 
         // Operate GStreamer's bus, facilliating GLib's mainloop here.
