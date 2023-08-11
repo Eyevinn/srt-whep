@@ -9,15 +9,29 @@ Runs on MacOS and Ubuntu.
 
 ![screenshot](docs/screenshot.png)
 
-To quickly try it out on Linux machine, you can use the Docker Container image published on Docker Hub:
+## Install
 
-First, generate an SRT test source stream for example using our testsrc container:
+```
+cargo install srt_whep
+```
+
+Generate an SRT test source for example using our testsrc Docker container:
 
 ```
 docker run --rm -p 1234:1234/udp eyevinntechnology/testsrc
 ```
 
-An SRT stream (in listener mode) is then available at `srt://127.0.0.1:1234`:
+An SRT stream (in listener mode) is then available at `srt://127.0.0.1:1234`. Then run the `srt-whep` application:
+
+```
+srt-whep -i 127.0.0.1:1234 -o 0.0.0.0:8888 -p 8000 -s caller
+```
+
+It will connect to the SRT test stream in caller mode as the generated SRT stream is in listener mode.
+
+WHEP endpoint is available at `http://localhost:8000/channel`. You can then play it for example using the WHEP [Player](https://webrtc.player.eyevinn.technology/?type=whep). Possible issues are discussed in [Issues](#issues).
+
+If you don't have Rust install you can use the Docker Container image published on Docker Hub:
 
 ```
 docker run --rm --network host eyevinntechnology/srt-whep \
@@ -26,9 +40,7 @@ docker run --rm --network host eyevinntechnology/srt-whep \
   -p 8000 -s caller
 ```
 
-It will connect to the SRT test stream in caller mode as the generated SRT stream is in listener mode.
-
-WHEP endpoint is available at `http://localhost:8000/channel`. You can then play it for example using the WHEP [Player](https://webrtc.player.eyevinn.technology/?type=whep). Possible issues are discussed in [Issues](#issues).
+Note that the container needs to run in host-mode.
 
 ## Build from Source
 ### OSX
