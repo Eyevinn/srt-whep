@@ -51,15 +51,15 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let pipeline_thread = task::spawn(async move {
         while !should_stop_clone.load(Ordering::Relaxed) {
             if let Err(err) = run_pipeline(&mut pipeline_clone, &args).await {
-                tracing::error!("Pipeline runs into error: {}", err);
+                tracing::error!("Failed to run pipeline: {}", err);
 
                 // break the loop when the pipeline runs into an error
                 break;
             };
 
             // Reset and rerun the pipeline when it encounters EOS
-            sleep(Duration::from_secs(3)).await;
-            tracing::error!("Pipeline reaches EOS. Reset and rerun the pipeline");
+            sleep(Duration::from_secs(1)).await;
+            tracing::info!("Pipeline reaches EOS. Reset and rerun the pipeline");
         }
 
         // Stop the pipeline when the thread is aborted

@@ -1,6 +1,6 @@
 use anyhow::{Error, Ok, Result};
 use async_trait::async_trait;
-use gst::{message::Eos, prelude::*, DebugGraphDetails, Pipeline};
+use gst::{prelude::*, DebugGraphDetails, Pipeline};
 use gstreamer as gst;
 use gstwebrtchttp;
 use std::ops::{Deref, DerefMut};
@@ -547,7 +547,7 @@ impl PipelineBase for SharablePipeline {
                 }
                 MessageView::Error(err) => {
                     tracing::error!(
-                        "Error from {:?}: {} ({:?})",
+                        "{:?} runs into error : {} ({:?})",
                         err.src().map(|s| s.path_string()),
                         err.error(),
                         err.debug()
@@ -572,11 +572,7 @@ impl PipelineBase for SharablePipeline {
     async fn end(&self) -> Result<(), Error> {
         let pipeline_state = self.lock_err().await?;
         if let Some(pipeline) = pipeline_state.pipeline.as_ref() {
-            let eos_message = Eos::new();
-            let bus = pipeline
-                .bus()
-                .ok_or(MyError::FailedOperation("No message bus".to_string()))?;
-            bus.post(eos_message)?;
+            pipeline.send_event(gst::event::Eos::new());
         }
 
         Ok(())
