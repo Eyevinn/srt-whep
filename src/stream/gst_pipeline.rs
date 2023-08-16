@@ -582,7 +582,9 @@ impl PipelineBase for SharablePipeline {
     async fn clean_up(&self) -> Result<(), Error> {
         let mut pipeline_state = self.lock_err().await?;
         if let Some(pipeline) = pipeline_state.pipeline.as_ref() {
-            pipeline.set_state(gst::State::Null)?;
+            pipeline.call_async(move |pipeline| {
+                let _ = pipeline.set_state(gst::State::Null);
+            });
             pipeline_state.pipeline = None;
         }
 

@@ -13,7 +13,11 @@ use tokio::time::{sleep, Duration};
 
 /// Run a pipeline until it encounters EOS or an error. Clean up the pipeline after it finishes.
 /// This function can be called multiple times to handle EOS.
-async fn run_pipeline(pipeline: &mut SharablePipeline, args: &Args) -> Result<(), Box<dyn Error>> {
+async fn run_pipeline(
+    pipeline: &mut SharablePipeline,
+    args: &Args,
+    state: &SharableAppState,
+) -> Result<(), Box<dyn Error>> {
     pipeline.init(args).await?;
 
     // Block until EOS or error message pops up
@@ -21,6 +25,9 @@ async fn run_pipeline(pipeline: &mut SharablePipeline, args: &Args) -> Result<()
 
     // Clean up the pipeline when it finishes so it can be rerun
     pipeline.clean_up().await?;
+
+    // Reset app state
+    state.reset().await?;
     Ok(())
 }
 
@@ -46,11 +53,12 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let should_stop = Arc::new(AtomicBool::new(false));
 
     let should_stop_clone = should_stop.clone();
+    let app_data_clone = app_data.clone();
     let mut pipeline_clone = pipeline_data.clone();
     // Run the pipeline in a separate thread
     let pipeline_thread = task::spawn(async move {
         while !should_stop_clone.load(Ordering::Relaxed) {
-            if let Err(err) = run_pipeline(&mut pipeline_clone, &args).await {
+            if let Err(err) = run_pipeline(&mut pipeline_clone, &args, &app_data_clone).await {
                 tracing::error!("Failed to run pipeline: {}", err);
 
                 // break the loop when the pipeline runs into an error
@@ -59,7 +67,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
             // Reset and rerun the pipeline when it encounters EOS
             sleep(Duration::from_secs(1)).await;
-            tracing::info!("Pipeline reaches EOS. Reset and rerun the pipeline");
+            tracing::info!("Pipeline reaches EOS. Reset app and rerun the pipeline");
         }
 
         // Stop the pipeline when the thread is aborted

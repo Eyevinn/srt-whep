@@ -72,6 +72,15 @@ impl SharableAppState {
         )))
     }
 
+    pub async fn reset(&self) -> Result<(), MyError> {
+        // Try to hold the lock and reset the app state
+        let mut app_state = self.lock_err().await?;
+        let connections = &mut app_state.connections;
+
+        connections.clear();
+        Ok(())
+    }
+
     pub async fn has_connection(&self, id: String) -> Result<bool, MyError> {
         // Try to hold the lock and check if the connection exists
         let mut app_state = self.lock_err().await?;
