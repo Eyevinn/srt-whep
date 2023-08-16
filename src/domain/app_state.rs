@@ -9,7 +9,7 @@ use std::{
 use timed_locks::Mutex;
 
 // The maximum times to wait for an offer
-static MAXWAITTIMES: u32 = 5;
+static MAXWAITTIMES: u32 = 10;
 
 // A struct to hold offer&answer for a webrtc connection
 #[derive(Debug)]
