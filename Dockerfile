@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1
-FROM lukemathwalker/cargo-chef:latest-rust-1.71.1-bullseye as chef
+FROM lukemathwalker/cargo-chef:latest-rust-1.71.1-bookworm as chef
 WORKDIR /app
 RUN apt update && apt install lld clang -y
 
@@ -8,7 +8,7 @@ COPY . .
 # Compute a lock-like file for our project
 RUN cargo chef prepare  --recipe-path recipe.json
 
-FROM debian:bullseye as builder
+FROM chef as builder
 ENV DEBIAN_FRONTEND=noninteractive
 
 # Update default packages
@@ -40,20 +40,15 @@ RUN apt-get install -y libssl-dev \
     gstreamer1.0-pulseaudio \
     gstreamer1.0-nice
 
-# Install Rust
-RUN curl https://sh.rustup.rs -sSf | bash -s -- -y
-ENV PATH="/root/.cargo/bin:${PATH}"
-
 WORKDIR /app
 COPY --from=planner /app/recipe.json recipe.json
-RUN cargo install cargo-chef bunyan
 # Build our project dependencies, not our application!
 RUN cargo chef cook --release --recipe-path recipe.json
 COPY . .
-# Build our project
+# Build our application
 RUN cargo update && cargo build --release
 
-FROM debian:bullseye-slim as runtime
+FROM debian:bookworm-slim as runtime
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update
 RUN apt-get install -y libgstreamer1.0-0 \
