@@ -272,7 +272,8 @@ impl PipelineBase for SharablePipeline {
         // Run discoverer if the source stream is in listener mode (we are the caller)
         if args.srt_mode == SRTMode::Caller {
             tracing::info!("Running discoverer...");
-            run_discoverer(&uri, args.discoverer_timeout_sec)?;
+            // Swallow error if discoverer fails (When connectting to SRT client running in Docker container)
+            let _ = run_discoverer(&uri, args.discoverer_timeout_sec);
         }
 
         let src = gst::ElementFactory::make("srtsrc")

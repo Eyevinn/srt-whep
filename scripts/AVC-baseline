@@ -1,0 +1,112 @@
+## Offer
+v=0
+o=- 6539356979484950845 0 IN IP4 0.0.0.0
+s=-
+t=0 0
+a=ice-options:trickle
+a=group:BUNDLE video0 audio1
+m=video 9 UDP/TLS/RTP/SAVPF 97 96 98 99 101
+c=IN IP4 0.0.0.0
+a=setup:active
+a=ice-ufrag:bU1Q34VuCIhIZb/BNedADYOtth/Rf+X7
+a=ice-pwd:+UeFTahY/ZDyu+9UZeQdh6XwQL+mTj6z
+a=rtcp-mux
+a=rtcp-rsize
+a=sendonly
+a=rtpmap:97 H264/90000
+a=rtcp-fb:97 nack
+a=rtcp-fb:97 nack pli
+a=rtcp-fb:97 ccm fir
+a=rtcp-fb:97 transport-cc
+a=extmap:1 http://www.ietf.org/id/draft-holmer-rmcat-transport-wide-cc-extensions-01
+a=fmtp:97 packetization-mode=1;profile-level-id=42c01e;level-asymmetry-allowed=1
+a=rtpmap:96 red/90000
+a=rtpmap:98 ulpfec/90000
+a=rtpmap:99 rtx/90000
+a=fmtp:99 apt=97
+a=rtpmap:101 rtx/90000
+a=fmtp:101 apt=96
+a=ssrc-group:FID 543189177 1449903697
+a=ssrc:543189177 msid:user4181715526@host-478fd527 webrtctransceiver0
+a=ssrc:543189177 cname:user4181715526@host-478fd527
+a=ssrc:1449903697 msid:user4181715526@host-478fd527 webrtctransceiver0
+a=ssrc:1449903697 cname:user4181715526@host-478fd527
+a=mid:video0
+a=fingerprint:sha-256 8B:45:15:47:48:9B:F1:55:5F:A8:D4:62:19:BB:92:9A:51:06:19:5A:0E:4C:0E:86:7F:6A:1B:F5:60:12:59:20
+a=rtcp-mux-only
+a=candidate:1 1 UDP 2015363327 fe80::cd2:f2fd:55cc:92a 55950 typ host
+a=candidate:2 1 TCP 1015021823 fe80::cd2:f2fd:55cc:92a 9 typ host tcptype active
+a=candidate:3 1 TCP 1010827519 fe80::cd2:f2fd:55cc:92a 63177 typ host tcptype passive
+a=candidate:4 1 UDP 2015363583 192.168.1.87 63121 typ host
+a=candidate:5 1 TCP 1015022079 192.168.1.87 9 typ host tcptype active
+a=candidate:6 1 TCP 1010827775 192.168.1.87 63178 typ host tcptype passive
+a=candidate:7 1 UDP 1679819263 92.34.4.208 63121 typ srflx raddr 192.168.1.87 rport 63121
+a=candidate:8 1 TCP 847249919 92.34.4.208 9 typ srflx raddr 192.168.1.87 rport 9 tcptype active
+a=candidate:9 1 TCP 843055615 92.34.4.208 63178 typ srflx raddr 192.168.1.87 rport 63178 tcptype passive
+m=audio 0 UDP/TLS/RTP/SAVPF 100
+c=IN IP4 0.0.0.0
+a=setup:active
+a=ice-ufrag:bU1Q34VuCIhIZb/BNedADYOtth/Rf+X7
+a=ice-pwd:+UeFTahY/ZDyu+9UZeQdh6XwQL+mTj6z
+a=bundle-only
+a=rtcp-mux
+a=rtcp-rsize
+a=sendonly
+a=rtpmap:100 OPUS/48000/2
+a=rtcp-fb:100 transport-cc
+a=extmap:1 http://www.ietf.org/id/draft-holmer-rmcat-transport-wide-cc-extensions-01
+a=fmtp:100 sprop-stereo=1;sprop-maxcapturerate=48000
+a=ssrc:2738297897 msid:user4181715526@host-478fd527 webrtctransceiver1
+a=ssrc:2738297897 cname:user4181715526@host-478fd527
+a=mid:audio1
+a=fingerprint:sha-256 8B:45:15:47:48:9B:F1:55:5F:A8:D4:62:19:BB:92:9A:51:06:19:5A:0E:4C:0E:86:7F:6A:1B:F5:60:12:59:20
+a=rtcp-mux-only
+
+## Answer
+v=0
+o=- 4890927405394739488 2 IN IP4 127.0.0.1
+s=-
+t=0 0
+a=group:BUNDLE video0 audio1
+a=msid-semantic: WMS
+m=video 50527 UDP/TLS/RTP/SAVPF 97 96 98 99 101
+c=IN IP4 192.168.1.87
+a=rtcp:9 IN IP4 0.0.0.0
+a=candidate:3721599928 1 udp 2122260223 192.168.1.87 50527 typ host generation 0 network-id 1 network-cost 50
+a=ice-ufrag:5zNg
+a=ice-pwd:gWgXE4tvaiEL2PuweyWT0x7y
+a=ice-options:trickle
+a=fingerprint:sha-256 7B:3C:DE:11:34:43:80:40:7A:A2:5C:5A:BD:82:9B:BA:53:53:2C:1D:F9:14:72:5F:3B:9D:F0:68:82:2E:2B:FE
+a=setup:passive
+a=mid:video0
+a=extmap:1 http://www.ietf.org/id/draft-holmer-rmcat-transport-wide-cc-extensions-01
+a=recvonly
+a=rtcp-mux
+a=rtcp-rsize
+a=rtpmap:97 H264/90000
+a=rtcp-fb:97 transport-cc
+a=rtcp-fb:97 ccm fir
+a=rtcp-fb:97 nack
+a=rtcp-fb:97 nack pli
+a=fmtp:97 level-asymmetry-allowed=1;packetization-mode=1;profile-level-id=42e01f
+a=rtpmap:96 red/90000
+a=rtpmap:98 ulpfec/90000
+a=rtpmap:99 rtx/90000
+a=fmtp:99 apt=97
+a=rtpmap:101 rtx/90000
+a=fmtp:101 apt=96
+m=audio 9 UDP/TLS/RTP/SAVPF 100
+c=IN IP4 0.0.0.0
+a=rtcp:9 IN IP4 0.0.0.0
+a=ice-ufrag:5zNg
+a=ice-pwd:gWgXE4tvaiEL2PuweyWT0x7y
+a=ice-options:trickle
+a=fingerprint:sha-256 7B:3C:DE:11:34:43:80:40:7A:A2:5C:5A:BD:82:9B:BA:53:53:2C:1D:F9:14:72:5F:3B:9D:F0:68:82:2E:2B:FE
+a=setup:passive
+a=mid:audio1
+a=extmap:1 http://www.ietf.org/id/draft-holmer-rmcat-transport-wide-cc-extensions-01
+a=recvonly
+a=rtcp-mux
+a=rtpmap:100 OPUS/48000/2
+a=rtcp-fb:100 transport-cc
+a=fmtp:100 minptime=10;useinbandfec=1

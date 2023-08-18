@@ -1,0 +1,103 @@
+## Offer
+v=0
+o=- 7034324167002238293 0 IN IP4 0.0.0.0
+s=-
+t=0 0
+a=ice-options:trickle
+a=group:BUNDLE video0 audio1
+m=video 9 UDP/TLS/RTP/SAVPF 97 96 98 99 101
+c=IN IP4 0.0.0.0
+a=setup:active
+a=ice-ufrag:iXDDvPDN61M2ezMQlnoqg3nkw29Vu+mp
+a=ice-pwd:vRilhCtlN1dvKwhqZy9t9wG5/Zbo2PES
+a=rtcp-mux
+a=rtcp-rsize
+a=sendonly
+a=rtpmap:97 H264/90000
+a=rtcp-fb:97 nack
+a=rtcp-fb:97 nack pli
+a=rtcp-fb:97 ccm fir
+a=rtcp-fb:97 transport-cc
+a=extmap:1 http://www.ietf.org/id/draft-holmer-rmcat-transport-wide-cc-extensions-01
+a=fmtp:97 packetization-mode=1;profile-level-id=64001e;level-asymmetry-allowed=1
+a=rtpmap:96 red/90000
+a=rtpmap:98 ulpfec/90000
+a=rtpmap:99 rtx/90000
+a=fmtp:99 apt=97
+a=rtpmap:101 rtx/90000
+a=fmtp:101 apt=96
+a=ssrc-group:FID 4047177972 858263619
+a=ssrc:4047177972 msid:user181545073@host-a8d5b4f7 webrtctransceiver0
+a=ssrc:4047177972 cname:user181545073@host-a8d5b4f7
+a=ssrc:858263619 msid:user181545073@host-a8d5b4f7 webrtctransceiver0
+a=ssrc:858263619 cname:user181545073@host-a8d5b4f7
+a=mid:video0
+a=fingerprint:sha-256 BA:A5:19:01:1C:2E:FA:56:57:53:CB:5D:83:70:8B:FA:83:C8:98:AF:5E:CC:35:B0:13:5C:47:2C:EE:AE:AB:E4
+a=rtcp-mux-only
+a=candidate:1 1 UDP 2015363327 fe80::cd2:f2fd:55cc:92a 64611 typ host
+a=candidate:2 1 TCP 1015021823 fe80::cd2:f2fd:55cc:92a 9 typ host tcptype active
+a=candidate:3 1 TCP 1010827519 fe80::cd2:f2fd:55cc:92a 61808 typ host tcptype passive
+a=candidate:4 1 UDP 2015363583 192.168.1.87 61289 typ host
+a=candidate:5 1 TCP 1015022079 192.168.1.87 9 typ host tcptype active
+a=candidate:6 1 TCP 1010827775 192.168.1.87 61809 typ host tcptype passive
+a=candidate:7 1 UDP 1679819263 92.34.4.208 61289 typ srflx raddr 192.168.1.87 rport 61289
+a=candidate:8 1 TCP 847249919 92.34.4.208 9 typ srflx raddr 192.168.1.87 rport 9 tcptype active
+a=candidate:9 1 TCP 843055615 92.34.4.208 61809 typ srflx raddr 192.168.1.87 rport 61809 tcptype passive
+m=audio 0 UDP/TLS/RTP/SAVPF 100
+c=IN IP4 0.0.0.0
+a=setup:active
+a=ice-ufrag:iXDDvPDN61M2ezMQlnoqg3nkw29Vu+mp
+a=ice-pwd:vRilhCtlN1dvKwhqZy9t9wG5/Zbo2PES
+a=bundle-only
+a=rtcp-mux
+a=rtcp-rsize
+a=sendonly
+a=rtpmap:100 OPUS/48000/2
+a=rtcp-fb:100 transport-cc
+a=extmap:1 http://www.ietf.org/id/draft-holmer-rmcat-transport-wide-cc-extensions-01
+a=fmtp:100 sprop-stereo=1;sprop-maxcapturerate=48000
+a=ssrc:3485298478 msid:user181545073@host-a8d5b4f7 webrtctransceiver1
+a=ssrc:3485298478 cname:user181545073@host-a8d5b4f7
+a=mid:audio1
+a=fingerprint:sha-256 BA:A5:19:01:1C:2E:FA:56:57:53:CB:5D:83:70:8B:FA:83:C8:98:AF:5E:CC:35:B0:13:5C:47:2C:EE:AE:AB:E4
+a=rtcp-mux-only
+
+## Answer
+v=0
+o=- 8045557448003127959 2 IN IP4 127.0.0.1
+s=-
+t=0 0
+a=group:BUNDLE video0 audio1
+a=msid-semantic: WMS
+m=video 9 UDP/TLS/RTP/SAVPF 96 98 101
+c=IN IP4 0.0.0.0
+a=rtcp:9 IN IP4 0.0.0.0
+a=ice-ufrag:DKcq
+a=ice-pwd:DBbZaaX/X49T15ufyhOnqGTy
+a=ice-options:trickle
+a=fingerprint:sha-256 72:39:87:05:E5:B0:7D:A6:E6:7B:E6:10:C5:D5:94:AD:8C:6C:17:41:EE:31:2A:AF:A3:EC:55:A4:EB:A8:91:EA
+a=setup:passive
+a=mid:video0
+a=extmap:1 http://www.ietf.org/id/draft-holmer-rmcat-transport-wide-cc-extensions-01
+a=recvonly
+a=rtcp-mux
+a=rtcp-rsize
+a=rtpmap:96 red/90000
+a=rtpmap:98 ulpfec/90000
+a=rtpmap:101 rtx/90000
+a=fmtp:101 apt=96
+m=audio 9 UDP/TLS/RTP/SAVPF 100
+c=IN IP4 0.0.0.0
+a=rtcp:9 IN IP4 0.0.0.0
+a=ice-ufrag:DKcq
+a=ice-pwd:DBbZaaX/X49T15ufyhOnqGTy
+a=ice-options:trickle
+a=fingerprint:sha-256 72:39:87:05:E5:B0:7D:A6:E6:7B:E6:10:C5:D5:94:AD:8C:6C:17:41:EE:31:2A:AF:A3:EC:55:A4:EB:A8:91:EA
+a=setup:passive
+a=mid:audio1
+a=extmap:1 http://www.ietf.org/id/draft-holmer-rmcat-transport-wide-cc-extensions-01
+a=recvonly
+a=rtcp-mux
+a=rtpmap:100 OPUS/48000/2
+a=rtcp-fb:100 transport-cc
+a=fmtp:100 minptime=10;useinbandfec=1

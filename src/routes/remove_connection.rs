@@ -5,6 +5,7 @@ use actix_web::{web, HttpResponse};
 use anyhow::Context;
 
 #[allow(clippy::async_yields_async)]
+#[tracing::instrument(name = "REMOVE", skip(path, app_state, pipeline_state))]
 pub async fn remove_connection<T: PipelineBase>(
     path: web::Path<String>,
     app_state: web::Data<SharableAppState>,

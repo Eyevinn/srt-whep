@@ -4,6 +4,7 @@ use actix_web::{web, HttpResponse};
 use anyhow::Context;
 
 #[allow(clippy::async_yields_async)]
+#[tracing::instrument(name = "LIST", skip(app_state, pipeline_state))]
 pub async fn list<T: PipelineBase>(
     app_state: web::Data<SharableAppState>,
     pipeline_state: web::Data<T>,
