@@ -13,6 +13,7 @@ pub async fn whep_handler<T: PipelineBase>(
     pipeline_state: web::Data<T>,
 ) -> Result<HttpResponse, SubscribeError> {
     if !form.is_empty() {
+        tracing::debug!("WHIP Offer: \n {}", form);
         return Err(SubscribeError::ValidationError(MyError::InvalidSDP(
             "Empty body expected. Client initialization not supported.".to_string(),
         )));
