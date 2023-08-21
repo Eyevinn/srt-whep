@@ -11,5 +11,5 @@
 - [x] Add support for graceful shutdown
 - [x] Add support for multiple WebRTC clients
 - [x] Add support for different SRT stream modes (caller/listener)
-- [ ] Add support for different browsers
-- [ ] Add support for cloud deployment (Docker for Ubuntu, MacOS)
+- [x] Add support for different browsers
+- [x] Add support for cloud deployment (Docker for Ubuntu, MacOS)

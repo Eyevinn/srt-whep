@@ -9,6 +9,22 @@ Runs on MacOS and Ubuntu.
 
 ![screenshot](docs/screenshot.png)
 
+## Design Principles
+When conceiving this project, we made deliberate design choices to shape its functionality and behavior in alignment with our vision:
+
+- No Video Transcoding:
+We have intentionally refrained from implementing video transcoding within this component. This decision stems from the desire to maintain the integrity of the original video stream. This approach caters to use cases like confidence monitoring or preview. If you wish to transcode video anyway, here is an [example](https://github.com/Eyevinn/srt-whep/issues/36#issuecomment-1667880628) to do that.
+- Server-Side Initiation Mode:
+Our project does not currently support the client-side initiation mode of [WebRTC-HTTP Egress Protocol (WHEP)](https://www.ietf.org/id/draft-murillo-whep-02.html). Instead, we have adopted a server-side initiation approach. In this mode, the server provides the SDP offer, as it possesses knowledge of the available streams.
+- Focus on SDP Offer/Answer Exchange:
+Our server's primary focus is on the exchange of SDP (Session Description Protocol) offers and answers. While WebRTC typically involves ICE (Interactive Connectivity Establishment) negotiation for establishing peer-to-peer connections, we have opted not to include ICE negotiation within the scope of our project at this time. Our emphasis remains on the effective exchange of SDP-related information.
+
+## Getting Started
+It is suggested that
+
+- Mac Users: Follow our comprehensive build instructions and use Chrome for streaming.
+- Ubuntu Users: Either build the program from source or use Docker for running. Both methods are supported.
+
 ## Install
 
 ```
@@ -43,7 +59,7 @@ docker run --rm --network host eyevinntechnology/srt-whep \
   -p 8000 -s caller
 ```
 
-Note that the container needs to run in host-mode.
+Note that the container needs to run in host-mode (supported only on Linux).
 
 ## Build from Source
 ### OSX
@@ -157,20 +173,31 @@ cargo run --release -- -i 127.0.0.1:1234 -o 127.0.0.1:8888 -p 8000 -s listener |
 
 This also expects the SRT address `127.0.0.1:8888` to be running in caller mode.
 
-## Debugging
+## Tips for Successful Streaming
 
-- If you doubt a plugin is missing you can check it using `gst-inspect-1.0 <plugin>`. For example, `gst-inspect-1.0 srtsink`.
-- It's possible to generate a test SRT stream using GStreamer for debugging purpose. Please refer to [macOS](docs/SRT_macOS.md) or [Ubuntu](docs/SRT_Ubuntu.md).
+When working with SRT streams, there are several important considerations that can affect the success of your streaming experience:
 
+1. **Stream Generation and Playback Tools:**
+- Different tools, such as FFMpeg, GStreamer, FFPlay, and VLC, can be used to generate and play SRT streams. We've tested our program with these tools, so you can choose the one that suits your needs.
+- Be aware of the mode option in the SRT stream configuration, which can be set as `caller`, `listener`, or `rendezvous`. This option determines the behavior of the stream, and it needs to be configured correctly for successful streaming.
+
+2. **Bitrate Parameter in FFMpeg Streams:**
+- When generating streams using FFMpeg, it's essential to specify the Bitrate parameter. Failing to do so might result in VLC/GStreamer being unable to play the stream.
+
+3. **Video Codecs and Profiles:**
+- WebRTC connection failures can often be attributed to incompatible video codecs. While we strive to support both H.264 (AVC) and H.265 (HEVC) streams, it's important to note that most mainstream browsers only support AVC for WebRTC.
+- Safari, which is the only browser supporting H.265, has its own RTP payload format and custom video profile requirements, different from the standard ([RFC 7798](https://www.rfc-editor.org/rfc/rfc7798.html)). So it does not work directly out of box. There is a [PR](https://github.com/WebKit/WebKit/pull/15494) available for fixing this H265 packetization issue in WebKit project but no one is viewing it for the moment.
+- Based on the [discussion](https://github.com/AlexxIT/Blog/issues/5), it seems rather challenging to support H.265 / HEVC right now.
+
+4. **Codecs and Profiles Compatibility:**
+- Video profiles, such as Baseline, Main, and High for H.264, play a crucial role in stream compatibility. While Chrome supports all profiles, Safari only accepts the Baseline profile.
+
+## Discussion and Issues
+All relevant discussions are tracked in [issues](https://github.com/Eyevinn/srt-whep/issues/). Please feel free to open a new issue if you have any questions.
+
+- We have a set of known limitations recorded [here](https://github.com/Eyevinn/srt-whep/issues/46). You might want to check it out if running into an issue.
+- If you doubt a plugin is missing in gstreamer you can check it using `gst-inspect-1.0 <plugin>`. For example, `gst-inspect-1.0 srtsink`.
 - To get more verbose logging you can set the `GST_DEBUG` environment variable to `2`. For example, run in terminal: `export GST_DEBUG=2`
-
-## Issues
-All relevant discussions are tracked in [issues](https://github.com/Eyevinn/srt-whep/issues/). Please feel free to open a new issue if you have any questions or problems.
-
-- For Mac users, please notice that only H264 video of `constrained-baseline` profile is supported by Safari.
-- For Ubuntu users, please notice that H264 video of `high` profile is not supported by broswers (`baseline` or `main` is supported). Related discussions can be found [here](https://askubuntu.com/questions/1412934/webrtc-h-264-high-profile-doesnt-want-to-play-in-browser).
-- For Ubuntu users, please notice issues related to hostname resolution. It can be dodged by disabling `Anonymize local IPs exposed by WebRTC` on Chrome. Related discussions can be found [here](https://support.ipconfigure.com/hc/en-us/articles/360031237552-WebRTC-not-working-in-Google-Chrome-over-local-network-mDNS-)
-- We don't support the client side init mode of WHEP. This is under discussion but as the server knows what streams it has we believe the server should provide the SDP offer. Related discussions can be found [here](docs/whep.md).
 
 ## License (Apache-2.0)
 
