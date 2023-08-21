@@ -13,6 +13,6 @@ pub async fn options() -> HttpResponse {
             header::ACCESS_CONTROL_ALLOW_METHODS,
             "POST, GET, OPTIONS, PATCH, PUT",
         ))
-        .append_header(("ACCEPT_POST", "application/sdp"))
+        .append_header(("ACCEPT-POST", "application/sdp"))
         .finish()
 }
