@@ -3,7 +3,7 @@ use crate::routes::*;
 use crate::stream::PipelineBase;
 use actix_cors::Cors;
 use actix_web::dev::Server;
-use actix_web::{web, App, HttpServer};
+use actix_web::{guard, web, App, HttpServer};
 use std::net::TcpListener;
 use tracing_actix_web::TracingLogger;
 
@@ -20,6 +20,7 @@ pub fn run<T: PipelineBase + 'static>(
             .route("/health_check", web::get().to(health_check))
             .route("/list", web::get().to(list::<T>))
             .route("/channel", web::post().to(whep_handler::<T>))
+            .route("/channel", web::route().guard(guard::Options()).to(options))
             .route("/channel/{id}", web::patch().to(whep_patch_handler))
             .route("/channel/{id}", web::delete().to(remove_connection::<T>))
             .route("/whip_sink/{id}", web::post().to(whip_handler::<T>))
