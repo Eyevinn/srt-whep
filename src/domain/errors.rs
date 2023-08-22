@@ -8,18 +8,18 @@ use timed_locks::Error as TimedLockError;
 pub enum MyError {
     #[error("Invalid SDP: {0}")]
     InvalidSDP(String),
-    #[error("Repeated resource id: {0}")]
-    RepeatedResourceIdError(String),
-    #[error("Resource not found")]
-    ResourceNotFound,
+    #[error("Repeated conn id: {0}")]
+    RepeatedConnection(String),
+    #[error("Connection {0} not found")]
+    ConnectionNotFound(String),
+    #[error("Empty connection")]
+    EmptyConnection,
     #[error("Lock is timeout")]
     LockTimeout(#[from] TimedLockError),
     #[error("SDP offer not found")]
     OfferMissing,
     #[error("SDP answer not found")]
     AnswerMissing,
-    #[error("Pipeline connection failed: {0}")]
-    PipelineConnectFailed(String),
     #[error("Failed to find element: {0}")]
     MissingElement(String),
     #[error("Failed Operation: {0}")]

@@ -19,7 +19,9 @@ pub async fn remove_connection<T: PipelineBase>(
         .await
         .context("Failed to check connection in app")?
     {
-        return Err(SubscribeError::ValidationError(MyError::ResourceNotFound));
+        return Err(SubscribeError::ValidationError(
+            MyError::ConnectionNotFound(id.clone()),
+        ));
     }
 
     pipeline_state
@@ -28,7 +30,7 @@ pub async fn remove_connection<T: PipelineBase>(
         .context("Failed to remove connection from pipeline")?;
 
     app_state
-        .remove_connection(id)
+        .remove_connection(id.clone())
         .await
         .context("Failed to remove connection from app")?;
 

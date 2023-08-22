@@ -15,14 +15,8 @@ pub async fn whip_handler<T: PipelineBase>(
 ) -> Result<HttpResponse, SubscribeError> {
     let conn_id = path.into_inner();
     if conn_id.is_empty() {
-        return Err(SubscribeError::ValidationError(MyError::ResourceNotFound));
+        return Err(SubscribeError::ValidationError(MyError::EmptyConnection));
     }
-
-    tracing::info!(
-        "Received SDP offer for connection {} at time: {:?}",
-        conn_id,
-        Utc::now()
-    );
     let sdp_offer: SessionDescription = form.try_into().map_err(SubscribeError::ValidationError)?;
     if !sdp_offer.is_sendonly() {
         return Err(SubscribeError::ValidationError(MyError::InvalidSDP(
@@ -30,6 +24,11 @@ pub async fn whip_handler<T: PipelineBase>(
         )));
     }
 
+    tracing::info!(
+        "Received SDP offer for connection {} at time: {:?}",
+        conn_id,
+        Utc::now()
+    );
     let resource_id = Uuid::new_v4().to_string();
 
     app_state
