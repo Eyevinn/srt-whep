@@ -19,6 +19,15 @@ pub async fn whep_handler<T: PipelineBase>(
         )));
     }
 
+    // Check if input stream is available
+    let ready = pipeline_state
+        .ready()
+        .await
+        .context("Failed to check pipeline state")?;
+    if !ready {
+        return Err(SubscribeError::MissingInputStream);
+    }
+
     let id = Uuid::new_v4().to_string();
     tracing::info!("Create connection {} at time: {:?}", id.clone(), Utc::now());
 
