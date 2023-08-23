@@ -56,13 +56,37 @@ impl DerefMut for SharablePipeline {
 
 #[async_trait]
 impl PipelineBase for SharablePipeline {
+    /// Check if SRT input stream is available
+    async fn ready(&self) -> Result<bool, Error> {
+        let pipeline_state = self.lock_err().await?;
+        let pipeline = pipeline_state.pipeline.as_ref().unwrap();
+
+        let demux = pipeline
+            .by_name("demux")
+            .ok_or(MyError::MissingElement("demux".to_string()))?;
+
+        Ok(demux
+            .pads()
+            .into_iter()
+            .any(|pad| pad.name().starts_with("video") || pad.name().starts_with("audio")))
+    }
+
     /// Add connection to pipeline
     /// # Arguments
     /// * `id` - Connection id
     ///
     /// Based on the stream type (audio or video) of the connection, the corresponding branch is created
     /// For whipsink to work, the branch must be linked to the output tee element and synced in state
+    /// Return NoSRTStream error if no input stream is available
     async fn add_connection(&self, id: String) -> Result<(), Error> {
+        let ready = self.ready().await?;
+        if !ready {
+            tracing::error!("Demux has no pad available. No connection can be added.");
+            return Err(
+                MyError::FailedOperation("Pipeline not ready for connection".to_string()).into(),
+            );
+        }
+
         let pipeline_state = self.lock_err().await?;
         let pipeline = pipeline_state.pipeline.as_ref().unwrap();
         tracing::debug!("Add connection {} to pipeline", id);
@@ -70,16 +94,6 @@ impl PipelineBase for SharablePipeline {
         let demux = pipeline
             .by_name("demux")
             .ok_or(MyError::MissingElement("demux".to_string()))?;
-        if !demux
-            .pads()
-            .into_iter()
-            .any(|pad| pad.name().starts_with("video") || pad.name().starts_with("audio"))
-        {
-            tracing::error!("Demux has no pad available. No connection can be added.");
-            return Err(MyError::FailedOperation("No available stream".to_string()).into());
-        }
-
-        // Create whip sink when demux has at least one video or audio pad
         let whipsink = gst::ElementFactory::make("whipwebrtcsink")
             .name("whip-sink-".to_string() + &id)
             .build()?;

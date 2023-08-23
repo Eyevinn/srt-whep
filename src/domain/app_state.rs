@@ -73,7 +73,6 @@ impl SharableAppState {
     }
 
     pub async fn reset(&self) -> Result<(), MyError> {
-        // Try to hold the lock and reset the app state
         let mut app_state = self.lock_err().await?;
         let connections = &mut app_state.connections;
 
@@ -82,7 +81,6 @@ impl SharableAppState {
     }
 
     pub async fn has_connection(&self, id: String) -> Result<bool, MyError> {
-        // Try to hold the lock and check if the connection exists
         let mut app_state = self.lock_err().await?;
         let connections = &mut app_state.connections;
 
@@ -91,33 +89,30 @@ impl SharableAppState {
 
     pub async fn remove_connection(&self, id: String) -> Result<(), MyError> {
         tracing::debug!("Remove connection {} from app state", id);
-
-        // Try to hold the lock and remove the connection
         let mut app_state = self.lock_err().await?;
         let connections = &mut app_state.connections;
 
         connections
             .remove(&id)
             .map(|_| ())
-            .ok_or(MyError::ResourceNotFound)
+            .ok_or(MyError::ConnectionNotFound(id))
     }
 
     pub async fn list_connections(&self) -> Result<Vec<String>, MyError> {
-        // Try to hold the lock and return a list of the connections
         let mut app_state = self.lock_err().await?;
         let connections = &mut app_state.connections;
+
         let keys = connections.keys().cloned().collect::<Vec<_>>();
         Ok(keys)
     }
 
     pub async fn add_connection(&self, id: String) -> Result<(), MyError> {
         tracing::debug!("Add connection {} to app state", id);
-
         let mut app_state = self.lock_err().await?;
         let connections = &mut app_state.connections;
 
         match connections.entry(id.clone()) {
-            Entry::Occupied(_) => Err(MyError::RepeatedResourceIdError(id)),
+            Entry::Occupied(_) => Err(MyError::RepeatedConnection(id)),
             Entry::Vacant(entry) => {
                 entry.insert(Connection::new());
                 Ok(())
@@ -127,27 +122,19 @@ impl SharableAppState {
 
     pub async fn save_whip_offer(
         &self,
-        conn_id: String,
+        id: String,
         offer: SessionDescription,
-    ) -> Result<String, MyError> {
+    ) -> Result<(), MyError> {
         tracing::debug!("Save WHIP SDP offer: {:?}", offer);
-
         let mut app_state = self.lock_err().await?;
         let connections = &mut app_state.connections;
 
-        for (id, conn) in connections.iter_mut() {
-            if conn.whep_answer.is_none() {
-                if conn.whip_offer.is_none() && &conn_id == id {
-                    conn.whip_offer = Some(offer);
-
-                    return Ok(conn_id.clone());
-                } else {
-                    return Err(MyError::RepeatedResourceIdError(conn_id.clone()));
-                }
-            }
+        if let Some(con) = connections.get_mut(&id) {
+            con.whip_offer = Some(offer);
+            Ok(())
+        } else {
+            Err(MyError::ConnectionNotFound(id))
         }
-
-        Err(MyError::ResourceNotFound)
     }
 
     pub async fn wait_on_whep_answer(&self, id: String) -> Result<SessionDescription, MyError> {
@@ -183,11 +170,10 @@ impl SharableAppState {
 
     pub async fn save_whep_answer(
         &self,
-        offer: SessionDescription,
         id: String,
+        offer: SessionDescription,
     ) -> Result<(), MyError> {
         tracing::debug!("Save WHEP SDP answer: {:?}", offer);
-
         let mut app_state = self.lock_err().await?;
         let connections = &mut app_state.connections;
 
@@ -195,7 +181,7 @@ impl SharableAppState {
             con.whep_answer = Some(offer);
             Ok(())
         } else {
-            Err(MyError::ResourceNotFound)
+            Err(MyError::ConnectionNotFound(id))
         }
     }
 

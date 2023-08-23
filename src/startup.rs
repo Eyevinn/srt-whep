@@ -17,7 +17,6 @@ pub fn run<T: PipelineBase + 'static>(
         App::new()
             .wrap(TracingLogger::default())
             .wrap(cors)
-            .route("/health_check", web::get().to(health_check))
             .route("/list", web::get().to(list::<T>))
             .route("/channel", web::post().to(whep_handler::<T>))
             .route("/channel", web::route().guard(guard::Options()).to(options))

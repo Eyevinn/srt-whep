@@ -19,6 +19,15 @@ pub async fn whep_handler<T: PipelineBase>(
         )));
     }
 
+    // Check if input stream is available
+    let ready = pipeline_state
+        .ready()
+        .await
+        .context("Failed to check pipeline state")?;
+    if !ready {
+        return Err(SubscribeError::MissingInputStream);
+    }
+
     let id = Uuid::new_v4().to_string();
     tracing::info!("Create connection {} at time: {:?}", id.clone(), Utc::now());
 
@@ -59,9 +68,7 @@ pub async fn whep_handler<T: PipelineBase>(
                 .await
                 .context("Failed to remove connection from app state")?;
 
-            Err(SubscribeError::ValidationError(
-                MyError::PipelineConnectFailed("No SDP offer from WHIP sink".to_string()),
-            ))
+            Err(SubscribeError::ValidationError(MyError::OfferMissing))
         }
     }
 }
@@ -73,18 +80,23 @@ pub async fn whep_patch_handler(
     path: web::Path<String>,
     app_state: web::Data<SharableAppState>,
 ) -> Result<HttpResponse, SubscribeError> {
-    let sdp_answer: SessionDescription =
-        form.try_into().map_err(SubscribeError::ValidationError)?;
     let id = path.into_inner();
     if id.is_empty() {
-        return Err(SubscribeError::ValidationError(MyError::ResourceNotFound));
+        return Err(SubscribeError::ValidationError(MyError::EmptyConnection));
+    }
+    let sdp_answer: SessionDescription =
+        form.try_into().map_err(SubscribeError::ValidationError)?;
+    if sdp_answer.is_sendonly() {
+        return Err(SubscribeError::ValidationError(MyError::InvalidSDP(
+            "Received a send-only SDP from client, ignoring it.".to_string(),
+        )));
     }
 
     // TODO: check content type for trickle-ice and return not supported
 
     tracing::debug!("Saving WHEP SDP answer to app");
     app_state
-        .save_whep_answer(sdp_answer, id)
+        .save_whep_answer(id, sdp_answer)
         .await
         .context("Failed to save WHEP SDP answer")?;
 
