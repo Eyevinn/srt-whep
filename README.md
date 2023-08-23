@@ -15,7 +15,7 @@ When conceiving this project, we made deliberate design choices to shape its fun
 - No Video Transcoding:
 We have intentionally refrained from implementing video transcoding within this component. This decision stems from the desire to maintain the integrity of the original video stream. This approach caters to use cases like confidence monitoring or preview. If you wish to transcode video anyway, here is an [example](https://github.com/Eyevinn/srt-whep/issues/36#issuecomment-1667880628) to do that.
 - Server-Side Initiation Mode:
-Our project does not currently support the client-side initiation mode of [WebRTC-HTTP Egress Protocol (WHEP)](https://www.ietf.org/id/draft-murillo-whep-02.html). Instead, we have adopted a server-side initiation approach. In this mode, the server provides the SDP offer, as it possesses knowledge of the available streams.
+Our project does not currently support the client-side initiation mode of [WebRTC-HTTP Egress Protocol (WHEP)](./docs/whep.md). Instead, we have adopted a server-side initiation approach. In this mode, the server provides the SDP offer, as it possesses knowledge of the available streams.
 - Focus on SDP Offer/Answer Exchange:
 Our server's primary focus is on the exchange of SDP (Session Description Protocol) offers and answers. While WebRTC typically involves ICE (Interactive Connectivity Establishment) negotiation for establishing peer-to-peer connections, we have opted not to include ICE negotiation within the scope of our project at this time. Our emphasis remains on the effective exchange of SDP-related information.
 
@@ -25,7 +25,7 @@ It is suggested that
 - Mac Users: Follow our comprehensive build instructions and use Chrome for streaming.
 - Ubuntu Users: Either build the program from source or use Docker for running. Both methods are supported.
 
-Some useful commands can be found in [here](./docs/useful_commands.md).
+Some useful commands can be found [here](./docs/useful_commands.md).
 
 ## Install
 

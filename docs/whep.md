@@ -1,4 +1,4 @@
-Here we describe how to setup a WebRTC egress session and available tools for testing.
+## Whep
 
 As discussed in this [blog](https://www.meetecho.com/blog/whep-qui/) by [Lorenzo Miniero](https://www.meetecho.com/blog/author/lminiero/), there are two ways to set up a WHEP session.
 1. The client originates an SDP offer (stating their intention of receiving specific media), and wait for an answer from the WHEP server, or
