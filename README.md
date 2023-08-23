@@ -25,6 +25,8 @@ It is suggested that
 - Mac Users: Follow our comprehensive build instructions and use Chrome for streaming.
 - Ubuntu Users: Either build the program from source or use Docker for running. Both methods are supported.
 
+Some useful commands can be found in [here](./docs/useful_commands.md).
+
 ## Install
 
 ```
@@ -190,12 +192,12 @@ When working with SRT streams, there are several important considerations that c
 - Based on the [discussion](https://github.com/AlexxIT/Blog/issues/5), it seems rather challenging to support H.265 / HEVC right now.
 
 4. **Codecs and Profiles Compatibility:**
-- Video profiles, such as Baseline, Main, and High for H.264, play a crucial role in stream compatibility. While Chrome supports all profiles, Safari only accepts the Baseline profile.
+- Video profiles, such as Baseline, Main, and High for H.264, play a crucial role in stream compatibility. While Chrome supports all profiles, Safari only accepts the Baseline profile. For further details, please refer to [this](./docs/supported_codecs.md) table.
 
 ## Discussion and Issues
 All relevant discussions are tracked in [issues](https://github.com/Eyevinn/srt-whep/issues/). Please feel free to open a new issue if you have any questions.
 
-- We have a set of known limitations recorded [here](https://github.com/Eyevinn/srt-whep/issues/46). You might want to check it out if running into an issue.
+- We have a set of known limitations recorded [here](./docs/known_limitations.md). You might want to check it out if running into an issue.
 - If you doubt a plugin is missing in gstreamer you can check it using `gst-inspect-1.0 <plugin>`. For example, `gst-inspect-1.0 srtsink`.
 - To get more verbose logging you can set the `GST_DEBUG` environment variable to `2`. For example, run in terminal: `export GST_DEBUG=2`
 
