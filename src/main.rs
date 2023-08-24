@@ -35,13 +35,12 @@ async fn main() -> Result<(), Box<dyn Error>> {
                 PipelineGuard::new(pipeline_clone.clone(), args.clone(), appstate_clone.clone());
 
             if let Err(err) = pipeline_guard.run().await {
-                tracing::error!("Ppeline runs into unrecovable error: {}", err);
-                break;
-            };
+                tracing::error!("Pipeline runs into error: {}", err);
+            } else {
+                tracing::info!("Pipeline reaches EOS. Reset and rerun the pipeline.");
+            }
 
-            // Reset and rerun the pipeline when it encounters EOS
             sleep(Duration::from_secs(1)).await;
-            tracing::info!("Pipeline reaches EOS. Reset and rerun the pipeline.");
         }
     });
 
