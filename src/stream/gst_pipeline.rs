@@ -327,6 +327,9 @@ impl PipelineBase for SharablePipeline {
 
                         Ok(())
                     } else if media_type.starts_with("video/x-h265") {
+                        tracing::warn!(
+                            "H.265(HEVC) streams can be linked but are not fully supported yet"
+                        );
                         // Create h265 video elements
                         let h265parse = gst::ElementFactory::make("h265parse").build()?;
                         let output_tee_video = gst::ElementFactory::make("tee")
@@ -341,7 +344,7 @@ impl PipelineBase for SharablePipeline {
                         }
 
                         // 'video_queue' has been added to the pipeline already, so we don't add it again.
-                        pipeline.add_many(&video_elements[1..video_elements.len() - 1])?;
+                        pipeline.add_many(&video_elements[1..])?;
                         gst::Element::link_many(&video_elements[..])?;
                         for e in video_elements {
                             e.sync_state_with_parent()?;

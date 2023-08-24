@@ -35,6 +35,3 @@ gst-launch-1.0 playbin uri="srt://127.0.0.1:1234?mode=listener"
 2. Type in URL: ``` srt://127.0.0.1:1234?mode=listener ```
 
 - **To run as caller, change mode from `listener` to `caller`**
-ffmpeg -f lavfi -re -i testsrc=size=1280x720:rate=30 -pix_fmt yuv420p \
-       -c:v libx264 -b:v 1000k -g 30 -keyint_min 120 -profile:v baseline -preset veryfast \
-       -f mpegts "srt://127.0.0.1:1234?mode=caller&pkt_size=1316"
