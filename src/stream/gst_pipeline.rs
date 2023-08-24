@@ -213,7 +213,7 @@ impl PipelineBase for SharablePipeline {
         tracing::info!("SRT Input uri: {}", uri);
 
         // Run discoverer if the source stream is in listener mode (we are the caller)
-        if srt_mode == SRTMode::Caller {
+        if srt_mode == SRTMode::Caller && args.run_discoverer {
             tracing::info!("Running discoverer...");
             // Swallow error if discoverer fails (This could happen When SRT client is running in Docker container)
             let _ = run_discoverer(&uri, args.discoverer_timeout_sec);
@@ -241,6 +241,9 @@ impl PipelineBase for SharablePipeline {
 
         let srt_queue = gst::ElementFactory::make("queue")
             .name("srt_queue")
+            // Drop old packets when the queue is full (so it does not block pushing thread)
+            .property_from_str("leaky", "downstream")
+            .property_from_str("max-size-buffers", "0")
             .build()?;
         let output_uri = format!(
             "srt://{}?mode={}",

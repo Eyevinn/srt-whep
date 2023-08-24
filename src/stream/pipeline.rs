@@ -15,6 +15,10 @@ pub struct Args {
     #[clap(short, long, value_enum, verbatim_doc_comment)]
     pub srt_mode: SRTMode,
 
+    /// Run discoverer before connecting to the SRT stream (listener)
+    #[clap(short, long, default_value_t = true)]
+    pub run_discoverer: bool,
+
     /// Timeout for discoverer in seconds
     #[clap(short, long, default_value_t = 10)]
     pub discoverer_timeout_sec: u64,

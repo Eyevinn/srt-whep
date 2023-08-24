@@ -25,6 +25,7 @@ fn spawn_app() -> String {
             input_address: "127.0.0.1:1234".to_string(),
             output_address: "127.0.0.1:1234".to_string(),
             srt_mode: SRTMode::Caller,
+            run_discoverer: true,
             discoverer_timeout_sec: 5,
         }
     };
