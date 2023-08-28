@@ -19,6 +19,16 @@ Our project does not currently support the client-side initiation mode of [WebRT
 - Focus on SDP Offer/Answer Exchange:
 Our server's primary focus is on the exchange of SDP (Session Description Protocol) offers and answers. While WebRTC typically involves ICE (Interactive Connectivity Establishment) negotiation for establishing peer-to-peer connections, we have opted not to include ICE negotiation within the scope of our project at this time. Our emphasis remains on the effective exchange of SDP-related information.
 
+## Compliance Table
+Here we have a list of supported production software.
+
+| Source Type       | Supported            | Details                                  |
+|-------------------|----------------------|------------------------------------------|
+| FFMpeg            | :white_check_mark:   | Supports as input source                 |
+| OBS               | :white_check_mark:   | Supports as input source                 |
+| Twitch            | :white_check_mark:   | Supports streaming from OBS              |
+| YouTube live      | :clock9:             | To be tested soon                        |
+
 ## Getting Started
 It is suggested that
 
