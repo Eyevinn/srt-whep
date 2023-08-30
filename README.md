@@ -25,7 +25,7 @@ Here we have a list of supported production software.
 | Source Type       | Supported            | Details                                  |
 |-------------------|----------------------|------------------------------------------|
 | FFMpeg            | :white_check_mark:   | A complete, cross-platform solution to record, convert and stream audio and video |
-| OBS               | :white_check_mark:   | free and open source software for video recording and live streaming                 |
+| [OBS](https://obsproject.com)               | :white_check_mark:   | Free and open source software for video recording and live streaming                 |
 | GStreamer         | :white_check_mark:   | A pipeline-based multimedia framework    |
 
 ## Getting Started
