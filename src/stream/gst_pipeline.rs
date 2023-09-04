@@ -224,27 +224,16 @@ impl PipelineBase for SharablePipeline {
             .build()?;
         let input_tee = gst::ElementFactory::make("tee").name("input_tee").build()?;
 
-        let whep_queue = gst::ElementFactory::make("queue")
-            .name("whep_queue")
-            .build()?;
+        let whep_queue = Self::create_custom_queue("whep_queue", "0", "0", "no")?;
         let typefind = gst::ElementFactory::make("typefind")
             .name("typefind")
             .build()?;
         let tsdemux = gst::ElementFactory::make("tsdemux").name("demux").build()?;
 
-        let video_queue: gst::Element = gst::ElementFactory::make("queue")
-            .name("video-queue")
-            .build()?;
-        let audio_queue: gst::Element = gst::ElementFactory::make("queue")
-            .name("audio-queue")
-            .build()?;
+        let video_queue = Self::create_custom_queue("video-queue", "0", "0", "no")?;
+        let audio_queue = Self::create_custom_queue("audio-queue", "0", "0", "no")?;
+        let srt_queue = Self::create_custom_queue("srt-queue", "0", "0", "downstream")?;
 
-        let srt_queue = gst::ElementFactory::make("queue")
-            .name("srt_queue")
-            // Drop old packets when the queue is full (so it does not block pushing thread)
-            .property_from_str("leaky", "downstream")
-            .property_from_str("max-size-buffers", "0")
-            .build()?;
         let output_uri = format!(
             "srt://{}?mode={}",
             args.output_address,
@@ -303,9 +292,11 @@ impl PipelineBase for SharablePipeline {
                         let output_tee_video = gst::ElementFactory::make("tee")
                             .name("output_tee_video")
                             .build()?;
-                        // Add a fakesink to the end of pipeline,
+                        // Add a fakesink to the end of pipeline to consume buffers
                         // it receives and pops EOS to message bus when the SRT input stream is closed
-                        let fakesink = gst::ElementFactory::make("fakesink").build()?;
+                        let fakesink = gst::ElementFactory::make("fakesink")
+                            .property("can-activate-pull", true)
+                            .build()?;
 
                         let video_elements =
                             &[&video_queue, &h264parse, &output_tee_video, &fakesink];
@@ -329,7 +320,9 @@ impl PipelineBase for SharablePipeline {
                         let output_tee_video = gst::ElementFactory::make("tee")
                             .name("output_tee_video")
                             .build()?;
-                        let fakesink = gst::ElementFactory::make("fakesink").build()?;
+                        let fakesink = gst::ElementFactory::make("fakesink")
+                            .property("can-activate-pull", true)
+                            .build()?;
 
                         let video_elements =
                             &[&video_queue, &h265parse, &output_tee_video, &fakesink];
@@ -350,7 +343,9 @@ impl PipelineBase for SharablePipeline {
                         let output_tee_audio = gst::ElementFactory::make("tee")
                             .name("output_tee_audio")
                             .build()?;
-                        let fakesink = gst::ElementFactory::make("fakesink").build()?;
+                        let fakesink = gst::ElementFactory::make("fakesink")
+                            .property("can-activate-pull", true)
+                            .build()?;
 
                         let audio_elements = &[
                             &audio_queue,
@@ -565,28 +560,23 @@ impl PipelineBase for SharablePipeline {
 impl SharablePipeline {
     /// Create a queue element with given name and properties
     /// To check if the queue is blocking, we connect to the overrun and underrun signals
-    fn _create_debug_queue(
+    fn create_custom_queue(
         queue_name: &str,
         max_size_buffers: &str,
+        max_size_time: &str,
         leaky: &str,
     ) -> Result<gst::Element, Error> {
         let queue = gst::ElementFactory::make("queue")
             .name(queue_name)
             .property_from_str("max-size-buffers", max_size_buffers)
+            .property_from_str("max-size-time", max_size_time)
             .property_from_str("leaky", leaky)
             .build()?;
 
         queue.connect("overrun", false, {
             move |values: &[glib::Value]| {
                 let queue = values[0].get::<gst::Element>().unwrap();
-                tracing::warn!("{} is overrun", queue.name());
-                None
-            }
-        });
-        queue.connect("underrun", false, {
-            move |values: &[glib::Value]| {
-                let queue = values[0].get::<gst::Element>().unwrap();
-                tracing::warn!("{} is underrun", queue.name());
+                tracing::debug!("{} is overrun", queue.name());
                 None
             }
         });
