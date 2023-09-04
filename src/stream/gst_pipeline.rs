@@ -253,7 +253,6 @@ impl PipelineBase for SharablePipeline {
         tracing::info!("SRT Output uri: {}", output_uri);
         let srtsink = gst::ElementFactory::make("srtsink")
             .property("uri", output_uri)
-            .property("async", false) // to not block tee
             .property("wait-for-connection", false)
             .build()?;
 
@@ -304,17 +303,12 @@ impl PipelineBase for SharablePipeline {
                         let output_tee_video = gst::ElementFactory::make("tee")
                             .name("output_tee_video")
                             .build()?;
+                        // Add a fakesink to the end of pipeline,
+                        // it receives and pops EOS to message bus when the SRT input stream is closed
                         let fakesink = gst::ElementFactory::make("fakesink").build()?;
 
-                        let mut video_elements =
-                            vec![&video_queue, &h264parse, &output_tee_video, &fakesink];
-                        // Add a fakesink to the end of pipeline if we are the listener,
-                        // it receives and pops EOS to message bus when the SRT input stream is closed
-                        // TODO: understand why not in caller mode
-                        if srt_mode == SRTMode::Caller {
-                            video_elements.pop();
-                        }
-
+                        let video_elements =
+                            &[&video_queue, &h264parse, &output_tee_video, &fakesink];
                         // 'video_queue' has been added to the pipeline already, so we don't add it again.
                         pipeline.add_many(&video_elements[1..])?;
                         gst::Element::link_many(&video_elements[..])?;
@@ -337,12 +331,8 @@ impl PipelineBase for SharablePipeline {
                             .build()?;
                         let fakesink = gst::ElementFactory::make("fakesink").build()?;
 
-                        let mut video_elements =
-                            vec![&video_queue, &h265parse, &output_tee_video, &fakesink];
-                        if srt_mode == SRTMode::Caller {
-                            video_elements.pop();
-                        }
-
+                        let video_elements =
+                            &[&video_queue, &h265parse, &output_tee_video, &fakesink];
                         // 'video_queue' has been added to the pipeline already, so we don't add it again.
                         pipeline.add_many(&video_elements[1..])?;
                         gst::Element::link_many(&video_elements[..])?;
@@ -362,7 +352,7 @@ impl PipelineBase for SharablePipeline {
                             .build()?;
                         let fakesink = gst::ElementFactory::make("fakesink").build()?;
 
-                        let mut audio_elements = vec![
+                        let audio_elements = &[
                             &audio_queue,
                             &aacparse,
                             &avdec_aac,
@@ -372,10 +362,6 @@ impl PipelineBase for SharablePipeline {
                             &output_tee_audio,
                             &fakesink,
                         ];
-                        if srt_mode == SRTMode::Caller {
-                            audio_elements.pop();
-                        }
-
                         // 'audio_queue' has been added to the pipeline already, so we don't add it again.
                         pipeline.add_many(&audio_elements[1..])?;
                         gst::Element::link_many(&audio_elements[..])?;
@@ -577,6 +563,37 @@ impl PipelineBase for SharablePipeline {
 
 // Helper functions
 impl SharablePipeline {
+    /// Create a queue element with given name and properties
+    /// To check if the queue is blocking, we connect to the overrun and underrun signals
+    fn _create_debug_queue(
+        queue_name: &str,
+        max_size_buffers: &str,
+        leaky: &str,
+    ) -> Result<gst::Element, Error> {
+        let queue = gst::ElementFactory::make("queue")
+            .name(queue_name)
+            .property_from_str("max-size-buffers", max_size_buffers)
+            .property_from_str("leaky", leaky)
+            .build()?;
+
+        queue.connect("overrun", false, {
+            move |values: &[glib::Value]| {
+                let queue = values[0].get::<gst::Element>().unwrap();
+                tracing::warn!("{} is overrun", queue.name());
+                None
+            }
+        });
+        queue.connect("underrun", false, {
+            move |values: &[glib::Value]| {
+                let queue = values[0].get::<gst::Element>().unwrap();
+                tracing::warn!("{} is underrun", queue.name());
+                None
+            }
+        });
+
+        Ok(queue)
+    }
+
     /// Remove element from a locked pipeline
     /// # Arguments
     /// * `pipeline` - Locked pipeline
