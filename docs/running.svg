@@ -1,1022 +1,1116 @@
 <?xml version="1.0" standalone="no"?>
-<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="5000pt" height="491pt" viewBox="0.00 0.00 4999.50 490.80">
-<g id="graph0" class="graph" transform="translate(4,486.79998779296875) scale(1)" data-name="pipeline">
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="5001pt" height="585pt" viewBox="0.00 0.00 5000.98 585.25">
+<g id="graph0" class="graph" transform="translate(4,581.25) scale(1)" data-name="pipeline">
 
-<polygon fill="white" stroke="none" points="-4,4 -4,-486.8 4995.5,-486.8 4995.5,4 -4,4" style=""/>
-<text text-anchor="middle" x="2495.75" y="-469.8" font-family="sans" font-size="10.00" style="">&lt;GstPipeline&gt;</text>
-<text text-anchor="middle" x="2495.75" y="-457.8" font-family="sans" font-size="10.00" style="">pipeline0</text>
-<text text-anchor="middle" x="2495.75" y="-445.8" font-family="sans" font-size="10.00" style="">[&gt;]</text>
-<g id="clust1" class="cluster" data-name="cluster_audio_queue_38a2c591_c540_4223_98c7_531b51d3f00d_0x156088a40">
+<polygon fill="white" stroke="none" points="-4,4 -4,-581.25 4996.98,-581.25 4996.98,4 -4,4" style=""/>
+<text text-anchor="middle" x="2496.49" y="-564.25" font-family="sans" font-size="10.00" style="">&lt;GstPipeline&gt;</text>
+<text text-anchor="middle" x="2496.49" y="-552.25" font-family="sans" font-size="10.00" style="">pipeline0</text>
+<text text-anchor="middle" x="2496.49" y="-540.25" font-family="sans" font-size="10.00" style="">[&gt;]</text>
+<g id="clust1" class="cluster" data-name="cluster_audio_queue_310fad4d_1442_4461_914d_73c817351dfa_0x121920740">
 
-<path fill="#aaffaa" stroke="black" d="M3834,-132C3834,-132 4003,-132 4003,-132 4009,-132 4015,-138 4015,-144 4015,-144 4015,-240 4015,-240 4015,-246 4009,-252 4003,-252 4003,-252 3834,-252 3834,-252 3828,-252 3822,-246 3822,-240 3822,-240 3822,-144 3822,-144 3822,-138 3828,-132 3834,-132" style=""/>
-<text text-anchor="middle" x="3918.5" y="-240.8" font-family="Bitstream Vera Sans" font-size="8.00" style="">GstQueue</text>
-<text text-anchor="middle" x="3918.5" y="-231.2" font-family="Bitstream Vera Sans" font-size="8.00" style="">audio-queue-38a2c591-c540-4223-98c7-531b51d3f00d</text>
-<text text-anchor="middle" x="3918.5" y="-221.6" font-family="Bitstream Vera Sans" font-size="8.00" style="">[&gt;]</text>
-<text text-anchor="middle" x="3918.5" y="-212" font-family="Bitstream Vera Sans" font-size="8.00" style="">current-level-buffers=9</text>
-<text text-anchor="middle" x="3918.5" y="-202.4" font-family="Bitstream Vera Sans" font-size="8.00" style="">current-level-bytes=1449</text>
-<text text-anchor="middle" x="3918.5" y="-192.8" font-family="Bitstream Vera Sans" font-size="8.00" style="">current-level-time=180000000</text>
+<path fill="#aaffaa" stroke="black" d="M3807.48,-81.25C3807.48,-81.25 4008.48,-81.25 4008.48,-81.25 4014.48,-81.25 4020.48,-87.25 4020.48,-93.25 4020.48,-93.25 4020.48,-189.25 4020.48,-189.25 4020.48,-195.25 4014.48,-201.25 4008.48,-201.25 4008.48,-201.25 3807.48,-201.25 3807.48,-201.25 3801.48,-201.25 3795.48,-195.25 3795.48,-189.25 3795.48,-189.25 3795.48,-93.25 3795.48,-93.25 3795.48,-87.25 3801.48,-81.25 3807.48,-81.25" style=""/>
+<text text-anchor="middle" x="3907.98" y="-190.05" font-family="Bitstream Vera Sans" font-size="8.00" style="">GstQueue</text>
+<text text-anchor="middle" x="3907.98" y="-180.45" font-family="Bitstream Vera Sans" font-size="8.00" style="">audio-queue-310fad4d-1442-4461-914d-73c817351dfa</text>
+<text text-anchor="middle" x="3907.98" y="-170.85" font-family="Bitstream Vera Sans" font-size="8.00" style="">[&gt;]</text>
+<text text-anchor="middle" x="3907.98" y="-161.25" font-family="Bitstream Vera Sans" font-size="8.00" style="">current-level-buffers=50</text>
+<text text-anchor="middle" x="3907.98" y="-151.65" font-family="Bitstream Vera Sans" font-size="8.00" style="">current-level-bytes=8034</text>
+<text text-anchor="middle" x="3907.98" y="-142.05" font-family="Bitstream Vera Sans" font-size="8.00" style="">current-level-time=1000000000</text>
 </g>
-<g id="clust2" class="cluster" data-name="cluster_audio_queue_38a2c591_c540_4223_98c7_531b51d3f00d_0x156088a40_sink">
+<g id="clust2" class="cluster" data-name="cluster_audio_queue_310fad4d_1442_4461_914d_73c817351dfa_0x121920740_sink">
 
 </g>
-<g id="clust3" class="cluster" data-name="cluster_audio_queue_38a2c591_c540_4223_98c7_531b51d3f00d_0x156088a40_src">
+<g id="clust3" class="cluster" data-name="cluster_audio_queue_310fad4d_1442_4461_914d_73c817351dfa_0x121920740_src">
 
 </g>
-<g id="clust4" class="cluster" data-name="cluster_video_queue_38a2c591_c540_4223_98c7_531b51d3f00d_0x156088740">
+<g id="clust4" class="cluster" data-name="cluster_video_queue_310fad4d_1442_4461_914d_73c817351dfa_0x1200afcc0">
 
-<path fill="#aaffaa" stroke="black" d="M2417.99,-238C2417.99,-238 2586.99,-238 2586.99,-238 2592.99,-238 2598.99,-244 2598.99,-250 2598.99,-250 2598.99,-346 2598.99,-346 2598.99,-352 2592.99,-358 2586.99,-358 2586.99,-358 2417.99,-358 2417.99,-358 2411.99,-358 2405.99,-352 2405.99,-346 2405.99,-346 2405.99,-250 2405.99,-250 2405.99,-244 2411.99,-238 2417.99,-238" style=""/>
-<text text-anchor="middle" x="2502.49" y="-346.8" font-family="Bitstream Vera Sans" font-size="8.00" style="">GstQueue</text>
-<text text-anchor="middle" x="2502.49" y="-337.2" font-family="Bitstream Vera Sans" font-size="8.00" style="">video-queue-38a2c591-c540-4223-98c7-531b51d3f00d</text>
-<text text-anchor="middle" x="2502.49" y="-327.6" font-family="Bitstream Vera Sans" font-size="8.00" style="">[&gt;]</text>
-<text text-anchor="middle" x="2502.49" y="-318" font-family="Bitstream Vera Sans" font-size="8.00" style="">current-level-buffers=6</text>
-<text text-anchor="middle" x="2502.49" y="-308.4" font-family="Bitstream Vera Sans" font-size="8.00" style="">current-level-bytes=51414</text>
-<text text-anchor="middle" x="2502.49" y="-298.8" font-family="Bitstream Vera Sans" font-size="8.00" style="">current-level-time=200003054</text>
+<path fill="#aaffaa" stroke="black" d="M2442.98,-317.25C2442.98,-317.25 2643.98,-317.25 2643.98,-317.25 2649.98,-317.25 2655.98,-323.25 2655.98,-329.25 2655.98,-329.25 2655.98,-425.25 2655.98,-425.25 2655.98,-431.25 2649.98,-437.25 2643.98,-437.25 2643.98,-437.25 2442.98,-437.25 2442.98,-437.25 2436.98,-437.25 2430.98,-431.25 2430.98,-425.25 2430.98,-425.25 2430.98,-329.25 2430.98,-329.25 2430.98,-323.25 2436.98,-317.25 2442.98,-317.25" style=""/>
+<text text-anchor="middle" x="2543.48" y="-426.05" font-family="Bitstream Vera Sans" font-size="8.00" style="">GstQueue</text>
+<text text-anchor="middle" x="2543.48" y="-416.45" font-family="Bitstream Vera Sans" font-size="8.00" style="">video-queue-310fad4d-1442-4461-914d-73c817351dfa</text>
+<text text-anchor="middle" x="2543.48" y="-406.85" font-family="Bitstream Vera Sans" font-size="8.00" style="">[&gt;]</text>
+<text text-anchor="middle" x="2543.48" y="-397.25" font-family="Bitstream Vera Sans" font-size="8.00" style="">current-level-buffers=31</text>
+<text text-anchor="middle" x="2543.48" y="-387.65" font-family="Bitstream Vera Sans" font-size="8.00" style="">current-level-bytes=130866</text>
+<text text-anchor="middle" x="2543.48" y="-378.05" font-family="Bitstream Vera Sans" font-size="8.00" style="">current-level-time=1033284189</text>
 </g>
-<g id="clust5" class="cluster" data-name="cluster_video_queue_38a2c591_c540_4223_98c7_531b51d3f00d_0x156088740_sink">
+<g id="clust5" class="cluster" data-name="cluster_video_queue_310fad4d_1442_4461_914d_73c817351dfa_0x1200afcc0_sink">
 
 </g>
-<g id="clust6" class="cluster" data-name="cluster_video_queue_38a2c591_c540_4223_98c7_531b51d3f00d_0x156088740_src">
+<g id="clust6" class="cluster" data-name="cluster_video_queue_310fad4d_1442_4461_914d_73c817351dfa_0x1200afcc0_src">
 
 </g>
-<g id="clust7" class="cluster" data-name="cluster_whip_sink_38a2c591_c540_4223_98c7_531b51d3f00d_0x156055290">
+<g id="clust7" class="cluster" data-name="cluster_whip_sink_310fad4d_1442_4461_914d_73c817351dfa_0x1200a51f0">
 
-<path fill="#ffffff" stroke="black" d="M4206.6,-8C4206.6,-8 4979.5,-8 4979.5,-8 4985.5,-8 4991.5,-14 4991.5,-20 4991.5,-20 4991.5,-345 4991.5,-345 4991.5,-351 4985.5,-357 4979.5,-357 4979.5,-357 4206.6,-357 4206.6,-357 4200.6,-357 4194.6,-351 4194.6,-345 4194.6,-345 4194.6,-20 4194.6,-20 4194.6,-14 4200.6,-8 4206.6,-8" style=""/>
-<text text-anchor="middle" x="4593.05" y="-345.8" font-family="Bitstream Vera Sans" font-size="8.00" style="">GstWhipWebRTCSink</text>
-<text text-anchor="middle" x="4593.05" y="-336.2" font-family="Bitstream Vera Sans" font-size="8.00" style="">whip-sink-38a2c591-c540-4223-98c7-531b51d3f00d</text>
-<text text-anchor="middle" x="4593.05" y="-326.6" font-family="Bitstream Vera Sans" font-size="8.00" style="">[&gt;]</text>
-<text text-anchor="middle" x="4593.05" y="-317" font-family="Bitstream Vera Sans" font-size="8.00" style="">video-caps=video/x-vp8; video/x-h264; video/x-vp9; video/x-h265</text>
-<text text-anchor="middle" x="4593.05" y="-307.4" font-family="Bitstream Vera Sans" font-size="8.00" style="">audio-caps=audio/x-opus</text>
-<text text-anchor="middle" x="4593.05" y="-297.8" font-family="Bitstream Vera Sans" font-size="8.00" style="">signaller=((GstWHIPWebRTCSinkSignaller*) 0x1560e50f0)</text>
+<path fill="#ffffff" stroke="black" d="M4212.08,-9.25C4212.08,-9.25 4980.98,-9.25 4980.98,-9.25 4986.98,-9.25 4992.98,-15.25 4992.98,-21.25 4992.98,-21.25 4992.98,-335.25 4992.98,-335.25 4992.98,-341.25 4986.98,-347.25 4980.98,-347.25 4980.98,-347.25 4212.08,-347.25 4212.08,-347.25 4206.08,-347.25 4200.08,-341.25 4200.08,-335.25 4200.08,-335.25 4200.08,-21.25 4200.08,-21.25 4200.08,-15.25 4206.08,-9.25 4212.08,-9.25" style=""/>
+<text text-anchor="middle" x="4596.53" y="-336.05" font-family="Bitstream Vera Sans" font-size="8.00" style="">GstWhipWebRTCSink</text>
+<text text-anchor="middle" x="4596.53" y="-326.45" font-family="Bitstream Vera Sans" font-size="8.00" style="">whip-sink-310fad4d-1442-4461-914d-73c817351dfa</text>
+<text text-anchor="middle" x="4596.53" y="-316.85" font-family="Bitstream Vera Sans" font-size="8.00" style="">[&gt;]</text>
+<text text-anchor="middle" x="4596.53" y="-307.25" font-family="Bitstream Vera Sans" font-size="8.00" style="">video-caps=video/x-vp8; video/x-h264; video/x-vp9; video/x-h265</text>
+<text text-anchor="middle" x="4596.53" y="-297.65" font-family="Bitstream Vera Sans" font-size="8.00" style="">audio-caps=audio/x-opus</text>
+<text text-anchor="middle" x="4596.53" y="-288.05" font-family="Bitstream Vera Sans" font-size="8.00" style="">signaller=((GstWHIPWebRTCSinkSignaller*) 0x120986500)</text>
 </g>
-<g id="clust8" class="cluster" data-name="cluster_whip_sink_38a2c591_c540_4223_98c7_531b51d3f00d_0x156055290_sink">
+<g id="clust8" class="cluster" data-name="cluster_whip_sink_310fad4d_1442_4461_914d_73c817351dfa_0x1200a51f0_sink">
 
 </g>
-<g id="clust9" class="cluster" data-name="cluster_appsink1_0x1570a8d30">
+<g id="clust9" class="cluster" data-name="cluster_appsink5_0x12090e6a0">
 
-<path fill="#aaaaff" stroke="black" d="M4843.5,-16C4843.5,-16 4971.5,-16 4971.5,-16 4977.5,-16 4983.5,-22 4983.5,-28 4983.5,-28 4983.5,-114 4983.5,-114 4983.5,-120 4977.5,-126 4971.5,-126 4971.5,-126 4843.5,-126 4843.5,-126 4837.5,-126 4831.5,-120 4831.5,-114 4831.5,-114 4831.5,-28 4831.5,-28 4831.5,-22 4837.5,-16 4843.5,-16" style=""/>
-<text text-anchor="middle" x="4907.5" y="-114.8" font-family="Bitstream Vera Sans" font-size="8.00" style="">GstAppSink</text>
-<text text-anchor="middle" x="4907.5" y="-105.2" font-family="Bitstream Vera Sans" font-size="8.00" style="">appsink1</text>
-<text text-anchor="middle" x="4907.5" y="-95.6" font-family="Bitstream Vera Sans" font-size="8.00" style="">[&gt;]</text>
-<text text-anchor="middle" x="4907.5" y="-86" font-family="Bitstream Vera Sans" font-size="8.00" style="">last-sample=((GstSample*) 0x15512b6c0)</text>
-<text text-anchor="middle" x="4907.5" y="-76.4" font-family="Bitstream Vera Sans" font-size="8.00" style="">eos=FALSE</text>
+<path fill="#aaaaff" stroke="black" d="M4844.98,-17.25C4844.98,-17.25 4972.98,-17.25 4972.98,-17.25 4978.98,-17.25 4984.98,-23.25 4984.98,-29.25 4984.98,-29.25 4984.98,-115.25 4984.98,-115.25 4984.98,-121.25 4978.98,-127.25 4972.98,-127.25 4972.98,-127.25 4844.98,-127.25 4844.98,-127.25 4838.98,-127.25 4832.98,-121.25 4832.98,-115.25 4832.98,-115.25 4832.98,-29.25 4832.98,-29.25 4832.98,-23.25 4838.98,-17.25 4844.98,-17.25" style=""/>
+<text text-anchor="middle" x="4908.98" y="-116.05" font-family="Bitstream Vera Sans" font-size="8.00" style="">GstAppSink</text>
+<text text-anchor="middle" x="4908.98" y="-106.45" font-family="Bitstream Vera Sans" font-size="8.00" style="">appsink5</text>
+<text text-anchor="middle" x="4908.98" y="-96.85" font-family="Bitstream Vera Sans" font-size="8.00" style="">[&gt;]</text>
+<text text-anchor="middle" x="4908.98" y="-87.25" font-family="Bitstream Vera Sans" font-size="8.00" style="">last-sample=((GstSample*) 0x120903510)</text>
+<text text-anchor="middle" x="4908.98" y="-77.65" font-family="Bitstream Vera Sans" font-size="8.00" style="">eos=FALSE</text>
 </g>
-<g id="clust10" class="cluster" data-name="cluster_appsink1_0x1570a8d30_sink">
+<g id="clust10" class="cluster" data-name="cluster_appsink5_0x12090e6a0_sink">
 
 </g>
-<g id="clust11" class="cluster" data-name="cluster_clocksync1_0x1560a9be0">
+<g id="clust11" class="cluster" data-name="cluster_clocksync5_0x1180de110">
 
-<path fill="#aaffaa" stroke="black" d="M4469.55,-16C4469.55,-16 4618.55,-16 4618.55,-16 4624.55,-16 4630.55,-22 4630.55,-28 4630.55,-28 4630.55,-95 4630.55,-95 4630.55,-101 4624.55,-107 4618.55,-107 4618.55,-107 4469.55,-107 4469.55,-107 4463.55,-107 4457.55,-101 4457.55,-95 4457.55,-95 4457.55,-28 4457.55,-28 4457.55,-22 4463.55,-16 4469.55,-16" style=""/>
-<text text-anchor="middle" x="4544.05" y="-95.8" font-family="Bitstream Vera Sans" font-size="8.00" style="">GstClockSync</text>
-<text text-anchor="middle" x="4544.05" y="-86.2" font-family="Bitstream Vera Sans" font-size="8.00" style="">clocksync1</text>
-<text text-anchor="middle" x="4544.05" y="-76.6" font-family="Bitstream Vera Sans" font-size="8.00" style="">[&gt;]</text>
+<path fill="#aaffaa" stroke="black" d="M4473.53,-17.25C4473.53,-17.25 4622.53,-17.25 4622.53,-17.25 4628.53,-17.25 4634.53,-23.25 4634.53,-29.25 4634.53,-29.25 4634.53,-96.25 4634.53,-96.25 4634.53,-102.25 4628.53,-108.25 4622.53,-108.25 4622.53,-108.25 4473.53,-108.25 4473.53,-108.25 4467.53,-108.25 4461.53,-102.25 4461.53,-96.25 4461.53,-96.25 4461.53,-29.25 4461.53,-29.25 4461.53,-23.25 4467.53,-17.25 4473.53,-17.25" style=""/>
+<text text-anchor="middle" x="4548.03" y="-97.05" font-family="Bitstream Vera Sans" font-size="8.00" style="">GstClockSync</text>
+<text text-anchor="middle" x="4548.03" y="-87.45" font-family="Bitstream Vera Sans" font-size="8.00" style="">clocksync5</text>
+<text text-anchor="middle" x="4548.03" y="-77.85" font-family="Bitstream Vera Sans" font-size="8.00" style="">[&gt;]</text>
 </g>
-<g id="clust12" class="cluster" data-name="cluster_clocksync1_0x1560a9be0_sink">
+<g id="clust12" class="cluster" data-name="cluster_clocksync5_0x1180de110_sink">
 
 </g>
-<g id="clust13" class="cluster" data-name="cluster_clocksync1_0x1560a9be0_src">
+<g id="clust13" class="cluster" data-name="cluster_clocksync5_0x1180de110_src">
 
 </g>
-<g id="clust14" class="cluster" data-name="cluster_appsink0_0x1570a8660">
+<g id="clust14" class="cluster" data-name="cluster_appsink4_0x12090dfd0">
 
-<path fill="#aaaaff" stroke="black" d="M4843.5,-173C4843.5,-173 4971.5,-173 4971.5,-173 4977.5,-173 4983.5,-179 4983.5,-185 4983.5,-185 4983.5,-271 4983.5,-271 4983.5,-277 4977.5,-283 4971.5,-283 4971.5,-283 4843.5,-283 4843.5,-283 4837.5,-283 4831.5,-277 4831.5,-271 4831.5,-271 4831.5,-185 4831.5,-185 4831.5,-179 4837.5,-173 4843.5,-173" style=""/>
-<text text-anchor="middle" x="4907.5" y="-271.8" font-family="Bitstream Vera Sans" font-size="8.00" style="">GstAppSink</text>
-<text text-anchor="middle" x="4907.5" y="-262.2" font-family="Bitstream Vera Sans" font-size="8.00" style="">appsink0</text>
-<text text-anchor="middle" x="4907.5" y="-252.6" font-family="Bitstream Vera Sans" font-size="8.00" style="">[&gt;]</text>
-<text text-anchor="middle" x="4907.5" y="-243" font-family="Bitstream Vera Sans" font-size="8.00" style="">last-sample=((GstSample*) 0x1551191c0)</text>
-<text text-anchor="middle" x="4907.5" y="-233.4" font-family="Bitstream Vera Sans" font-size="8.00" style="">eos=FALSE</text>
+<path fill="#aaaaff" stroke="black" d="M4845.98,-163.25C4845.98,-163.25 4972.98,-163.25 4972.98,-163.25 4978.98,-163.25 4984.98,-169.25 4984.98,-175.25 4984.98,-175.25 4984.98,-261.25 4984.98,-261.25 4984.98,-267.25 4978.98,-273.25 4972.98,-273.25 4972.98,-273.25 4845.98,-273.25 4845.98,-273.25 4839.98,-273.25 4833.98,-267.25 4833.98,-261.25 4833.98,-261.25 4833.98,-175.25 4833.98,-175.25 4833.98,-169.25 4839.98,-163.25 4845.98,-163.25" style=""/>
+<text text-anchor="middle" x="4909.48" y="-262.05" font-family="Bitstream Vera Sans" font-size="8.00" style="">GstAppSink</text>
+<text text-anchor="middle" x="4909.48" y="-252.45" font-family="Bitstream Vera Sans" font-size="8.00" style="">appsink4</text>
+<text text-anchor="middle" x="4909.48" y="-242.85" font-family="Bitstream Vera Sans" font-size="8.00" style="">[&gt;]</text>
+<text text-anchor="middle" x="4909.48" y="-233.25" font-family="Bitstream Vera Sans" font-size="8.00" style="">last-sample=((GstSample*) 0x1209035f0)</text>
+<text text-anchor="middle" x="4909.48" y="-223.65" font-family="Bitstream Vera Sans" font-size="8.00" style="">eos=FALSE</text>
 </g>
-<g id="clust15" class="cluster" data-name="cluster_appsink0_0x1570a8660_sink">
+<g id="clust15" class="cluster" data-name="cluster_appsink4_0x12090dfd0_sink">
 
 </g>
-<g id="clust16" class="cluster" data-name="cluster_clocksync0_0x1560a9a10">
+<g id="clust16" class="cluster" data-name="cluster_clocksync4_0x1218cfdb0">
 
-<path fill="#aaffaa" stroke="black" d="M4469.55,-181C4469.55,-181 4618.55,-181 4618.55,-181 4624.55,-181 4630.55,-187 4630.55,-193 4630.55,-193 4630.55,-260 4630.55,-260 4630.55,-266 4624.55,-272 4618.55,-272 4618.55,-272 4469.55,-272 4469.55,-272 4463.55,-272 4457.55,-266 4457.55,-260 4457.55,-260 4457.55,-193 4457.55,-193 4457.55,-187 4463.55,-181 4469.55,-181" style=""/>
-<text text-anchor="middle" x="4544.05" y="-260.8" font-family="Bitstream Vera Sans" font-size="8.00" style="">GstClockSync</text>
-<text text-anchor="middle" x="4544.05" y="-251.2" font-family="Bitstream Vera Sans" font-size="8.00" style="">clocksync0</text>
-<text text-anchor="middle" x="4544.05" y="-241.6" font-family="Bitstream Vera Sans" font-size="8.00" style="">[&gt;]</text>
+<path fill="#aaffaa" stroke="black" d="M4473.53,-171.25C4473.53,-171.25 4622.53,-171.25 4622.53,-171.25 4628.53,-171.25 4634.53,-177.25 4634.53,-183.25 4634.53,-183.25 4634.53,-250.25 4634.53,-250.25 4634.53,-256.25 4628.53,-262.25 4622.53,-262.25 4622.53,-262.25 4473.53,-262.25 4473.53,-262.25 4467.53,-262.25 4461.53,-256.25 4461.53,-250.25 4461.53,-250.25 4461.53,-183.25 4461.53,-183.25 4461.53,-177.25 4467.53,-171.25 4473.53,-171.25" style=""/>
+<text text-anchor="middle" x="4548.03" y="-251.05" font-family="Bitstream Vera Sans" font-size="8.00" style="">GstClockSync</text>
+<text text-anchor="middle" x="4548.03" y="-241.45" font-family="Bitstream Vera Sans" font-size="8.00" style="">clocksync4</text>
+<text text-anchor="middle" x="4548.03" y="-231.85" font-family="Bitstream Vera Sans" font-size="8.00" style="">[&gt;]</text>
 </g>
-<g id="clust17" class="cluster" data-name="cluster_clocksync0_0x1560a9a10_sink">
+<g id="clust17" class="cluster" data-name="cluster_clocksync4_0x1218cfdb0_sink">
 
 </g>
-<g id="clust18" class="cluster" data-name="cluster_clocksync0_0x1560a9a10_src">
+<g id="clust18" class="cluster" data-name="cluster_clocksync4_0x1218cfdb0_src">
 
 </g>
-<g id="clust19" class="cluster" data-name="cluster_output_tee_audio_0x15312cd20">
+<g id="clust19" class="cluster" data-name="cluster_fakesink1_0x1200e47e0">
 
-<path fill="#aaffaa" stroke="black" d="M3481.4,-131C3481.4,-131 3630.4,-131 3630.4,-131 3636.4,-131 3642.4,-137 3642.4,-143 3642.4,-143 3642.4,-219 3642.4,-219 3642.4,-225 3636.4,-231 3630.4,-231 3630.4,-231 3481.4,-231 3481.4,-231 3475.4,-231 3469.4,-225 3469.4,-219 3469.4,-219 3469.4,-143 3469.4,-143 3469.4,-137 3475.4,-131 3481.4,-131" style=""/>
-<text text-anchor="middle" x="3555.9" y="-219.8" font-family="Bitstream Vera Sans" font-size="8.00" style="">GstTee</text>
-<text text-anchor="middle" x="3555.9" y="-210.2" font-family="Bitstream Vera Sans" font-size="8.00" style="">output_tee_audio</text>
-<text text-anchor="middle" x="3555.9" y="-200.6" font-family="Bitstream Vera Sans" font-size="8.00" style="">[&gt;]</text>
-<text text-anchor="middle" x="3555.9" y="-191" font-family="Bitstream Vera Sans" font-size="8.00" style="">num-src-pads=1</text>
+<path fill="#aaaaff" stroke="black" d="M3779.48,-209.25C3779.48,-209.25 3907.48,-209.25 3907.48,-209.25 3913.48,-209.25 3919.48,-215.25 3919.48,-221.25 3919.48,-221.25 3919.48,-317.25 3919.48,-317.25 3919.48,-323.25 3913.48,-329.25 3907.48,-329.25 3907.48,-329.25 3779.48,-329.25 3779.48,-329.25 3773.48,-329.25 3767.48,-323.25 3767.48,-317.25 3767.48,-317.25 3767.48,-221.25 3767.48,-221.25 3767.48,-215.25 3773.48,-209.25 3779.48,-209.25" style=""/>
+<text text-anchor="middle" x="3843.48" y="-318.05" font-family="Bitstream Vera Sans" font-size="8.00" style="">GstFakeSink</text>
+<text text-anchor="middle" x="3843.48" y="-308.45" font-family="Bitstream Vera Sans" font-size="8.00" style="">fakesink1</text>
+<text text-anchor="middle" x="3843.48" y="-298.85" font-family="Bitstream Vera Sans" font-size="8.00" style="">[&gt;]</text>
+<text text-anchor="middle" x="3843.48" y="-289.25" font-family="Bitstream Vera Sans" font-size="8.00" style="">sync=FALSE</text>
+<text text-anchor="middle" x="3843.48" y="-279.65" font-family="Bitstream Vera Sans" font-size="8.00" style="">last-sample=((GstSample*) 0x1209036d0)</text>
+<text text-anchor="middle" x="3843.48" y="-270.05" font-family="Bitstream Vera Sans" font-size="8.00" style="">can-activate-pull=TRUE</text>
 </g>
-<g id="clust20" class="cluster" data-name="cluster_output_tee_audio_0x15312cd20_sink">
+<g id="clust20" class="cluster" data-name="cluster_fakesink1_0x1200e47e0_sink">
 
 </g>
-<g id="clust21" class="cluster" data-name="cluster_output_tee_audio_0x15312cd20_src">
+<g id="clust21" class="cluster" data-name="cluster_output_tee_audio_0x1200abd20">
 
+<path fill="#aaffaa" stroke="black" d="M3426.88,-81.25C3426.88,-81.25 3575.88,-81.25 3575.88,-81.25 3581.88,-81.25 3587.88,-87.25 3587.88,-93.25 3587.88,-93.25 3587.88,-198.25 3587.88,-198.25 3587.88,-204.25 3581.88,-210.25 3575.88,-210.25 3575.88,-210.25 3426.88,-210.25 3426.88,-210.25 3420.88,-210.25 3414.88,-204.25 3414.88,-198.25 3414.88,-198.25 3414.88,-93.25 3414.88,-93.25 3414.88,-87.25 3420.88,-81.25 3426.88,-81.25" style=""/>
+<text text-anchor="middle" x="3501.38" y="-199.05" font-family="Bitstream Vera Sans" font-size="8.00" style="">GstTee</text>
+<text text-anchor="middle" x="3501.38" y="-189.45" font-family="Bitstream Vera Sans" font-size="8.00" style="">output_tee_audio</text>
+<text text-anchor="middle" x="3501.38" y="-179.85" font-family="Bitstream Vera Sans" font-size="8.00" style="">[&gt;]</text>
+<text text-anchor="middle" x="3501.38" y="-170.25" font-family="Bitstream Vera Sans" font-size="8.00" style="">num-src-pads=2</text>
 </g>
-<g id="clust22" class="cluster" data-name="cluster_opusenc0_0x153108310">
+<g id="clust22" class="cluster" data-name="cluster_output_tee_audio_0x1200abd20_sink">
 
-<path fill="#aaffaa" stroke="black" d="M3123.45,-131C3123.45,-131 3272.45,-131 3272.45,-131 3278.45,-131 3284.45,-137 3284.45,-143 3284.45,-143 3284.45,-210 3284.45,-210 3284.45,-216 3278.45,-222 3272.45,-222 3272.45,-222 3123.45,-222 3123.45,-222 3117.45,-222 3111.45,-216 3111.45,-210 3111.45,-210 3111.45,-143 3111.45,-143 3111.45,-137 3117.45,-131 3123.45,-131" style=""/>
-<text text-anchor="middle" x="3197.95" y="-210.8" font-family="Bitstream Vera Sans" font-size="8.00" style="">GstOpusEnc</text>
-<text text-anchor="middle" x="3197.95" y="-201.2" font-family="Bitstream Vera Sans" font-size="8.00" style="">opusenc0</text>
-<text text-anchor="middle" x="3197.95" y="-191.6" font-family="Bitstream Vera Sans" font-size="8.00" style="">[&gt;]</text>
 </g>
-<g id="clust23" class="cluster" data-name="cluster_opusenc0_0x153108310_sink">
+<g id="clust23" class="cluster" data-name="cluster_output_tee_audio_0x1200abd20_src">
 
 </g>
-<g id="clust24" class="cluster" data-name="cluster_opusenc0_0x153108310_src">
+<g id="clust24" class="cluster" data-name="cluster_opusenc0_0x1200fc320">
 
+<path fill="#aaffaa" stroke="black" d="M3070.43,-84.25C3070.43,-84.25 3219.43,-84.25 3219.43,-84.25 3225.43,-84.25 3231.43,-90.25 3231.43,-96.25 3231.43,-96.25 3231.43,-163.25 3231.43,-163.25 3231.43,-169.25 3225.43,-175.25 3219.43,-175.25 3219.43,-175.25 3070.43,-175.25 3070.43,-175.25 3064.43,-175.25 3058.43,-169.25 3058.43,-163.25 3058.43,-163.25 3058.43,-96.25 3058.43,-96.25 3058.43,-90.25 3064.43,-84.25 3070.43,-84.25" style=""/>
+<text text-anchor="middle" x="3144.93" y="-164.05" font-family="Bitstream Vera Sans" font-size="8.00" style="">GstOpusEnc</text>
+<text text-anchor="middle" x="3144.93" y="-154.45" font-family="Bitstream Vera Sans" font-size="8.00" style="">opusenc0</text>
+<text text-anchor="middle" x="3144.93" y="-144.85" font-family="Bitstream Vera Sans" font-size="8.00" style="">[&gt;]</text>
 </g>
-<g id="clust25" class="cluster" data-name="cluster_audioresample0_0x1560e8290">
+<g id="clust25" class="cluster" data-name="cluster_opusenc0_0x1200fc320_sink">
 
-<path fill="#aaffaa" stroke="black" d="M2780.72,-131C2780.72,-131 2929.72,-131 2929.72,-131 2935.72,-131 2941.72,-137 2941.72,-143 2941.72,-143 2941.72,-210 2941.72,-210 2941.72,-216 2935.72,-222 2929.72,-222 2929.72,-222 2780.72,-222 2780.72,-222 2774.72,-222 2768.72,-216 2768.72,-210 2768.72,-210 2768.72,-143 2768.72,-143 2768.72,-137 2774.72,-131 2780.72,-131" style=""/>
-<text text-anchor="middle" x="2855.22" y="-210.8" font-family="Bitstream Vera Sans" font-size="8.00" style="">GstAudioResample</text>
-<text text-anchor="middle" x="2855.22" y="-201.2" font-family="Bitstream Vera Sans" font-size="8.00" style="">audioresample0</text>
-<text text-anchor="middle" x="2855.22" y="-191.6" font-family="Bitstream Vera Sans" font-size="8.00" style="">[&gt;]</text>
 </g>
-<g id="clust26" class="cluster" data-name="cluster_audioresample0_0x1560e8290_sink">
+<g id="clust26" class="cluster" data-name="cluster_opusenc0_0x1200fc320_src">
 
 </g>
-<g id="clust27" class="cluster" data-name="cluster_audioresample0_0x1560e8290_src">
+<g id="clust27" class="cluster" data-name="cluster_audioresample0_0x1200f4310">
 
+<path fill="#aaffaa" stroke="black" d="M2782.71,-82.25C2782.71,-82.25 2931.71,-82.25 2931.71,-82.25 2937.71,-82.25 2943.71,-88.25 2943.71,-94.25 2943.71,-94.25 2943.71,-161.25 2943.71,-161.25 2943.71,-167.25 2937.71,-173.25 2931.71,-173.25 2931.71,-173.25 2782.71,-173.25 2782.71,-173.25 2776.71,-173.25 2770.71,-167.25 2770.71,-161.25 2770.71,-161.25 2770.71,-94.25 2770.71,-94.25 2770.71,-88.25 2776.71,-82.25 2782.71,-82.25" style=""/>
+<text text-anchor="middle" x="2857.21" y="-162.05" font-family="Bitstream Vera Sans" font-size="8.00" style="">GstAudioResample</text>
+<text text-anchor="middle" x="2857.21" y="-152.45" font-family="Bitstream Vera Sans" font-size="8.00" style="">audioresample0</text>
+<text text-anchor="middle" x="2857.21" y="-142.85" font-family="Bitstream Vera Sans" font-size="8.00" style="">[&gt;]</text>
 </g>
-<g id="clust28" class="cluster" data-name="cluster_audioconvert0_0x1560e05f0">
+<g id="clust28" class="cluster" data-name="cluster_audioresample0_0x1200f4310_sink">
 
-<path fill="#aaffaa" stroke="black" d="M2427.99,-131C2427.99,-131 2576.99,-131 2576.99,-131 2582.99,-131 2588.99,-137 2588.99,-143 2588.99,-143 2588.99,-210 2588.99,-210 2588.99,-216 2582.99,-222 2576.99,-222 2576.99,-222 2427.99,-222 2427.99,-222 2421.99,-222 2415.99,-216 2415.99,-210 2415.99,-210 2415.99,-143 2415.99,-143 2415.99,-137 2421.99,-131 2427.99,-131" style=""/>
-<text text-anchor="middle" x="2502.49" y="-210.8" font-family="Bitstream Vera Sans" font-size="8.00" style="">GstAudioConvert</text>
-<text text-anchor="middle" x="2502.49" y="-201.2" font-family="Bitstream Vera Sans" font-size="8.00" style="">audioconvert0</text>
-<text text-anchor="middle" x="2502.49" y="-191.6" font-family="Bitstream Vera Sans" font-size="8.00" style="">[&gt;]</text>
 </g>
-<g id="clust29" class="cluster" data-name="cluster_audioconvert0_0x1560e05f0_sink">
+<g id="clust29" class="cluster" data-name="cluster_audioresample0_0x1200f4310_src">
 
 </g>
-<g id="clust30" class="cluster" data-name="cluster_audioconvert0_0x1560e05f0_src">
+<g id="clust30" class="cluster" data-name="cluster_audioconvert0_0x1218a0590">
 
+<path fill="#aaffaa" stroke="black" d="M2447.98,-78.25C2447.98,-78.25 2637.98,-78.25 2637.98,-78.25 2643.98,-78.25 2649.98,-84.25 2649.98,-90.25 2649.98,-90.25 2649.98,-157.25 2649.98,-157.25 2649.98,-163.25 2643.98,-169.25 2637.98,-169.25 2637.98,-169.25 2447.98,-169.25 2447.98,-169.25 2441.98,-169.25 2435.98,-163.25 2435.98,-157.25 2435.98,-157.25 2435.98,-90.25 2435.98,-90.25 2435.98,-84.25 2441.98,-78.25 2447.98,-78.25" style=""/>
+<text text-anchor="middle" x="2542.98" y="-158.05" font-family="Bitstream Vera Sans" font-size="8.00" style="">GstAudioConvert</text>
+<text text-anchor="middle" x="2542.98" y="-148.45" font-family="Bitstream Vera Sans" font-size="8.00" style="">audioconvert0</text>
+<text text-anchor="middle" x="2542.98" y="-138.85" font-family="Bitstream Vera Sans" font-size="8.00" style="">[&gt;]</text>
 </g>
-<g id="clust31" class="cluster" data-name="cluster_avdec_aac1_0x1560ba8e0">
+<g id="clust31" class="cluster" data-name="cluster_audioconvert0_0x1218a0590_sink">
 
-<path fill="#aaffaa" stroke="black" d="M2060.04,-131C2060.04,-131 2209.04,-131 2209.04,-131 2215.04,-131 2221.04,-137 2221.04,-143 2221.04,-143 2221.04,-210 2221.04,-210 2221.04,-216 2215.04,-222 2209.04,-222 2209.04,-222 2060.04,-222 2060.04,-222 2054.04,-222 2048.04,-216 2048.04,-210 2048.04,-210 2048.04,-143 2048.04,-143 2048.04,-137 2054.04,-131 2060.04,-131" style=""/>
-<text text-anchor="middle" x="2134.54" y="-210.8" font-family="Bitstream Vera Sans" font-size="8.00" style="">avdec_aac</text>
-<text text-anchor="middle" x="2134.54" y="-201.2" font-family="Bitstream Vera Sans" font-size="8.00" style="">avdec_aac1</text>
-<text text-anchor="middle" x="2134.54" y="-191.6" font-family="Bitstream Vera Sans" font-size="8.00" style="">[&gt;]</text>
 </g>
-<g id="clust32" class="cluster" data-name="cluster_avdec_aac1_0x1560ba8e0_sink">
+<g id="clust32" class="cluster" data-name="cluster_audioconvert0_0x1218a0590_src">
 
 </g>
-<g id="clust33" class="cluster" data-name="cluster_avdec_aac1_0x1560ba8e0_src">
+<g id="clust33" class="cluster" data-name="cluster_avdec_aac0_0x1200ec2e0">
 
+<path fill="#aaffaa" stroke="black" d="M2058.54,-78.25C2058.54,-78.25 2207.54,-78.25 2207.54,-78.25 2213.54,-78.25 2219.54,-84.25 2219.54,-90.25 2219.54,-90.25 2219.54,-157.25 2219.54,-157.25 2219.54,-163.25 2213.54,-169.25 2207.54,-169.25 2207.54,-169.25 2058.54,-169.25 2058.54,-169.25 2052.54,-169.25 2046.54,-163.25 2046.54,-157.25 2046.54,-157.25 2046.54,-90.25 2046.54,-90.25 2046.54,-84.25 2052.54,-78.25 2058.54,-78.25" style=""/>
+<text text-anchor="middle" x="2133.04" y="-158.05" font-family="Bitstream Vera Sans" font-size="8.00" style="">avdec_aac</text>
+<text text-anchor="middle" x="2133.04" y="-148.45" font-family="Bitstream Vera Sans" font-size="8.00" style="">avdec_aac0</text>
+<text text-anchor="middle" x="2133.04" y="-138.85" font-family="Bitstream Vera Sans" font-size="8.00" style="">[&gt;]</text>
 </g>
-<g id="clust34" class="cluster" data-name="cluster_aacparse1_0x15606d600">
+<g id="clust34" class="cluster" data-name="cluster_avdec_aac0_0x1200ec2e0_sink">
 
-<path fill="#aaffaa" stroke="black" d="M1702.09,-131C1702.09,-131 1851.09,-131 1851.09,-131 1857.09,-131 1863.09,-137 1863.09,-143 1863.09,-143 1863.09,-210 1863.09,-210 1863.09,-216 1857.09,-222 1851.09,-222 1851.09,-222 1702.09,-222 1702.09,-222 1696.09,-222 1690.09,-216 1690.09,-210 1690.09,-210 1690.09,-143 1690.09,-143 1690.09,-137 1696.09,-131 1702.09,-131" style=""/>
-<text text-anchor="middle" x="1776.59" y="-210.8" font-family="Bitstream Vera Sans" font-size="8.00" style="">GstAacParse</text>
-<text text-anchor="middle" x="1776.59" y="-201.2" font-family="Bitstream Vera Sans" font-size="8.00" style="">aacparse1</text>
-<text text-anchor="middle" x="1776.59" y="-191.6" font-family="Bitstream Vera Sans" font-size="8.00" style="">[&gt;]</text>
 </g>
-<g id="clust35" class="cluster" data-name="cluster_aacparse1_0x15606d600_sink">
+<g id="clust35" class="cluster" data-name="cluster_avdec_aac0_0x1200ec2e0_src">
 
 </g>
-<g id="clust36" class="cluster" data-name="cluster_aacparse1_0x15606d600_src">
+<g id="clust36" class="cluster" data-name="cluster_aacparse0_0x121898270">
 
+<path fill="#aaffaa" stroke="black" d="M1702.09,-78.25C1702.09,-78.25 1851.09,-78.25 1851.09,-78.25 1857.09,-78.25 1863.09,-84.25 1863.09,-90.25 1863.09,-90.25 1863.09,-157.25 1863.09,-157.25 1863.09,-163.25 1857.09,-169.25 1851.09,-169.25 1851.09,-169.25 1702.09,-169.25 1702.09,-169.25 1696.09,-169.25 1690.09,-163.25 1690.09,-157.25 1690.09,-157.25 1690.09,-90.25 1690.09,-90.25 1690.09,-84.25 1696.09,-78.25 1702.09,-78.25" style=""/>
+<text text-anchor="middle" x="1776.59" y="-158.05" font-family="Bitstream Vera Sans" font-size="8.00" style="">GstAacParse</text>
+<text text-anchor="middle" x="1776.59" y="-148.45" font-family="Bitstream Vera Sans" font-size="8.00" style="">aacparse0</text>
+<text text-anchor="middle" x="1776.59" y="-138.85" font-family="Bitstream Vera Sans" font-size="8.00" style="">[&gt;]</text>
 </g>
-<g id="clust37" class="cluster" data-name="cluster_output_tee_video_0x15312cbd0">
+<g id="clust37" class="cluster" data-name="cluster_aacparse0_0x121898270_sink">
 
-<path fill="#aaffaa" stroke="black" d="M2060.04,-239C2060.04,-239 2209.04,-239 2209.04,-239 2215.04,-239 2221.04,-245 2221.04,-251 2221.04,-251 2221.04,-327 2221.04,-327 2221.04,-333 2215.04,-339 2209.04,-339 2209.04,-339 2060.04,-339 2060.04,-339 2054.04,-339 2048.04,-333 2048.04,-327 2048.04,-327 2048.04,-251 2048.04,-251 2048.04,-245 2054.04,-239 2060.04,-239" style=""/>
-<text text-anchor="middle" x="2134.54" y="-327.8" font-family="Bitstream Vera Sans" font-size="8.00" style="">GstTee</text>
-<text text-anchor="middle" x="2134.54" y="-318.2" font-family="Bitstream Vera Sans" font-size="8.00" style="">output_tee_video</text>
-<text text-anchor="middle" x="2134.54" y="-308.6" font-family="Bitstream Vera Sans" font-size="8.00" style="">[&gt;]</text>
-<text text-anchor="middle" x="2134.54" y="-299" font-family="Bitstream Vera Sans" font-size="8.00" style="">num-src-pads=1</text>
 </g>
-<g id="clust38" class="cluster" data-name="cluster_output_tee_video_0x15312cbd0_sink">
+<g id="clust38" class="cluster" data-name="cluster_aacparse0_0x121898270_src">
 
 </g>
-<g id="clust39" class="cluster" data-name="cluster_output_tee_video_0x15312cbd0_src">
+<g id="clust39" class="cluster" data-name="cluster_fakesink0_0x1200e4290">
 
+<path fill="#aaaaff" stroke="black" d="M2414.98,-177.25C2414.98,-177.25 2542.98,-177.25 2542.98,-177.25 2548.98,-177.25 2554.98,-183.25 2554.98,-189.25 2554.98,-189.25 2554.98,-285.25 2554.98,-285.25 2554.98,-291.25 2548.98,-297.25 2542.98,-297.25 2542.98,-297.25 2414.98,-297.25 2414.98,-297.25 2408.98,-297.25 2402.98,-291.25 2402.98,-285.25 2402.98,-285.25 2402.98,-189.25 2402.98,-189.25 2402.98,-183.25 2408.98,-177.25 2414.98,-177.25" style=""/>
+<text text-anchor="middle" x="2478.98" y="-286.05" font-family="Bitstream Vera Sans" font-size="8.00" style="">GstFakeSink</text>
+<text text-anchor="middle" x="2478.98" y="-276.45" font-family="Bitstream Vera Sans" font-size="8.00" style="">fakesink0</text>
+<text text-anchor="middle" x="2478.98" y="-266.85" font-family="Bitstream Vera Sans" font-size="8.00" style="">[&gt;]</text>
+<text text-anchor="middle" x="2478.98" y="-257.25" font-family="Bitstream Vera Sans" font-size="8.00" style="">sync=FALSE</text>
+<text text-anchor="middle" x="2478.98" y="-247.65" font-family="Bitstream Vera Sans" font-size="8.00" style="">last-sample=((GstSample*) 0x1209100c0)</text>
+<text text-anchor="middle" x="2478.98" y="-238.05" font-family="Bitstream Vera Sans" font-size="8.00" style="">can-activate-pull=TRUE</text>
 </g>
-<g id="clust40" class="cluster" data-name="cluster_h264parse1_0x1560d4270">
+<g id="clust40" class="cluster" data-name="cluster_fakesink0_0x1200e4290_sink">
 
-<path fill="#aaffaa" stroke="black" d="M1702.09,-239C1702.09,-239 1851.09,-239 1851.09,-239 1857.09,-239 1863.09,-245 1863.09,-251 1863.09,-251 1863.09,-318 1863.09,-318 1863.09,-324 1857.09,-330 1851.09,-330 1851.09,-330 1702.09,-330 1702.09,-330 1696.09,-330 1690.09,-324 1690.09,-318 1690.09,-318 1690.09,-251 1690.09,-251 1690.09,-245 1696.09,-239 1702.09,-239" style=""/>
-<text text-anchor="middle" x="1776.59" y="-318.8" font-family="Bitstream Vera Sans" font-size="8.00" style="">GstH264Parse</text>
-<text text-anchor="middle" x="1776.59" y="-309.2" font-family="Bitstream Vera Sans" font-size="8.00" style="">h264parse1</text>
-<text text-anchor="middle" x="1776.59" y="-299.6" font-family="Bitstream Vera Sans" font-size="8.00" style="">[&gt;]</text>
 </g>
-<g id="clust41" class="cluster" data-name="cluster_h264parse1_0x1560d4270_sink">
+<g id="clust41" class="cluster" data-name="cluster_output_tee_video_0x1200abbd0">
 
+<path fill="#aaffaa" stroke="black" d="M2058.54,-225.25C2058.54,-225.25 2207.54,-225.25 2207.54,-225.25 2213.54,-225.25 2219.54,-231.25 2219.54,-237.25 2219.54,-237.25 2219.54,-342.25 2219.54,-342.25 2219.54,-348.25 2213.54,-354.25 2207.54,-354.25 2207.54,-354.25 2058.54,-354.25 2058.54,-354.25 2052.54,-354.25 2046.54,-348.25 2046.54,-342.25 2046.54,-342.25 2046.54,-237.25 2046.54,-237.25 2046.54,-231.25 2052.54,-225.25 2058.54,-225.25" style=""/>
+<text text-anchor="middle" x="2133.04" y="-343.05" font-family="Bitstream Vera Sans" font-size="8.00" style="">GstTee</text>
+<text text-anchor="middle" x="2133.04" y="-333.45" font-family="Bitstream Vera Sans" font-size="8.00" style="">output_tee_video</text>
+<text text-anchor="middle" x="2133.04" y="-323.85" font-family="Bitstream Vera Sans" font-size="8.00" style="">[&gt;]</text>
+<text text-anchor="middle" x="2133.04" y="-314.25" font-family="Bitstream Vera Sans" font-size="8.00" style="">num-src-pads=2</text>
 </g>
-<g id="clust42" class="cluster" data-name="cluster_h264parse1_0x1560d4270_src">
+<g id="clust42" class="cluster" data-name="cluster_output_tee_video_0x1200abbd0_sink">
 
 </g>
-<g id="clust43" class="cluster" data-name="cluster_srtsink0_0x1560c0350">
+<g id="clust43" class="cluster" data-name="cluster_output_tee_video_0x1200abbd0_src">
 
-<path fill="#aaaaff" stroke="black" d="M734.44,-30C734.44,-30 862.44,-30 862.44,-30 868.44,-30 874.44,-36 874.44,-42 874.44,-42 874.44,-195 874.44,-195 874.44,-201 868.44,-207 862.44,-207 862.44,-207 734.44,-207 734.44,-207 728.44,-207 722.44,-201 722.44,-195 722.44,-195 722.44,-42 722.44,-42 722.44,-36 728.44,-30 734.44,-30" style=""/>
-<text text-anchor="middle" x="798.44" y="-195.8" font-family="Bitstream Vera Sans" font-size="8.00" style="">GstSRTSink</text>
-<text text-anchor="middle" x="798.44" y="-186.2" font-family="Bitstream Vera Sans" font-size="8.00" style="">srtsink0</text>
-<text text-anchor="middle" x="798.44" y="-176.6" font-family="Bitstream Vera Sans" font-size="8.00" style="">[&gt;]</text>
-<text text-anchor="middle" x="798.44" y="-167" font-family="Bitstream Vera Sans" font-size="8.00" style="">async=FALSE</text>
-<text text-anchor="middle" x="798.44" y="-157.4" font-family="Bitstream Vera Sans" font-size="8.00" style="">last-sample=((GstSample*) 0x1551242b0)</text>
-<text text-anchor="middle" x="798.44" y="-147.8" font-family="Bitstream Vera Sans" font-size="8.00" style="">uri="srt://127.0.0.1:8888?mode=listener"</text>
-<text text-anchor="middle" x="798.44" y="-138.2" font-family="Bitstream Vera Sans" font-size="8.00" style="">mode=listener</text>
-<text text-anchor="middle" x="798.44" y="-128.6" font-family="Bitstream Vera Sans" font-size="8.00" style="">localaddress="127.0.0.1"</text>
-<text text-anchor="middle" x="798.44" y="-119" font-family="Bitstream Vera Sans" font-size="8.00" style="">localport=8888</text>
-<text text-anchor="middle" x="798.44" y="-109.4" font-family="Bitstream Vera Sans" font-size="8.00" style="">wait-for-connection=FALSE</text>
-<text text-anchor="middle" x="798.44" y="-99.8" font-family="Bitstream Vera Sans" font-size="8.00" style="">streamid=NULL</text>
-<text text-anchor="middle" x="798.44" y="-90.2" font-family="Bitstream Vera Sans" font-size="8.00" style="">authentication=TRUE</text>
 </g>
-<g id="clust44" class="cluster" data-name="cluster_srtsink0_0x1560c0350_sink">
+<g id="clust44" class="cluster" data-name="cluster_h264parse0_0x1200dc070">
 
+<path fill="#aaffaa" stroke="black" d="M1702.09,-225.25C1702.09,-225.25 1851.09,-225.25 1851.09,-225.25 1857.09,-225.25 1863.09,-231.25 1863.09,-237.25 1863.09,-237.25 1863.09,-304.25 1863.09,-304.25 1863.09,-310.25 1857.09,-316.25 1851.09,-316.25 1851.09,-316.25 1702.09,-316.25 1702.09,-316.25 1696.09,-316.25 1690.09,-310.25 1690.09,-304.25 1690.09,-304.25 1690.09,-237.25 1690.09,-237.25 1690.09,-231.25 1696.09,-225.25 1702.09,-225.25" style=""/>
+<text text-anchor="middle" x="1776.59" y="-305.05" font-family="Bitstream Vera Sans" font-size="8.00" style="">GstH264Parse</text>
+<text text-anchor="middle" x="1776.59" y="-295.45" font-family="Bitstream Vera Sans" font-size="8.00" style="">h264parse0</text>
+<text text-anchor="middle" x="1776.59" y="-285.85" font-family="Bitstream Vera Sans" font-size="8.00" style="">[&gt;]</text>
 </g>
-<g id="clust45" class="cluster" data-name="cluster_audio_queue_0x1530df920">
+<g id="clust45" class="cluster" data-name="cluster_h264parse0_0x1200dc070_sink">
 
-<path fill="#aaffaa" stroke="black" d="M1399.13,-132C1399.13,-132 1548.13,-132 1548.13,-132 1554.13,-132 1560.13,-138 1560.13,-144 1560.13,-144 1560.13,-211 1560.13,-211 1560.13,-217 1554.13,-223 1548.13,-223 1548.13,-223 1399.13,-223 1399.13,-223 1393.13,-223 1387.13,-217 1387.13,-211 1387.13,-211 1387.13,-144 1387.13,-144 1387.13,-138 1393.13,-132 1399.13,-132" style=""/>
-<text text-anchor="middle" x="1473.63" y="-211.8" font-family="Bitstream Vera Sans" font-size="8.00" style="">GstQueue</text>
-<text text-anchor="middle" x="1473.63" y="-202.2" font-family="Bitstream Vera Sans" font-size="8.00" style="">audio-queue</text>
-<text text-anchor="middle" x="1473.63" y="-192.6" font-family="Bitstream Vera Sans" font-size="8.00" style="">[&gt;]</text>
 </g>
-<g id="clust46" class="cluster" data-name="cluster_audio_queue_0x1530df920_sink">
+<g id="clust46" class="cluster" data-name="cluster_h264parse0_0x1200dc070_src">
 
 </g>
-<g id="clust47" class="cluster" data-name="cluster_audio_queue_0x1530df920_src">
+<g id="clust47" class="cluster" data-name="cluster_srtsink0_0x1200c4300">
 
+<path fill="#aaaaff" stroke="black" d="M734.44,-21.25C734.44,-21.25 862.44,-21.25 862.44,-21.25 868.44,-21.25 874.44,-27.25 874.44,-33.25 874.44,-33.25 874.44,-177.25 874.44,-177.25 874.44,-183.25 868.44,-189.25 862.44,-189.25 862.44,-189.25 734.44,-189.25 734.44,-189.25 728.44,-189.25 722.44,-183.25 722.44,-177.25 722.44,-177.25 722.44,-33.25 722.44,-33.25 722.44,-27.25 728.44,-21.25 734.44,-21.25" style=""/>
+<text text-anchor="middle" x="798.44" y="-178.05" font-family="Bitstream Vera Sans" font-size="8.00" style="">GstSRTSink</text>
+<text text-anchor="middle" x="798.44" y="-168.45" font-family="Bitstream Vera Sans" font-size="8.00" style="">srtsink0</text>
+<text text-anchor="middle" x="798.44" y="-158.85" font-family="Bitstream Vera Sans" font-size="8.00" style="">[&gt;]</text>
+<text text-anchor="middle" x="798.44" y="-149.25" font-family="Bitstream Vera Sans" font-size="8.00" style="">last-sample=((GstSample*) 0x1209101a0)</text>
+<text text-anchor="middle" x="798.44" y="-139.65" font-family="Bitstream Vera Sans" font-size="8.00" style="">uri="srt://127.0.0.1:8888?mode=listener"</text>
+<text text-anchor="middle" x="798.44" y="-130.05" font-family="Bitstream Vera Sans" font-size="8.00" style="">mode=listener</text>
+<text text-anchor="middle" x="798.44" y="-120.45" font-family="Bitstream Vera Sans" font-size="8.00" style="">localaddress="127.0.0.1"</text>
+<text text-anchor="middle" x="798.44" y="-110.85" font-family="Bitstream Vera Sans" font-size="8.00" style="">localport=8888</text>
+<text text-anchor="middle" x="798.44" y="-101.25" font-family="Bitstream Vera Sans" font-size="8.00" style="">wait-for-connection=FALSE</text>
+<text text-anchor="middle" x="798.44" y="-91.65" font-family="Bitstream Vera Sans" font-size="8.00" style="">streamid=NULL</text>
+<text text-anchor="middle" x="798.44" y="-82.05" font-family="Bitstream Vera Sans" font-size="8.00" style="">authentication=TRUE</text>
 </g>
-<g id="clust48" class="cluster" data-name="cluster_video_queue_0x1530ded20">
+<g id="clust48" class="cluster" data-name="cluster_srtsink0_0x1200c4300_sink">
 
-<path fill="#aaffaa" stroke="black" d="M1399.13,-233C1399.13,-233 1548.13,-233 1548.13,-233 1554.13,-233 1560.13,-239 1560.13,-245 1560.13,-245 1560.13,-312 1560.13,-312 1560.13,-318 1554.13,-324 1548.13,-324 1548.13,-324 1399.13,-324 1399.13,-324 1393.13,-324 1387.13,-318 1387.13,-312 1387.13,-312 1387.13,-245 1387.13,-245 1387.13,-239 1393.13,-233 1399.13,-233" style=""/>
-<text text-anchor="middle" x="1473.63" y="-312.8" font-family="Bitstream Vera Sans" font-size="8.00" style="">GstQueue</text>
-<text text-anchor="middle" x="1473.63" y="-303.2" font-family="Bitstream Vera Sans" font-size="8.00" style="">video-queue</text>
-<text text-anchor="middle" x="1473.63" y="-293.6" font-family="Bitstream Vera Sans" font-size="8.00" style="">[&gt;]</text>
 </g>
-<g id="clust49" class="cluster" data-name="cluster_video_queue_0x1530ded20_sink">
+<g id="clust49" class="cluster" data-name="cluster_audio_queue_0x1200aeac0">
 
+<path fill="#aaffaa" stroke="black" d="M1399.13,-78.25C1399.13,-78.25 1548.13,-78.25 1548.13,-78.25 1554.13,-78.25 1560.13,-84.25 1560.13,-90.25 1560.13,-90.25 1560.13,-205.25 1560.13,-205.25 1560.13,-211.25 1554.13,-217.25 1548.13,-217.25 1548.13,-217.25 1399.13,-217.25 1399.13,-217.25 1393.13,-217.25 1387.13,-211.25 1387.13,-205.25 1387.13,-205.25 1387.13,-90.25 1387.13,-90.25 1387.13,-84.25 1393.13,-78.25 1399.13,-78.25" style=""/>
+<text text-anchor="middle" x="1473.63" y="-206.05" font-family="Bitstream Vera Sans" font-size="8.00" style="">GstQueue</text>
+<text text-anchor="middle" x="1473.63" y="-196.45" font-family="Bitstream Vera Sans" font-size="8.00" style="">audio-queue</text>
+<text text-anchor="middle" x="1473.63" y="-186.85" font-family="Bitstream Vera Sans" font-size="8.00" style="">[&gt;]</text>
+<text text-anchor="middle" x="1473.63" y="-177.25" font-family="Bitstream Vera Sans" font-size="8.00" style="">current-level-buffers=1</text>
+<text text-anchor="middle" x="1473.63" y="-167.65" font-family="Bitstream Vera Sans" font-size="8.00" style="">current-level-bytes=2753</text>
+<text text-anchor="middle" x="1473.63" y="-158.05" font-family="Bitstream Vera Sans" font-size="8.00" style="">current-level-time=301892140</text>
+<text text-anchor="middle" x="1473.63" y="-148.45" font-family="Bitstream Vera Sans" font-size="8.00" style="">max-size-buffers=0</text>
+<text text-anchor="middle" x="1473.63" y="-138.85" font-family="Bitstream Vera Sans" font-size="8.00" style="">max-size-time=0</text>
 </g>
-<g id="clust50" class="cluster" data-name="cluster_video_queue_0x1530ded20_src">
+<g id="clust50" class="cluster" data-name="cluster_audio_queue_0x1200aeac0_sink">
 
 </g>
-<g id="clust51" class="cluster" data-name="cluster_demux_0x1530df020">
+<g id="clust51" class="cluster" data-name="cluster_audio_queue_0x1200aeac0_src">
 
-<path fill="#aaffaa" stroke="black" d="M1096.17,-186C1096.17,-186 1245.17,-186 1245.17,-186 1251.17,-186 1257.17,-192 1257.17,-198 1257.17,-198 1257.17,-303 1257.17,-303 1257.17,-309 1251.17,-315 1245.17,-315 1245.17,-315 1096.17,-315 1096.17,-315 1090.17,-315 1084.17,-309 1084.17,-303 1084.17,-303 1084.17,-198 1084.17,-198 1084.17,-192 1090.17,-186 1096.17,-186" style=""/>
-<text text-anchor="middle" x="1170.67" y="-303.8" font-family="Bitstream Vera Sans" font-size="8.00" style="">GstTSDemux</text>
-<text text-anchor="middle" x="1170.67" y="-294.2" font-family="Bitstream Vera Sans" font-size="8.00" style="">demux</text>
-<text text-anchor="middle" x="1170.67" y="-284.6" font-family="Bitstream Vera Sans" font-size="8.00" style="">[&gt;]</text>
-<text text-anchor="middle" x="1170.67" y="-275" font-family="Bitstream Vera Sans" font-size="8.00" style="">parse-private-sections=TRUE</text>
 </g>
-<g id="clust52" class="cluster" data-name="cluster_demux_0x1530df020_sink">
+<g id="clust52" class="cluster" data-name="cluster_video_queue_0x1200ae7c0">
 
+<path fill="#aaffaa" stroke="black" d="M1399.13,-225.25C1399.13,-225.25 1548.13,-225.25 1548.13,-225.25 1554.13,-225.25 1560.13,-231.25 1560.13,-237.25 1560.13,-237.25 1560.13,-352.25 1560.13,-352.25 1560.13,-358.25 1554.13,-364.25 1548.13,-364.25 1548.13,-364.25 1399.13,-364.25 1399.13,-364.25 1393.13,-364.25 1387.13,-358.25 1387.13,-352.25 1387.13,-352.25 1387.13,-237.25 1387.13,-237.25 1387.13,-231.25 1393.13,-225.25 1399.13,-225.25" style=""/>
+<text text-anchor="middle" x="1473.63" y="-353.05" font-family="Bitstream Vera Sans" font-size="8.00" style="">GstQueue</text>
+<text text-anchor="middle" x="1473.63" y="-343.45" font-family="Bitstream Vera Sans" font-size="8.00" style="">video-queue</text>
+<text text-anchor="middle" x="1473.63" y="-333.85" font-family="Bitstream Vera Sans" font-size="8.00" style="">[&gt;]</text>
+<text text-anchor="middle" x="1473.63" y="-324.25" font-family="Bitstream Vera Sans" font-size="8.00" style="">current-level-buffers=12</text>
+<text text-anchor="middle" x="1473.63" y="-314.65" font-family="Bitstream Vera Sans" font-size="8.00" style="">current-level-bytes=43221</text>
+<text text-anchor="middle" x="1473.63" y="-305.05" font-family="Bitstream Vera Sans" font-size="8.00" style="">current-level-time=400044415</text>
+<text text-anchor="middle" x="1473.63" y="-295.45" font-family="Bitstream Vera Sans" font-size="8.00" style="">max-size-buffers=0</text>
+<text text-anchor="middle" x="1473.63" y="-285.85" font-family="Bitstream Vera Sans" font-size="8.00" style="">max-size-time=0</text>
 </g>
-<g id="clust53" class="cluster" data-name="cluster_demux_0x1530df020_src">
+<g id="clust53" class="cluster" data-name="cluster_video_queue_0x1200ae7c0_sink">
 
 </g>
-<g id="clust54" class="cluster" data-name="cluster_typefind_0x15605c250">
+<g id="clust54" class="cluster" data-name="cluster_video_queue_0x1200ae7c0_src">
 
-<path fill="#aaffaa" stroke="black" d="M754.44,-215C754.44,-215 970.44,-215 970.44,-215 976.44,-215 982.44,-221 982.44,-227 982.44,-227 982.44,-303 982.44,-303 982.44,-309 976.44,-315 970.44,-315 970.44,-315 754.44,-315 754.44,-315 748.44,-315 742.44,-309 742.44,-303 742.44,-303 742.44,-227 742.44,-227 742.44,-221 748.44,-215 754.44,-215" style=""/>
-<text text-anchor="middle" x="862.44" y="-303.8" font-family="Bitstream Vera Sans" font-size="8.00" style="">GstTypeFindElement</text>
-<text text-anchor="middle" x="862.44" y="-294.2" font-family="Bitstream Vera Sans" font-size="8.00" style="">typefind</text>
-<text text-anchor="middle" x="862.44" y="-284.6" font-family="Bitstream Vera Sans" font-size="8.00" style="">[&gt;]</text>
-<text text-anchor="middle" x="862.44" y="-275" font-family="Bitstream Vera Sans" font-size="8.00" style="">caps=video/mpegts, systemstream=(boolean)true, packetsize=(int)188</text>
 </g>
-<g id="clust55" class="cluster" data-name="cluster_typefind_0x15605c250_sink">
+<g id="clust55" class="cluster" data-name="cluster_demux_0x1200ae4c0">
 
+<path fill="#aaffaa" stroke="black" d="M1096.17,-168.25C1096.17,-168.25 1245.17,-168.25 1245.17,-168.25 1251.17,-168.25 1257.17,-174.25 1257.17,-180.25 1257.17,-180.25 1257.17,-285.25 1257.17,-285.25 1257.17,-291.25 1251.17,-297.25 1245.17,-297.25 1245.17,-297.25 1096.17,-297.25 1096.17,-297.25 1090.17,-297.25 1084.17,-291.25 1084.17,-285.25 1084.17,-285.25 1084.17,-180.25 1084.17,-180.25 1084.17,-174.25 1090.17,-168.25 1096.17,-168.25" style=""/>
+<text text-anchor="middle" x="1170.67" y="-286.05" font-family="Bitstream Vera Sans" font-size="8.00" style="">GstTSDemux</text>
+<text text-anchor="middle" x="1170.67" y="-276.45" font-family="Bitstream Vera Sans" font-size="8.00" style="">demux</text>
+<text text-anchor="middle" x="1170.67" y="-266.85" font-family="Bitstream Vera Sans" font-size="8.00" style="">[&gt;]</text>
+<text text-anchor="middle" x="1170.67" y="-257.25" font-family="Bitstream Vera Sans" font-size="8.00" style="">parse-private-sections=TRUE</text>
 </g>
-<g id="clust56" class="cluster" data-name="cluster_typefind_0x15605c250_src">
+<g id="clust56" class="cluster" data-name="cluster_demux_0x1200ae4c0_sink">
 
 </g>
-<g id="clust57" class="cluster" data-name="cluster_srt_queue_0x1530dfc20">
+<g id="clust57" class="cluster" data-name="cluster_demux_0x1200ae4c0_src">
 
-<path fill="#aaffaa" stroke="black" d="M538.94,-48C538.94,-48 687.94,-48 687.94,-48 693.94,-48 699.94,-54 699.94,-60 699.94,-60 699.94,-156 699.94,-156 699.94,-162 693.94,-168 687.94,-168 687.94,-168 538.94,-168 538.94,-168 532.94,-168 526.94,-162 526.94,-156 526.94,-156 526.94,-60 526.94,-60 526.94,-54 532.94,-48 538.94,-48" style=""/>
-<text text-anchor="middle" x="613.44" y="-156.8" font-family="Bitstream Vera Sans" font-size="8.00" style="">GstQueue</text>
-<text text-anchor="middle" x="613.44" y="-147.2" font-family="Bitstream Vera Sans" font-size="8.00" style="">srt_queue</text>
-<text text-anchor="middle" x="613.44" y="-137.6" font-family="Bitstream Vera Sans" font-size="8.00" style="">[&gt;]</text>
-<text text-anchor="middle" x="613.44" y="-128" font-family="Bitstream Vera Sans" font-size="8.00" style="">current-level-buffers=200</text>
-<text text-anchor="middle" x="613.44" y="-118.4" font-family="Bitstream Vera Sans" font-size="8.00" style="">current-level-bytes=37600</text>
-<text text-anchor="middle" x="613.44" y="-108.8" font-family="Bitstream Vera Sans" font-size="8.00" style="">current-level-time=99069625</text>
 </g>
-<g id="clust58" class="cluster" data-name="cluster_srt_queue_0x1530dfc20_sink">
+<g id="clust58" class="cluster" data-name="cluster_typefind_0x1200b4020">
 
+<path fill="#aaffaa" stroke="black" d="M754.44,-197.25C754.44,-197.25 970.44,-197.25 970.44,-197.25 976.44,-197.25 982.44,-203.25 982.44,-209.25 982.44,-209.25 982.44,-285.25 982.44,-285.25 982.44,-291.25 976.44,-297.25 970.44,-297.25 970.44,-297.25 754.44,-297.25 754.44,-297.25 748.44,-297.25 742.44,-291.25 742.44,-285.25 742.44,-285.25 742.44,-209.25 742.44,-209.25 742.44,-203.25 748.44,-197.25 754.44,-197.25" style=""/>
+<text text-anchor="middle" x="862.44" y="-286.05" font-family="Bitstream Vera Sans" font-size="8.00" style="">GstTypeFindElement</text>
+<text text-anchor="middle" x="862.44" y="-276.45" font-family="Bitstream Vera Sans" font-size="8.00" style="">typefind</text>
+<text text-anchor="middle" x="862.44" y="-266.85" font-family="Bitstream Vera Sans" font-size="8.00" style="">[&gt;]</text>
+<text text-anchor="middle" x="862.44" y="-257.25" font-family="Bitstream Vera Sans" font-size="8.00" style="">caps=video/mpegts, systemstream=(boolean)true, packetsize=(int)188</text>
 </g>
-<g id="clust59" class="cluster" data-name="cluster_srt_queue_0x1530dfc20_src">
+<g id="clust59" class="cluster" data-name="cluster_typefind_0x1200b4020_sink">
 
 </g>
-<g id="clust60" class="cluster" data-name="cluster_whep_queue_0x1530de120">
+<g id="clust60" class="cluster" data-name="cluster_typefind_0x1200b4020_src">
 
-<path fill="#aaffaa" stroke="black" d="M538.94,-204C538.94,-204 687.94,-204 687.94,-204 693.94,-204 699.94,-210 699.94,-216 699.94,-216 699.94,-283 699.94,-283 699.94,-289 693.94,-295 687.94,-295 687.94,-295 538.94,-295 538.94,-295 532.94,-295 526.94,-289 526.94,-283 526.94,-283 526.94,-216 526.94,-216 526.94,-210 532.94,-204 538.94,-204" style=""/>
-<text text-anchor="middle" x="613.44" y="-283.8" font-family="Bitstream Vera Sans" font-size="8.00" style="">GstQueue</text>
-<text text-anchor="middle" x="613.44" y="-274.2" font-family="Bitstream Vera Sans" font-size="8.00" style="">whep_queue</text>
-<text text-anchor="middle" x="613.44" y="-264.6" font-family="Bitstream Vera Sans" font-size="8.00" style="">[&gt;]</text>
 </g>
-<g id="clust61" class="cluster" data-name="cluster_whep_queue_0x1530de120_sink">
+<g id="clust61" class="cluster" data-name="cluster_srt_queue_0x1200aedc0">
 
+<path fill="#aaffaa" stroke="black" d="M538.94,-27.25C538.94,-27.25 687.94,-27.25 687.94,-27.25 693.94,-27.25 699.94,-33.25 699.94,-39.25 699.94,-39.25 699.94,-163.25 699.94,-163.25 699.94,-169.25 693.94,-175.25 687.94,-175.25 687.94,-175.25 538.94,-175.25 538.94,-175.25 532.94,-175.25 526.94,-169.25 526.94,-163.25 526.94,-163.25 526.94,-39.25 526.94,-39.25 526.94,-33.25 532.94,-27.25 538.94,-27.25" style=""/>
+<text text-anchor="middle" x="613.44" y="-164.05" font-family="Bitstream Vera Sans" font-size="8.00" style="">GstQueue</text>
+<text text-anchor="middle" x="613.44" y="-154.45" font-family="Bitstream Vera Sans" font-size="8.00" style="">srt-queue</text>
+<text text-anchor="middle" x="613.44" y="-144.85" font-family="Bitstream Vera Sans" font-size="8.00" style="">[&gt;]</text>
+<text text-anchor="middle" x="613.44" y="-135.25" font-family="Bitstream Vera Sans" font-size="8.00" style="">current-level-buffers=109</text>
+<text text-anchor="middle" x="613.44" y="-125.65" font-family="Bitstream Vera Sans" font-size="8.00" style="">current-level-bytes=129156</text>
+<text text-anchor="middle" x="613.44" y="-116.05" font-family="Bitstream Vera Sans" font-size="8.00" style="">current-level-time=842823625</text>
+<text text-anchor="middle" x="613.44" y="-106.45" font-family="Bitstream Vera Sans" font-size="8.00" style="">max-size-buffers=0</text>
+<text text-anchor="middle" x="613.44" y="-96.85" font-family="Bitstream Vera Sans" font-size="8.00" style="">max-size-time=0</text>
+<text text-anchor="middle" x="613.44" y="-87.25" font-family="Bitstream Vera Sans" font-size="8.00" style="">leaky=downstream</text>
 </g>
-<g id="clust62" class="cluster" data-name="cluster_whep_queue_0x1530de120_src">
+<g id="clust62" class="cluster" data-name="cluster_srt_queue_0x1200aedc0_sink">
 
 </g>
-<g id="clust63" class="cluster" data-name="cluster_input_tee_0x15312c000">
+<g id="clust63" class="cluster" data-name="cluster_srt_queue_0x1200aedc0_src">
 
-<path fill="#aaffaa" stroke="black" d="M330.44,-127C330.44,-127 479.44,-127 479.44,-127 485.44,-127 491.44,-133 491.44,-139 491.44,-139 491.44,-244 491.44,-244 491.44,-250 485.44,-256 479.44,-256 479.44,-256 330.44,-256 330.44,-256 324.44,-256 318.44,-250 318.44,-244 318.44,-244 318.44,-139 318.44,-139 318.44,-133 324.44,-127 330.44,-127" style=""/>
-<text text-anchor="middle" x="404.94" y="-244.8" font-family="Bitstream Vera Sans" font-size="8.00" style="">GstTee</text>
-<text text-anchor="middle" x="404.94" y="-235.2" font-family="Bitstream Vera Sans" font-size="8.00" style="">input_tee</text>
-<text text-anchor="middle" x="404.94" y="-225.6" font-family="Bitstream Vera Sans" font-size="8.00" style="">[&gt;]</text>
-<text text-anchor="middle" x="404.94" y="-216" font-family="Bitstream Vera Sans" font-size="8.00" style="">num-src-pads=2</text>
 </g>
-<g id="clust64" class="cluster" data-name="cluster_input_tee_0x15312c000_sink">
+<g id="clust64" class="cluster" data-name="cluster_whep_queue_0x1200ae1c0">
 
+<path fill="#aaffaa" stroke="black" d="M538.94,-193.25C538.94,-193.25 687.94,-193.25 687.94,-193.25 693.94,-193.25 699.94,-199.25 699.94,-205.25 699.94,-205.25 699.94,-291.25 699.94,-291.25 699.94,-297.25 693.94,-303.25 687.94,-303.25 687.94,-303.25 538.94,-303.25 538.94,-303.25 532.94,-303.25 526.94,-297.25 526.94,-291.25 526.94,-291.25 526.94,-205.25 526.94,-205.25 526.94,-199.25 532.94,-193.25 538.94,-193.25" style=""/>
+<text text-anchor="middle" x="613.44" y="-292.05" font-family="Bitstream Vera Sans" font-size="8.00" style="">GstQueue</text>
+<text text-anchor="middle" x="613.44" y="-282.45" font-family="Bitstream Vera Sans" font-size="8.00" style="">whep_queue</text>
+<text text-anchor="middle" x="613.44" y="-272.85" font-family="Bitstream Vera Sans" font-size="8.00" style="">[&gt;]</text>
+<text text-anchor="middle" x="613.44" y="-263.25" font-family="Bitstream Vera Sans" font-size="8.00" style="">max-size-buffers=0</text>
+<text text-anchor="middle" x="613.44" y="-253.65" font-family="Bitstream Vera Sans" font-size="8.00" style="">max-size-time=0</text>
 </g>
-<g id="clust65" class="cluster" data-name="cluster_input_tee_0x15312c000_src">
+<g id="clust65" class="cluster" data-name="cluster_whep_queue_0x1200ae1c0_sink">
 
 </g>
-<g id="clust66" class="cluster" data-name="cluster_srtsrc0_0x156054630">
+<g id="clust66" class="cluster" data-name="cluster_whep_queue_0x1200ae1c0_src">
 
-<path fill="#ffaaaa" stroke="black" d="M82.47,-156C82.47,-156 200.47,-156 200.47,-156 206.47,-156 212.47,-162 212.47,-168 212.47,-168 212.47,-273 212.47,-273 212.47,-279 206.47,-285 200.47,-285 200.47,-285 82.47,-285 82.47,-285 76.47,-285 70.47,-279 70.47,-273 70.47,-273 70.47,-168 70.47,-168 70.47,-162 76.47,-156 82.47,-156" style=""/>
-<text text-anchor="middle" x="141.47" y="-273.8" font-family="Bitstream Vera Sans" font-size="8.00" style="">GstSRTSrc</text>
-<text text-anchor="middle" x="141.47" y="-264.2" font-family="Bitstream Vera Sans" font-size="8.00" style="">srtsrc0</text>
-<text text-anchor="middle" x="141.47" y="-254.6" font-family="Bitstream Vera Sans" font-size="8.00" style="">[&gt;]</text>
-<text text-anchor="middle" x="141.47" y="-245" font-family="Bitstream Vera Sans" font-size="8.00" style="">uri="srt://127.0.0.1:1234?mode=caller"</text>
-<text text-anchor="middle" x="141.47" y="-235.4" font-family="Bitstream Vera Sans" font-size="8.00" style="">localaddress=NULL</text>
-<text text-anchor="middle" x="141.47" y="-225.8" font-family="Bitstream Vera Sans" font-size="8.00" style="">streamid=NULL</text>
-<text text-anchor="middle" x="141.47" y="-216.2" font-family="Bitstream Vera Sans" font-size="8.00" style="">authentication=TRUE</text>
 </g>
-<g id="clust67" class="cluster" data-name="cluster_srtsrc0_0x156054630_src">
+<g id="clust67" class="cluster" data-name="cluster_input_tee_0x1200ab000">
+
+<path fill="#aaffaa" stroke="black" d="M330.44,-112.25C330.44,-112.25 479.44,-112.25 479.44,-112.25 485.44,-112.25 491.44,-118.25 491.44,-124.25 491.44,-124.25 491.44,-229.25 491.44,-229.25 491.44,-235.25 485.44,-241.25 479.44,-241.25 479.44,-241.25 330.44,-241.25 330.44,-241.25 324.44,-241.25 318.44,-235.25 318.44,-229.25 318.44,-229.25 318.44,-124.25 318.44,-124.25 318.44,-118.25 324.44,-112.25 330.44,-112.25" style=""/>
+<text text-anchor="middle" x="404.94" y="-230.05" font-family="Bitstream Vera Sans" font-size="8.00" style="">GstTee</text>
+<text text-anchor="middle" x="404.94" y="-220.45" font-family="Bitstream Vera Sans" font-size="8.00" style="">input_tee</text>
+<text text-anchor="middle" x="404.94" y="-210.85" font-family="Bitstream Vera Sans" font-size="8.00" style="">[&gt;]</text>
+<text text-anchor="middle" x="404.94" y="-201.25" font-family="Bitstream Vera Sans" font-size="8.00" style="">num-src-pads=2</text>
+</g>
+<g id="clust68" class="cluster" data-name="cluster_input_tee_0x1200ab000_sink">
+
+</g>
+<g id="clust69" class="cluster" data-name="cluster_input_tee_0x1200ab000_src">
+
+</g>
+<g id="clust70" class="cluster" data-name="cluster_srtsrc0_0x1200a41e0">
+
+<path fill="#ffaaaa" stroke="black" d="M82.47,-141.25C82.47,-141.25 200.47,-141.25 200.47,-141.25 206.47,-141.25 212.47,-147.25 212.47,-153.25 212.47,-153.25 212.47,-258.25 212.47,-258.25 212.47,-264.25 206.47,-270.25 200.47,-270.25 200.47,-270.25 82.47,-270.25 82.47,-270.25 76.47,-270.25 70.47,-264.25 70.47,-258.25 70.47,-258.25 70.47,-153.25 70.47,-153.25 70.47,-147.25 76.47,-141.25 82.47,-141.25" style=""/>
+<text text-anchor="middle" x="141.47" y="-259.05" font-family="Bitstream Vera Sans" font-size="8.00" style="">GstSRTSrc</text>
+<text text-anchor="middle" x="141.47" y="-249.45" font-family="Bitstream Vera Sans" font-size="8.00" style="">srtsrc0</text>
+<text text-anchor="middle" x="141.47" y="-239.85" font-family="Bitstream Vera Sans" font-size="8.00" style="">[&gt;]</text>
+<text text-anchor="middle" x="141.47" y="-230.25" font-family="Bitstream Vera Sans" font-size="8.00" style="">uri="srt://127.0.0.1:1234?mode=caller"</text>
+<text text-anchor="middle" x="141.47" y="-220.65" font-family="Bitstream Vera Sans" font-size="8.00" style="">localaddress=NULL</text>
+<text text-anchor="middle" x="141.47" y="-211.05" font-family="Bitstream Vera Sans" font-size="8.00" style="">streamid=NULL</text>
+<text text-anchor="middle" x="141.47" y="-201.45" font-family="Bitstream Vera Sans" font-size="8.00" style="">authentication=TRUE</text>
+</g>
+<g id="clust71" class="cluster" data-name="cluster_srtsrc0_0x1200a41e0_src">
 
 </g>
 <!-- legend -->
 <g id="node1" class="node" pointer-events="visible" data-name="legend">
 
-<polygon fill="lightgrey" stroke="black" points="282.91,-148 0.03,-148 0.03,-86 282.91,-86 282.91,-148" style=""/>
-<text text-anchor="start" x="4" y="-135.9" font-family="sans" font-size="9.00" style="">Legend</text>
-<text text-anchor="start" x="4" y="-125.1" font-family="sans" font-size="9.00" style="">Element-States: [~] void-pending, [0] null, [-] ready, [=] paused, [&gt;] playing</text>
-<text text-anchor="start" x="4" y="-114.3" font-family="sans" font-size="9.00" style="">Pad-Activation: [-] none, [&gt;] push, [&lt;] pull</text>
-<text text-anchor="start" x="4" y="-103.5" font-family="sans" font-size="9.00" style="">Pad-Flags: [b]locked, [f]lushing, [b]locking, [E]OS; upper-case is set</text>
-<text text-anchor="start" x="4" y="-92.7" font-family="sans" font-size="9.00" style="">Pad-Task: [T] has started task, [t] has paused task</text>
-</g>
-<!-- audio_queue_38a2c591_c540_4223_98c7_531b51d3f00d_0x156088a40_sink_0x15311a890 -->
-<g id="node2" class="node" pointer-events="visible" data-name="audio_queue_38a2c591_c540_4223_98c7_531b51d3f00d_0x156088a40_sink_0x15311a890">
-
-<polygon fill="#aaaaff" stroke="black" points="3902,-169.6 3848,-169.6 3848,-148.4 3902,-148.4 3902,-169.6" style=""/>
-<text text-anchor="middle" x="3875" y="-161.7" font-family="sans" font-size="9.00" style="">sink</text>
-<text text-anchor="middle" x="3875" y="-150.9" font-family="sans" font-size="9.00" style="">[&gt;][bfb]</text>
-</g>
-<!-- audio_queue_38a2c591_c540_4223_98c7_531b51d3f00d_0x156088a40_src_0x15311aae0 -->
-<g id="node3" class="node" pointer-events="visible" data-name="audio_queue_38a2c591_c540_4223_98c7_531b51d3f00d_0x156088a40_src_0x15311aae0">
-
-<polygon fill="#ffaaaa" stroke="black" points="3989,-169.6 3935,-169.6 3935,-148.4 3989,-148.4 3989,-169.6" style=""/>
-<text text-anchor="middle" x="3962" y="-161.7" font-family="sans" font-size="9.00" style="">src</text>
-<text text-anchor="middle" x="3962" y="-150.9" font-family="sans" font-size="9.00" style="">[&gt;][bfb][T]</text>
-</g>
-<!-- audio_queue_38a2c591_c540_4223_98c7_531b51d3f00d_0x156088a40_sink_0x15311a890&#45;&gt;audio_queue_38a2c591_c540_4223_98c7_531b51d3f00d_0x156088a40_src_0x15311aae0 -->
-<!-- whip_sink_38a2c591_c540_4223_98c7_531b51d3f00d_0x156055290_audio_0_0x15480db30 -->
-<g id="node4" class="node" pointer-events="visible" data-name="whip_sink_38a2c591_c540_4223_98c7_531b51d3f00d_0x156055290_audio_0_0x15480db30">
-
-<polygon fill="#ddddff" stroke="black" stroke-dasharray="5,2" points="4264.6,-189.6 4210.6,-189.6 4210.6,-168.4 4264.6,-168.4 4264.6,-189.6" style=""/>
-<text text-anchor="middle" x="4237.6" y="-181.7" font-family="sans" font-size="9.00" style="">audio_0</text>
-<text text-anchor="middle" x="4237.6" y="-170.9" font-family="sans" font-size="9.00" style="">[&gt;][bfb]</text>
-</g>
-<!-- audio_queue_38a2c591_c540_4223_98c7_531b51d3f00d_0x156088a40_src_0x15311aae0&#45;&gt;whip_sink_38a2c591_c540_4223_98c7_531b51d3f00d_0x156055290_audio_0_0x15480db30 -->
-<g id="edge2" class="edge" data-name="audio_queue_38a2c591_c540_4223_98c7_531b51d3f00d_0x156088a40_src_0x15311aae0-&gt;whip_sink_38a2c591_c540_4223_98c7_531b51d3f00d_0x156055290_audio_0_0x15480db30">
-
-<path fill="none" stroke="black" d="M3989.23,-160.92C4038.06,-164.49 4143,-172.16 4199.23,-176.27" style=""/>
-<polygon fill="black" stroke="black" points="4198.71,-179.74 4208.94,-176.98 4199.22,-172.76 4198.71,-179.74" style=""/>
-<text text-anchor="start" x="4023" y="-242.5" font-family="monospace" font-size="9.00" style="">audio/x-opus</text>
-<text text-anchor="start" x="4023" y="-231.7" font-family="monospace" font-size="9.00" style="">                rate: 48000</text>
-<text text-anchor="start" x="4023" y="-220.9" font-family="monospace" font-size="9.00" style="">            channels: 2</text>
-<text text-anchor="start" x="4023" y="-210.1" font-family="monospace" font-size="9.00" style="">  channel-mapping-family: 0</text>
-<text text-anchor="start" x="4023" y="-199.3" font-family="monospace" font-size="9.00" style="">        stream-count: 1</text>
-<text text-anchor="start" x="4023" y="-188.5" font-family="monospace" font-size="9.00" style="">       coupled-count: 1</text>
-<text text-anchor="start" x="4023" y="-177.7" font-family="monospace" font-size="9.00" style="">        streamheader: &lt; (buffer)4f70757348... &gt;</text>
-</g>
-<!-- _proxypad7_0x15382ac70 -->
-<g id="node9" class="node" pointer-events="visible" data-name="_proxypad7_0x15382ac70">
-
-<polygon fill="#ddddff" stroke="black" points="4264.6,-218.6 4210.6,-218.6 4210.6,-197.4 4264.6,-197.4 4264.6,-218.6" style=""/>
-<text text-anchor="middle" x="4237.6" y="-210.7" font-family="sans" font-size="9.00" style="">proxypad7</text>
-<text text-anchor="middle" x="4237.6" y="-199.9" font-family="sans" font-size="9.00" style="">[&gt;][bfb]</text>
-</g>
-<!-- whip_sink_38a2c591_c540_4223_98c7_531b51d3f00d_0x156055290_audio_0_0x15480db30&#45;&gt;_proxypad7_0x15382ac70 -->
-<g id="edge6" class="edge" data-name="whip_sink_38a2c591_c540_4223_98c7_531b51d3f00d_0x156055290_audio_0_0x15480db30-&gt;_proxypad7_0x15382ac70">
-
-<path fill="none" stroke="black" stroke-dasharray="5,2" d="M4237.6,-189.88C4237.6,-190.02 4237.6,-190.17 4237.6,-190.32" style=""/>
-<polygon fill="black" stroke="black" points="4234.1,-185.44 4237.6,-195.44 4241.1,-185.44 4234.1,-185.44" style=""/>
-</g>
-<!-- video_queue_38a2c591_c540_4223_98c7_531b51d3f00d_0x156088740_sink_0x15311a3f0 -->
-<g id="node5" class="node" pointer-events="visible" data-name="video_queue_38a2c591_c540_4223_98c7_531b51d3f00d_0x156088740_sink_0x15311a3f0">
-
-<polygon fill="#aaaaff" stroke="black" points="2485.99,-275.6 2431.99,-275.6 2431.99,-254.4 2485.99,-254.4 2485.99,-275.6" style=""/>
-<text text-anchor="middle" x="2458.99" y="-267.7" font-family="sans" font-size="9.00" style="">sink</text>
-<text text-anchor="middle" x="2458.99" y="-256.9" font-family="sans" font-size="9.00" style="">[&gt;][bfb]</text>
-</g>
-<!-- video_queue_38a2c591_c540_4223_98c7_531b51d3f00d_0x156088740_src_0x15311a640 -->
-<g id="node6" class="node" pointer-events="visible" data-name="video_queue_38a2c591_c540_4223_98c7_531b51d3f00d_0x156088740_src_0x15311a640">
-
-<polygon fill="#ffaaaa" stroke="black" points="2572.99,-275.6 2518.99,-275.6 2518.99,-254.4 2572.99,-254.4 2572.99,-275.6" style=""/>
-<text text-anchor="middle" x="2545.99" y="-267.7" font-family="sans" font-size="9.00" style="">src</text>
-<text text-anchor="middle" x="2545.99" y="-256.9" font-family="sans" font-size="9.00" style="">[&gt;][bfb][T]</text>
-</g>
-<!-- video_queue_38a2c591_c540_4223_98c7_531b51d3f00d_0x156088740_sink_0x15311a3f0&#45;&gt;video_queue_38a2c591_c540_4223_98c7_531b51d3f00d_0x156088740_src_0x15311a640 -->
-<!-- whip_sink_38a2c591_c540_4223_98c7_531b51d3f00d_0x156055290_video_0_0x15480d8c0 -->
-<g id="node7" class="node" pointer-events="visible" data-name="whip_sink_38a2c591_c540_4223_98c7_531b51d3f00d_0x156055290_video_0_0x15480d8c0">
-
-<polygon fill="#ddddff" stroke="black" stroke-dasharray="5,2" points="4264.6,-131.6 4210.6,-131.6 4210.6,-110.4 4264.6,-110.4 4264.6,-131.6" style=""/>
-<text text-anchor="middle" x="4237.6" y="-123.7" font-family="sans" font-size="9.00" style="">video_0</text>
-<text text-anchor="middle" x="4237.6" y="-112.9" font-family="sans" font-size="9.00" style="">[&gt;][bfb]</text>
-</g>
-<!-- video_queue_38a2c591_c540_4223_98c7_531b51d3f00d_0x156088740_src_0x15311a640&#45;&gt;whip_sink_38a2c591_c540_4223_98c7_531b51d3f00d_0x156055290_video_0_0x15480d8c0 -->
-<g id="edge4" class="edge" data-name="video_queue_38a2c591_c540_4223_98c7_531b51d3f00d_0x156088740_src_0x15311a640-&gt;whip_sink_38a2c591_c540_4223_98c7_531b51d3f00d_0x156055290_video_0_0x15480d8c0">
-
-<path fill="none" stroke="black" d="M2573.19,-264.83C2620.59,-264.55 2723.72,-264 2810.72,-264 2810.72,-264 2810.72,-264 3963,-264 4062.52,-264 4115.69,-321.83 4186.6,-252 4205.01,-233.87 4179,-156.6 4194.6,-136 4196.32,-133.73 4198.41,-131.81 4200.73,-130.17" style=""/>
-<polygon fill="black" stroke="black" points="4201.84,-133.53 4209.17,-125.88 4198.67,-127.29 4201.84,-133.53" style=""/>
-<text text-anchor="start" x="3292.45" y="-428.7" font-family="monospace" font-size="9.00" style="">video/x-h264</text>
-<text text-anchor="start" x="3292.45" y="-417.9" font-family="monospace" font-size="9.00" style="">       stream-format: avc</text>
-<text text-anchor="start" x="3292.45" y="-407.1" font-family="monospace" font-size="9.00" style="">  pixel-aspect-ratio: 1/1</text>
-<text text-anchor="start" x="3292.45" y="-396.3" font-family="monospace" font-size="9.00" style="">               width: 640</text>
-<text text-anchor="start" x="3292.45" y="-385.5" font-family="monospace" font-size="9.00" style="">              height: 360</text>
-<text text-anchor="start" x="3292.45" y="-374.7" font-family="monospace" font-size="9.00" style="">           framerate: 30/1</text>
-<text text-anchor="start" x="3292.45" y="-363.9" font-family="monospace" font-size="9.00" style="">  coded-picture-structure: frame</text>
-<text text-anchor="start" x="3292.45" y="-353.1" font-family="monospace" font-size="9.00" style="">       chroma-format: 4:2:0</text>
-<text text-anchor="start" x="3292.45" y="-342.3" font-family="monospace" font-size="9.00" style="">      bit-depth-luma: 8</text>
-<text text-anchor="start" x="3292.45" y="-331.5" font-family="monospace" font-size="9.00" style="">    bit-depth-chroma: 8</text>
-<text text-anchor="start" x="3292.45" y="-320.7" font-family="monospace" font-size="9.00" style="">         colorimetry: bt601</text>
-<text text-anchor="start" x="3292.45" y="-309.9" font-family="monospace" font-size="9.00" style="">              parsed: true</text>
-<text text-anchor="start" x="3292.45" y="-299.1" font-family="monospace" font-size="9.00" style="">           alignment: au</text>
-<text text-anchor="start" x="3292.45" y="-288.3" font-family="monospace" font-size="9.00" style="">             profile: high</text>
-<text text-anchor="start" x="3292.45" y="-277.5" font-family="monospace" font-size="9.00" style="">               level: 3</text>
-<text text-anchor="start" x="3292.45" y="-266.7" font-family="monospace" font-size="9.00" style="">          codec_data: 0164001effe1001e676400...</text>
-</g>
-<!-- _proxypad6_0x15382a7b0 -->
-<g id="node8" class="node" pointer-events="visible" data-name="_proxypad6_0x15382a7b0">
-
-<polygon fill="#ddddff" stroke="black" points="4264.6,-160.6 4210.6,-160.6 4210.6,-139.4 4264.6,-139.4 4264.6,-160.6" style=""/>
-<text text-anchor="middle" x="4237.6" y="-152.7" font-family="sans" font-size="9.00" style="">proxypad6</text>
-<text text-anchor="middle" x="4237.6" y="-141.9" font-family="sans" font-size="9.00" style="">[&gt;][bfb]</text>
-</g>
-<!-- whip_sink_38a2c591_c540_4223_98c7_531b51d3f00d_0x156055290_video_0_0x15480d8c0&#45;&gt;_proxypad6_0x15382a7b0 -->
-<g id="edge5" class="edge" data-name="whip_sink_38a2c591_c540_4223_98c7_531b51d3f00d_0x156055290_video_0_0x15480d8c0-&gt;_proxypad6_0x15382a7b0">
-
-<path fill="none" stroke="black" stroke-dasharray="5,2" d="M4237.6,-131.88C4237.6,-132.02 4237.6,-132.17 4237.6,-132.32" style=""/>
-<polygon fill="black" stroke="black" points="4234.1,-127.44 4237.6,-137.44 4241.1,-127.44 4234.1,-127.44" style=""/>
-</g>
-<!-- clocksync1_0x1560a9be0_sink_0x15311b420 -->
-<g id="node11" class="node" pointer-events="visible" data-name="clocksync1_0x1560a9be0_sink_0x15311b420">
-
-<polygon fill="#aaaaff" stroke="black" points="4527.55,-53.6 4473.55,-53.6 4473.55,-32.4 4527.55,-32.4 4527.55,-53.6" style=""/>
-<text text-anchor="middle" x="4500.55" y="-45.7" font-family="sans" font-size="9.00" style="">sink</text>
-<text text-anchor="middle" x="4500.55" y="-34.9" font-family="sans" font-size="9.00" style="">[&gt;][bfb]</text>
-</g>
-<!-- _proxypad6_0x15382a7b0&#45;&gt;clocksync1_0x1560a9be0_sink_0x15311b420 -->
-<g id="edge8" class="edge" data-name="_proxypad6_0x15382a7b0-&gt;clocksync1_0x1560a9be0_sink_0x15311b420">
-
-<path fill="none" stroke="black" d="M4264.93,-142.03C4267.91,-140.15 4270.58,-137.84 4272.6,-135 4285.61,-116.68 4264.1,-49.45 4280.6,-34.2 4329.99,11.42 4415.54,-10.14 4463.78,-27.87" style=""/>
-<polygon fill="black" stroke="black" points="4462.34,-31.06 4472.93,-31.37 4464.84,-24.53 4462.34,-31.06" style=""/>
-<text text-anchor="start" x="4280.6" y="-198.7" font-family="monospace" font-size="9.00" style="">video/x-h264</text>
-<text text-anchor="start" x="4280.6" y="-187.9" font-family="monospace" font-size="9.00" style="">       stream-format: avc</text>
-<text text-anchor="start" x="4280.6" y="-177.1" font-family="monospace" font-size="9.00" style="">  pixel-aspect-ratio: 1/1</text>
-<text text-anchor="start" x="4280.6" y="-166.3" font-family="monospace" font-size="9.00" style="">               width: 640</text>
-<text text-anchor="start" x="4280.6" y="-155.5" font-family="monospace" font-size="9.00" style="">              height: 360</text>
-<text text-anchor="start" x="4280.6" y="-144.7" font-family="monospace" font-size="9.00" style="">           framerate: 30/1</text>
-<text text-anchor="start" x="4280.6" y="-133.9" font-family="monospace" font-size="9.00" style="">  coded-picture-structure: frame</text>
-<text text-anchor="start" x="4280.6" y="-123.1" font-family="monospace" font-size="9.00" style="">       chroma-format: 4:2:0</text>
-<text text-anchor="start" x="4280.6" y="-112.3" font-family="monospace" font-size="9.00" style="">      bit-depth-luma: 8</text>
-<text text-anchor="start" x="4280.6" y="-101.5" font-family="monospace" font-size="9.00" style="">    bit-depth-chroma: 8</text>
-<text text-anchor="start" x="4280.6" y="-90.7" font-family="monospace" font-size="9.00" style="">         colorimetry: bt601</text>
-<text text-anchor="start" x="4280.6" y="-79.9" font-family="monospace" font-size="9.00" style="">              parsed: true</text>
-<text text-anchor="start" x="4280.6" y="-69.1" font-family="monospace" font-size="9.00" style="">           alignment: au</text>
-<text text-anchor="start" x="4280.6" y="-58.3" font-family="monospace" font-size="9.00" style="">             profile: high</text>
-<text text-anchor="start" x="4280.6" y="-47.5" font-family="monospace" font-size="9.00" style="">               level: 3</text>
-<text text-anchor="start" x="4280.6" y="-36.7" font-family="monospace" font-size="9.00" style="">          codec_data: 0164001effe1001e676400...</text>
-</g>
-<!-- clocksync0_0x1560a9a10_sink_0x15311ad30 -->
-<g id="node14" class="node" pointer-events="visible" data-name="clocksync0_0x1560a9a10_sink_0x15311ad30">
-
-<polygon fill="#aaaaff" stroke="black" points="4527.55,-218.6 4473.55,-218.6 4473.55,-197.4 4527.55,-197.4 4527.55,-218.6" style=""/>
-<text text-anchor="middle" x="4500.55" y="-210.7" font-family="sans" font-size="9.00" style="">sink</text>
-<text text-anchor="middle" x="4500.55" y="-199.9" font-family="sans" font-size="9.00" style="">[&gt;][bfb]</text>
-</g>
-<!-- _proxypad7_0x15382ac70&#45;&gt;clocksync0_0x1560a9a10_sink_0x15311ad30 -->
-<g id="edge11" class="edge" data-name="_proxypad7_0x15382ac70-&gt;clocksync0_0x1560a9a10_sink_0x15311ad30">
-
-<path fill="none" stroke="black" d="M4265.06,-208C4311.68,-208 4408.57,-208 4462.06,-208" style=""/>
-<polygon fill="black" stroke="black" points="4461.9,-211.5 4471.9,-208 4461.9,-204.5 4461.9,-211.5" style=""/>
-<text text-anchor="start" x="4283.28" y="-275.5" font-family="monospace" font-size="9.00" style="">audio/x-opus</text>
-<text text-anchor="start" x="4283.28" y="-264.7" font-family="monospace" font-size="9.00" style="">                rate: 48000</text>
-<text text-anchor="start" x="4283.28" y="-253.9" font-family="monospace" font-size="9.00" style="">            channels: 2</text>
-<text text-anchor="start" x="4283.28" y="-243.1" font-family="monospace" font-size="9.00" style="">  channel-mapping-family: 0</text>
-<text text-anchor="start" x="4283.28" y="-232.3" font-family="monospace" font-size="9.00" style="">        stream-count: 1</text>
-<text text-anchor="start" x="4283.28" y="-221.5" font-family="monospace" font-size="9.00" style="">       coupled-count: 1</text>
-<text text-anchor="start" x="4283.28" y="-210.7" font-family="monospace" font-size="9.00" style="">        streamheader: &lt; (buffer)4f70757348... &gt;</text>
-</g>
-<!-- appsink1_0x1570a8d30_sink_0x15311b8c0 -->
-<g id="node10" class="node" pointer-events="visible" data-name="appsink1_0x1570a8d30_sink_0x15311b8c0">
-
-<polygon fill="#aaaaff" stroke="black" points="4934.5,-53.6 4880.5,-53.6 4880.5,-32.4 4934.5,-32.4 4934.5,-53.6" style=""/>
-<text text-anchor="middle" x="4907.5" y="-45.7" font-family="sans" font-size="9.00" style="">sink</text>
-<text text-anchor="middle" x="4907.5" y="-34.9" font-family="sans" font-size="9.00" style="">[&gt;][bfb]</text>
-</g>
-<!-- clocksync1_0x1560a9be0_src_0x15311b670 -->
-<g id="node12" class="node" pointer-events="visible" data-name="clocksync1_0x1560a9be0_src_0x15311b670">
-
-<polygon fill="#ffaaaa" stroke="black" points="4614.55,-53.6 4560.55,-53.6 4560.55,-32.4 4614.55,-32.4 4614.55,-53.6" style=""/>
-<text text-anchor="middle" x="4587.55" y="-45.7" font-family="sans" font-size="9.00" style="">src</text>
-<text text-anchor="middle" x="4587.55" y="-34.9" font-family="sans" font-size="9.00" style="">[&gt;][bfb]</text>
-</g>
-<!-- clocksync1_0x1560a9be0_sink_0x15311b420&#45;&gt;clocksync1_0x1560a9be0_src_0x15311b670 -->
-<!-- clocksync1_0x1560a9be0_src_0x15311b670&#45;&gt;appsink1_0x1570a8d30_sink_0x15311b8c0 -->
-<g id="edge9" class="edge" data-name="clocksync1_0x1560a9be0_src_0x15311b670-&gt;appsink1_0x1570a8d30_sink_0x15311b8c0">
-
-<path fill="none" stroke="black" d="M4614.92,-33.01C4622.44,-30.62 4630.73,-28.41 4638.55,-27.2 4712.76,-15.75 4732.65,-21.26 4807.5,-27.2 4827.95,-28.82 4850.56,-32.3 4869,-35.58" style=""/>
-<polygon fill="black" stroke="black" points="4868.21,-38.99 4878.68,-37.36 4869.48,-32.11 4868.21,-38.99" style=""/>
-<text text-anchor="start" x="4638.55" y="-191.7" font-family="monospace" font-size="9.00" style="">video/x-h264</text>
-<text text-anchor="start" x="4638.55" y="-180.9" font-family="monospace" font-size="9.00" style="">       stream-format: avc</text>
-<text text-anchor="start" x="4638.55" y="-170.1" font-family="monospace" font-size="9.00" style="">  pixel-aspect-ratio: 1/1</text>
-<text text-anchor="start" x="4638.55" y="-159.3" font-family="monospace" font-size="9.00" style="">               width: 640</text>
-<text text-anchor="start" x="4638.55" y="-148.5" font-family="monospace" font-size="9.00" style="">              height: 360</text>
-<text text-anchor="start" x="4638.55" y="-137.7" font-family="monospace" font-size="9.00" style="">           framerate: 30/1</text>
-<text text-anchor="start" x="4638.55" y="-126.9" font-family="monospace" font-size="9.00" style="">  coded-picture-structure: frame</text>
-<text text-anchor="start" x="4638.55" y="-116.1" font-family="monospace" font-size="9.00" style="">       chroma-format: 4:2:0</text>
-<text text-anchor="start" x="4638.55" y="-105.3" font-family="monospace" font-size="9.00" style="">      bit-depth-luma: 8</text>
-<text text-anchor="start" x="4638.55" y="-94.5" font-family="monospace" font-size="9.00" style="">    bit-depth-chroma: 8</text>
-<text text-anchor="start" x="4638.55" y="-83.7" font-family="monospace" font-size="9.00" style="">         colorimetry: bt601</text>
-<text text-anchor="start" x="4638.55" y="-72.9" font-family="monospace" font-size="9.00" style="">              parsed: true</text>
-<text text-anchor="start" x="4638.55" y="-62.1" font-family="monospace" font-size="9.00" style="">           alignment: au</text>
-<text text-anchor="start" x="4638.55" y="-51.3" font-family="monospace" font-size="9.00" style="">             profile: high</text>
-<text text-anchor="start" x="4638.55" y="-40.5" font-family="monospace" font-size="9.00" style="">               level: 3</text>
-<text text-anchor="start" x="4638.55" y="-29.7" font-family="monospace" font-size="9.00" style="">          codec_data: 0164001effe1001e676400...</text>
-</g>
-<!-- appsink0_0x1570a8660_sink_0x15311b1d0 -->
-<g id="node13" class="node" pointer-events="visible" data-name="appsink0_0x1570a8660_sink_0x15311b1d0">
-
-<polygon fill="#aaaaff" stroke="black" points="4934.5,-210.6 4880.5,-210.6 4880.5,-189.4 4934.5,-189.4 4934.5,-210.6" style=""/>
-<text text-anchor="middle" x="4907.5" y="-202.7" font-family="sans" font-size="9.00" style="">sink</text>
-<text text-anchor="middle" x="4907.5" y="-191.9" font-family="sans" font-size="9.00" style="">[&gt;][bfb]</text>
-</g>
-<!-- clocksync0_0x1560a9a10_src_0x15311af80 -->
-<g id="node15" class="node" pointer-events="visible" data-name="clocksync0_0x1560a9a10_src_0x15311af80">
-
-<polygon fill="#ffaaaa" stroke="black" points="4614.55,-218.6 4560.55,-218.6 4560.55,-197.4 4614.55,-197.4 4614.55,-218.6" style=""/>
-<text text-anchor="middle" x="4587.55" y="-210.7" font-family="sans" font-size="9.00" style="">src</text>
-<text text-anchor="middle" x="4587.55" y="-199.9" font-family="sans" font-size="9.00" style="">[&gt;][bfb]</text>
-</g>
-<!-- clocksync0_0x1560a9a10_sink_0x15311ad30&#45;&gt;clocksync0_0x1560a9a10_src_0x15311af80 -->
-<!-- clocksync0_0x1560a9a10_src_0x15311af80&#45;&gt;appsink0_0x1570a8660_sink_0x15311b1d0 -->
-<g id="edge12" class="edge" data-name="clocksync0_0x1560a9a10_src_0x15311af80-&gt;appsink0_0x1570a8660_sink_0x15311b1d0">
-
-<path fill="none" stroke="black" d="M4614.84,-207.34C4671.15,-205.92 4803.57,-202.59 4868.82,-200.95" style=""/>
-<polygon fill="black" stroke="black" points="4868.76,-204.45 4878.67,-200.7 4868.59,-197.45 4868.76,-204.45" style=""/>
-<text text-anchor="start" x="4641.23" y="-273.5" font-family="monospace" font-size="9.00" style="">audio/x-opus</text>
-<text text-anchor="start" x="4641.23" y="-262.7" font-family="monospace" font-size="9.00" style="">                rate: 48000</text>
-<text text-anchor="start" x="4641.23" y="-251.9" font-family="monospace" font-size="9.00" style="">            channels: 2</text>
-<text text-anchor="start" x="4641.23" y="-241.1" font-family="monospace" font-size="9.00" style="">  channel-mapping-family: 0</text>
-<text text-anchor="start" x="4641.23" y="-230.3" font-family="monospace" font-size="9.00" style="">        stream-count: 1</text>
-<text text-anchor="start" x="4641.23" y="-219.5" font-family="monospace" font-size="9.00" style="">       coupled-count: 1</text>
-<text text-anchor="start" x="4641.23" y="-208.7" font-family="monospace" font-size="9.00" style="">        streamheader: &lt; (buffer)4f70757348... &gt;</text>
-</g>
-<!-- output_tee_audio_0x15312cd20_sink_0x153135a10 -->
-<g id="node16" class="node" pointer-events="visible" data-name="output_tee_audio_0x15312cd20_sink_0x153135a10">
-
-<polygon fill="#aaaaff" stroke="black" points="3539.4,-168.6 3485.4,-168.6 3485.4,-147.4 3539.4,-147.4 3539.4,-168.6" style=""/>
-<text text-anchor="middle" x="3512.4" y="-160.7" font-family="sans" font-size="9.00" style="">sink</text>
-<text text-anchor="middle" x="3512.4" y="-149.9" font-family="sans" font-size="9.00" style="">[&gt;][bfb]</text>
-</g>
-<!-- output_tee_audio_0x15312cd20_src_0_0x15382aa00 -->
-<g id="node17" class="node" pointer-events="visible" data-name="output_tee_audio_0x15312cd20_src_0_0x15382aa00">
-
-<polygon fill="#ffaaaa" stroke="black" stroke-dasharray="5,2" points="3626.4,-168.6 3572.4,-168.6 3572.4,-147.4 3626.4,-147.4 3626.4,-168.6" style=""/>
-<text text-anchor="middle" x="3599.4" y="-160.7" font-family="sans" font-size="9.00" style="">src_0</text>
-<text text-anchor="middle" x="3599.4" y="-149.9" font-family="sans" font-size="9.00" style="">[&gt;][bfb]</text>
-</g>
-<!-- output_tee_audio_0x15312cd20_sink_0x153135a10&#45;&gt;output_tee_audio_0x15312cd20_src_0_0x15382aa00 -->
-<!-- output_tee_audio_0x15312cd20_src_0_0x15382aa00&#45;&gt;audio_queue_38a2c591_c540_4223_98c7_531b51d3f00d_0x156088a40_sink_0x15311a890 -->
-<g id="edge14" class="edge" data-name="output_tee_audio_0x15312cd20_src_0_0x15382aa00-&gt;audio_queue_38a2c591_c540_4223_98c7_531b51d3f00d_0x156088a40_sink_0x15311a890">
-
-<path fill="none" stroke="black" d="M3626.64,-158.1C3675.46,-158.27 3780.4,-158.66 3836.63,-158.86" style=""/>
-<polygon fill="black" stroke="black" points="3836.32,-162.36 3846.33,-158.9 3836.35,-155.36 3836.32,-162.36" style=""/>
-<text text-anchor="start" x="3650.4" y="-225.5" font-family="monospace" font-size="9.00" style="">audio/x-opus</text>
-<text text-anchor="start" x="3650.4" y="-214.7" font-family="monospace" font-size="9.00" style="">                rate: 48000</text>
-<text text-anchor="start" x="3650.4" y="-203.9" font-family="monospace" font-size="9.00" style="">            channels: 2</text>
-<text text-anchor="start" x="3650.4" y="-193.1" font-family="monospace" font-size="9.00" style="">  channel-mapping-family: 0</text>
-<text text-anchor="start" x="3650.4" y="-182.3" font-family="monospace" font-size="9.00" style="">        stream-count: 1</text>
-<text text-anchor="start" x="3650.4" y="-171.5" font-family="monospace" font-size="9.00" style="">       coupled-count: 1</text>
-<text text-anchor="start" x="3650.4" y="-160.7" font-family="monospace" font-size="9.00" style="">        streamheader: &lt; (buffer)4f70757348... &gt;</text>
-</g>
-<!-- opusenc0_0x153108310_sink_0x153135570 -->
-<g id="node18" class="node" pointer-events="visible" data-name="opusenc0_0x153108310_sink_0x153135570">
-
-<polygon fill="#aaaaff" stroke="black" points="3181.45,-168.6 3127.45,-168.6 3127.45,-147.4 3181.45,-147.4 3181.45,-168.6" style=""/>
-<text text-anchor="middle" x="3154.45" y="-160.7" font-family="sans" font-size="9.00" style="">sink</text>
-<text text-anchor="middle" x="3154.45" y="-149.9" font-family="sans" font-size="9.00" style="">[&gt;][bfb]</text>
-</g>
-<!-- opusenc0_0x153108310_src_0x1531357c0 -->
-<g id="node19" class="node" pointer-events="visible" data-name="opusenc0_0x153108310_src_0x1531357c0">
-
-<polygon fill="#ffaaaa" stroke="black" points="3268.45,-168.6 3214.45,-168.6 3214.45,-147.4 3268.45,-147.4 3268.45,-168.6" style=""/>
-<text text-anchor="middle" x="3241.45" y="-160.7" font-family="sans" font-size="9.00" style="">src</text>
-<text text-anchor="middle" x="3241.45" y="-149.9" font-family="sans" font-size="9.00" style="">[&gt;][bfb]</text>
-</g>
-<!-- opusenc0_0x153108310_sink_0x153135570&#45;&gt;opusenc0_0x153108310_src_0x1531357c0 -->
-<!-- opusenc0_0x153108310_src_0x1531357c0&#45;&gt;output_tee_audio_0x15312cd20_sink_0x153135a10 -->
-<g id="edge16" class="edge" data-name="opusenc0_0x153108310_src_0x1531357c0-&gt;output_tee_audio_0x15312cd20_sink_0x153135a10">
-
-<path fill="none" stroke="black" d="M3268.73,-158C3316.63,-158 3418.3,-158 3473.63,-158" style=""/>
-<polygon fill="black" stroke="black" points="3473.5,-161.5 3483.5,-158 3473.5,-154.5 3473.5,-161.5" style=""/>
-<text text-anchor="start" x="3295.13" y="-225.5" font-family="monospace" font-size="9.00" style="">audio/x-opus</text>
-<text text-anchor="start" x="3295.13" y="-214.7" font-family="monospace" font-size="9.00" style="">                rate: 48000</text>
-<text text-anchor="start" x="3295.13" y="-203.9" font-family="monospace" font-size="9.00" style="">            channels: 2</text>
-<text text-anchor="start" x="3295.13" y="-193.1" font-family="monospace" font-size="9.00" style="">  channel-mapping-family: 0</text>
-<text text-anchor="start" x="3295.13" y="-182.3" font-family="monospace" font-size="9.00" style="">        stream-count: 1</text>
-<text text-anchor="start" x="3295.13" y="-171.5" font-family="monospace" font-size="9.00" style="">       coupled-count: 1</text>
-<text text-anchor="start" x="3295.13" y="-160.7" font-family="monospace" font-size="9.00" style="">        streamheader: &lt; (buffer)4f70757348... &gt;</text>
-</g>
-<!-- audioresample0_0x1560e8290_sink_0x1531342f0 -->
-<g id="node20" class="node" pointer-events="visible" data-name="audioresample0_0x1560e8290_sink_0x1531342f0">
-
-<polygon fill="#aaaaff" stroke="black" points="2838.72,-168.6 2784.72,-168.6 2784.72,-147.4 2838.72,-147.4 2838.72,-168.6" style=""/>
-<text text-anchor="middle" x="2811.72" y="-160.7" font-family="sans" font-size="9.00" style="">sink</text>
-<text text-anchor="middle" x="2811.72" y="-149.9" font-family="sans" font-size="9.00" style="">[&gt;][bfb]</text>
-</g>
-<!-- audioresample0_0x1560e8290_src_0x153134790 -->
-<g id="node21" class="node" pointer-events="visible" data-name="audioresample0_0x1560e8290_src_0x153134790">
-
-<polygon fill="#ffaaaa" stroke="black" points="2925.72,-168.6 2871.72,-168.6 2871.72,-147.4 2925.72,-147.4 2925.72,-168.6" style=""/>
-<text text-anchor="middle" x="2898.72" y="-160.7" font-family="sans" font-size="9.00" style="">src</text>
-<text text-anchor="middle" x="2898.72" y="-149.9" font-family="sans" font-size="9.00" style="">[&gt;][bfb]</text>
-</g>
-<!-- audioresample0_0x1560e8290_sink_0x1531342f0&#45;&gt;audioresample0_0x1560e8290_src_0x153134790 -->
-<!-- audioresample0_0x1560e8290_src_0x153134790&#45;&gt;opusenc0_0x153108310_sink_0x153135570 -->
-<g id="edge18" class="edge" data-name="audioresample0_0x1560e8290_src_0x153134790-&gt;opusenc0_0x153108310_sink_0x153135570">
-
-<path fill="none" stroke="black" d="M2925.92,-158C2971.02,-158 3063.52,-158 3115.62,-158" style=""/>
-<polygon fill="black" stroke="black" points="3115.5,-161.5 3125.5,-158 3115.5,-154.5 3115.5,-161.5" style=""/>
-<text text-anchor="start" x="2949.72" y="-214.7" font-family="monospace" font-size="9.00" style="">audio/x-raw</text>
-<text text-anchor="start" x="2949.72" y="-203.9" font-family="monospace" font-size="9.00" style="">                rate: 48000</text>
-<text text-anchor="start" x="2949.72" y="-193.1" font-family="monospace" font-size="9.00" style="">            channels: 2</text>
-<text text-anchor="start" x="2949.72" y="-182.3" font-family="monospace" font-size="9.00" style="">              format: S16LE</text>
-<text text-anchor="start" x="2949.72" y="-171.5" font-family="monospace" font-size="9.00" style="">              layout: interleaved</text>
-<text text-anchor="start" x="2949.72" y="-160.7" font-family="monospace" font-size="9.00" style="">        channel-mask: 0x0000000000000003</text>
-</g>
-<!-- audioconvert0_0x1560e05f0_sink_0x153134e80 -->
-<g id="node22" class="node" pointer-events="visible" data-name="audioconvert0_0x1560e05f0_sink_0x153134e80">
-
-<polygon fill="#aaaaff" stroke="black" points="2485.99,-168.6 2431.99,-168.6 2431.99,-147.4 2485.99,-147.4 2485.99,-168.6" style=""/>
-<text text-anchor="middle" x="2458.99" y="-160.7" font-family="sans" font-size="9.00" style="">sink</text>
-<text text-anchor="middle" x="2458.99" y="-149.9" font-family="sans" font-size="9.00" style="">[&gt;][bfb]</text>
-</g>
-<!-- audioconvert0_0x1560e05f0_src_0x153134540 -->
-<g id="node23" class="node" pointer-events="visible" data-name="audioconvert0_0x1560e05f0_src_0x153134540">
-
-<polygon fill="#ffaaaa" stroke="black" points="2572.99,-168.6 2518.99,-168.6 2518.99,-147.4 2572.99,-147.4 2572.99,-168.6" style=""/>
-<text text-anchor="middle" x="2545.99" y="-160.7" font-family="sans" font-size="9.00" style="">src</text>
-<text text-anchor="middle" x="2545.99" y="-149.9" font-family="sans" font-size="9.00" style="">[&gt;][bfb]</text>
-</g>
-<!-- audioconvert0_0x1560e05f0_sink_0x153134e80&#45;&gt;audioconvert0_0x1560e05f0_src_0x153134540 -->
-<!-- audioconvert0_0x1560e05f0_src_0x153134540&#45;&gt;audioresample0_0x1560e8290_sink_0x1531342f0 -->
-<g id="edge20" class="edge" data-name="audioconvert0_0x1560e05f0_src_0x153134540-&gt;audioresample0_0x1560e8290_sink_0x1531342f0">
-
-<path fill="none" stroke="black" d="M2573.24,-158C2620.24,-158 2718.89,-158 2773.08,-158" style=""/>
-<polygon fill="black" stroke="black" points="2773.06,-161.5 2783.06,-158 2773.06,-154.5 2773.06,-161.5" style=""/>
-<text text-anchor="start" x="2606.99" y="-214.7" font-family="monospace" font-size="9.00" style="">audio/x-raw</text>
-<text text-anchor="start" x="2606.99" y="-203.9" font-family="monospace" font-size="9.00" style="">                rate: 44100</text>
-<text text-anchor="start" x="2606.99" y="-193.1" font-family="monospace" font-size="9.00" style="">              format: S16LE</text>
-<text text-anchor="start" x="2606.99" y="-182.3" font-family="monospace" font-size="9.00" style="">            channels: 2</text>
-<text text-anchor="start" x="2606.99" y="-171.5" font-family="monospace" font-size="9.00" style="">              layout: interleaved</text>
-<text text-anchor="start" x="2606.99" y="-160.7" font-family="monospace" font-size="9.00" style="">        channel-mask: 0x0000000000000003</text>
-</g>
-<!-- avdec_aac1_0x1560ba8e0_sink_0x156050a10 -->
-<g id="node24" class="node" pointer-events="visible" data-name="avdec_aac1_0x1560ba8e0_sink_0x156050a10">
-
-<polygon fill="#aaaaff" stroke="black" points="2118.04,-168.6 2064.04,-168.6 2064.04,-147.4 2118.04,-147.4 2118.04,-168.6" style=""/>
-<text text-anchor="middle" x="2091.04" y="-160.7" font-family="sans" font-size="9.00" style="">sink</text>
-<text text-anchor="middle" x="2091.04" y="-149.9" font-family="sans" font-size="9.00" style="">[&gt;][bfb]</text>
-</g>
-<!-- avdec_aac1_0x1560ba8e0_src_0x1531349e0 -->
-<g id="node25" class="node" pointer-events="visible" data-name="avdec_aac1_0x1560ba8e0_src_0x1531349e0">
-
-<polygon fill="#ffaaaa" stroke="black" points="2205.04,-168.6 2151.04,-168.6 2151.04,-147.4 2205.04,-147.4 2205.04,-168.6" style=""/>
-<text text-anchor="middle" x="2178.04" y="-160.7" font-family="sans" font-size="9.00" style="">src</text>
-<text text-anchor="middle" x="2178.04" y="-149.9" font-family="sans" font-size="9.00" style="">[&gt;][bfb]</text>
-</g>
-<!-- avdec_aac1_0x1560ba8e0_sink_0x156050a10&#45;&gt;avdec_aac1_0x1560ba8e0_src_0x1531349e0 -->
-<!-- avdec_aac1_0x1560ba8e0_src_0x1531349e0&#45;&gt;audioconvert0_0x1560e05f0_sink_0x153134e80 -->
-<g id="edge22" class="edge" data-name="avdec_aac1_0x1560ba8e0_src_0x1531349e0-&gt;audioconvert0_0x1560e05f0_sink_0x153134e80">
-
-<path fill="none" stroke="black" d="M2205.53,-158C2255.3,-158 2362.91,-158 2420.24,-158" style=""/>
-<polygon fill="black" stroke="black" points="2420.16,-161.5 2430.16,-158 2420.16,-154.5 2420.16,-161.5" style=""/>
-<text text-anchor="start" x="2236.65" y="-214.7" font-family="monospace" font-size="9.00" style="">audio/x-raw</text>
-<text text-anchor="start" x="2236.65" y="-203.9" font-family="monospace" font-size="9.00" style="">              format: F32LE</text>
-<text text-anchor="start" x="2236.65" y="-193.1" font-family="monospace" font-size="9.00" style="">              layout: non-interleaved</text>
-<text text-anchor="start" x="2236.65" y="-182.3" font-family="monospace" font-size="9.00" style="">                rate: 44100</text>
-<text text-anchor="start" x="2236.65" y="-171.5" font-family="monospace" font-size="9.00" style="">            channels: 2</text>
-<text text-anchor="start" x="2236.65" y="-160.7" font-family="monospace" font-size="9.00" style="">        channel-mask: 0x0000000000000003</text>
-</g>
-<!-- aacparse1_0x15606d600_sink_0x153134c30 -->
-<g id="node26" class="node" pointer-events="visible" data-name="aacparse1_0x15606d600_sink_0x153134c30">
-
-<polygon fill="#aaaaff" stroke="black" points="1760.09,-168.6 1706.09,-168.6 1706.09,-147.4 1760.09,-147.4 1760.09,-168.6" style=""/>
-<text text-anchor="middle" x="1733.09" y="-160.7" font-family="sans" font-size="9.00" style="">sink</text>
-<text text-anchor="middle" x="1733.09" y="-149.9" font-family="sans" font-size="9.00" style="">[&gt;][bfb]</text>
-</g>
-<!-- aacparse1_0x15606d600_src_0x1560507c0 -->
-<g id="node27" class="node" pointer-events="visible" data-name="aacparse1_0x15606d600_src_0x1560507c0">
-
-<polygon fill="#ffaaaa" stroke="black" points="1847.09,-168.6 1793.09,-168.6 1793.09,-147.4 1847.09,-147.4 1847.09,-168.6" style=""/>
-<text text-anchor="middle" x="1820.09" y="-160.7" font-family="sans" font-size="9.00" style="">src</text>
-<text text-anchor="middle" x="1820.09" y="-149.9" font-family="sans" font-size="9.00" style="">[&gt;][bfb]</text>
-</g>
-<!-- aacparse1_0x15606d600_sink_0x153134c30&#45;&gt;aacparse1_0x15606d600_src_0x1560507c0 -->
-<!-- aacparse1_0x15606d600_src_0x1560507c0&#45;&gt;avdec_aac1_0x1560ba8e0_sink_0x156050a10 -->
-<g id="edge24" class="edge" data-name="aacparse1_0x15606d600_src_0x1560507c0-&gt;avdec_aac1_0x1560ba8e0_sink_0x156050a10">
-
-<path fill="none" stroke="black" d="M1847.36,-158C1895.27,-158 1996.94,-158 2052.26,-158" style=""/>
-<polygon fill="black" stroke="black" points="2052.14,-161.5 2062.14,-158 2052.14,-154.5 2052.14,-161.5" style=""/>
-<text text-anchor="start" x="1912.57" y="-247.1" font-family="monospace" font-size="9.00" style="">audio/mpeg</text>
-<text text-anchor="start" x="1912.57" y="-236.3" font-family="monospace" font-size="9.00" style="">              framed: true</text>
-<text text-anchor="start" x="1912.57" y="-225.5" font-family="monospace" font-size="9.00" style="">         mpegversion: 4</text>
-<text text-anchor="start" x="1912.57" y="-214.7" font-family="monospace" font-size="9.00" style="">               level: 2</text>
-<text text-anchor="start" x="1912.57" y="-203.9" font-family="monospace" font-size="9.00" style="">        base-profile: lc</text>
-<text text-anchor="start" x="1912.57" y="-193.1" font-family="monospace" font-size="9.00" style="">             profile: lc</text>
-<text text-anchor="start" x="1912.57" y="-182.3" font-family="monospace" font-size="9.00" style="">                rate: 44100</text>
-<text text-anchor="start" x="1912.57" y="-171.5" font-family="monospace" font-size="9.00" style="">            channels: 2</text>
-<text text-anchor="start" x="1912.57" y="-160.7" font-family="monospace" font-size="9.00" style="">       stream-format: adts</text>
-</g>
-<!-- output_tee_video_0x15312cbd0_sink_0x1530f3d80 -->
-<g id="node28" class="node" pointer-events="visible" data-name="output_tee_video_0x15312cbd0_sink_0x1530f3d80">
-
-<polygon fill="#aaaaff" stroke="black" points="2118.04,-276.6 2064.04,-276.6 2064.04,-255.4 2118.04,-255.4 2118.04,-276.6" style=""/>
-<text text-anchor="middle" x="2091.04" y="-268.7" font-family="sans" font-size="9.00" style="">sink</text>
-<text text-anchor="middle" x="2091.04" y="-257.9" font-family="sans" font-size="9.00" style="">[&gt;][bfb]</text>
-</g>
-<!-- output_tee_video_0x15312cbd0_src_0_0x15382a540 -->
-<g id="node29" class="node" pointer-events="visible" data-name="output_tee_video_0x15312cbd0_src_0_0x15382a540">
-
-<polygon fill="#ffaaaa" stroke="black" stroke-dasharray="5,2" points="2205.04,-276.6 2151.04,-276.6 2151.04,-255.4 2205.04,-255.4 2205.04,-276.6" style=""/>
-<text text-anchor="middle" x="2178.04" y="-268.7" font-family="sans" font-size="9.00" style="">src_0</text>
-<text text-anchor="middle" x="2178.04" y="-257.9" font-family="sans" font-size="9.00" style="">[&gt;][bfb]</text>
-</g>
-<!-- output_tee_video_0x15312cbd0_sink_0x1530f3d80&#45;&gt;output_tee_video_0x15312cbd0_src_0_0x15382a540 -->
-<!-- output_tee_video_0x15312cbd0_src_0_0x15382a540&#45;&gt;video_queue_38a2c591_c540_4223_98c7_531b51d3f00d_0x156088740_sink_0x15311a3f0 -->
-<g id="edge26" class="edge" data-name="output_tee_video_0x15312cbd0_src_0_0x15382a540-&gt;video_queue_38a2c591_c540_4223_98c7_531b51d3f00d_0x156088740_sink_0x15311a3f0">
-
-<path fill="none" stroke="black" d="M2205.53,-265.91C2255.3,-265.73 2362.91,-265.34 2420.24,-265.14" style=""/>
-<polygon fill="black" stroke="black" points="2420.17,-268.64 2430.16,-265.1 2420.15,-261.64 2420.17,-268.64" style=""/>
-<text text-anchor="start" x="2229.04" y="-429.7" font-family="monospace" font-size="9.00" style="">video/x-h264</text>
-<text text-anchor="start" x="2229.04" y="-418.9" font-family="monospace" font-size="9.00" style="">       stream-format: avc</text>
-<text text-anchor="start" x="2229.04" y="-408.1" font-family="monospace" font-size="9.00" style="">  pixel-aspect-ratio: 1/1</text>
-<text text-anchor="start" x="2229.04" y="-397.3" font-family="monospace" font-size="9.00" style="">               width: 640</text>
-<text text-anchor="start" x="2229.04" y="-386.5" font-family="monospace" font-size="9.00" style="">              height: 360</text>
-<text text-anchor="start" x="2229.04" y="-375.7" font-family="monospace" font-size="9.00" style="">           framerate: 30/1</text>
-<text text-anchor="start" x="2229.04" y="-364.9" font-family="monospace" font-size="9.00" style="">  coded-picture-structure: frame</text>
-<text text-anchor="start" x="2229.04" y="-354.1" font-family="monospace" font-size="9.00" style="">       chroma-format: 4:2:0</text>
-<text text-anchor="start" x="2229.04" y="-343.3" font-family="monospace" font-size="9.00" style="">      bit-depth-luma: 8</text>
-<text text-anchor="start" x="2229.04" y="-332.5" font-family="monospace" font-size="9.00" style="">    bit-depth-chroma: 8</text>
-<text text-anchor="start" x="2229.04" y="-321.7" font-family="monospace" font-size="9.00" style="">         colorimetry: bt601</text>
-<text text-anchor="start" x="2229.04" y="-310.9" font-family="monospace" font-size="9.00" style="">              parsed: true</text>
-<text text-anchor="start" x="2229.04" y="-300.1" font-family="monospace" font-size="9.00" style="">           alignment: au</text>
-<text text-anchor="start" x="2229.04" y="-289.3" font-family="monospace" font-size="9.00" style="">             profile: high</text>
-<text text-anchor="start" x="2229.04" y="-278.5" font-family="monospace" font-size="9.00" style="">               level: 3</text>
-<text text-anchor="start" x="2229.04" y="-267.7" font-family="monospace" font-size="9.00" style="">          codec_data: 0164001effe1001e676400...</text>
-</g>
-<!-- h264parse1_0x1560d4270_sink_0x1530f3b30 -->
-<g id="node30" class="node" pointer-events="visible" data-name="h264parse1_0x1560d4270_sink_0x1530f3b30">
-
-<polygon fill="#aaaaff" stroke="black" points="1760.09,-276.6 1706.09,-276.6 1706.09,-255.4 1760.09,-255.4 1760.09,-276.6" style=""/>
-<text text-anchor="middle" x="1733.09" y="-268.7" font-family="sans" font-size="9.00" style="">sink</text>
-<text text-anchor="middle" x="1733.09" y="-257.9" font-family="sans" font-size="9.00" style="">[&gt;][bfb]</text>
-</g>
-<!-- h264parse1_0x1560d4270_src_0x156051c90 -->
-<g id="node31" class="node" pointer-events="visible" data-name="h264parse1_0x1560d4270_src_0x156051c90">
-
-<polygon fill="#ffaaaa" stroke="black" points="1847.09,-276.6 1793.09,-276.6 1793.09,-255.4 1847.09,-255.4 1847.09,-276.6" style=""/>
-<text text-anchor="middle" x="1820.09" y="-268.7" font-family="sans" font-size="9.00" style="">src</text>
-<text text-anchor="middle" x="1820.09" y="-257.9" font-family="sans" font-size="9.00" style="">[&gt;][bfb]</text>
-</g>
-<!-- h264parse1_0x1560d4270_sink_0x1530f3b30&#45;&gt;h264parse1_0x1560d4270_src_0x156051c90 -->
-<!-- h264parse1_0x1560d4270_src_0x156051c90&#45;&gt;output_tee_video_0x15312cbd0_sink_0x1530f3d80 -->
-<g id="edge28" class="edge" data-name="h264parse1_0x1560d4270_src_0x156051c90-&gt;output_tee_video_0x15312cbd0_sink_0x1530f3d80">
-
-<path fill="none" stroke="black" d="M1847.36,-266C1895.27,-266 1996.94,-266 2052.26,-266" style=""/>
-<polygon fill="black" stroke="black" points="2052.14,-269.5 2062.14,-266 2052.14,-262.5 2052.14,-269.5" style=""/>
-<text text-anchor="start" x="1871.09" y="-430.7" font-family="monospace" font-size="9.00" style="">video/x-h264</text>
-<text text-anchor="start" x="1871.09" y="-419.9" font-family="monospace" font-size="9.00" style="">       stream-format: avc</text>
-<text text-anchor="start" x="1871.09" y="-409.1" font-family="monospace" font-size="9.00" style="">  pixel-aspect-ratio: 1/1</text>
-<text text-anchor="start" x="1871.09" y="-398.3" font-family="monospace" font-size="9.00" style="">               width: 640</text>
-<text text-anchor="start" x="1871.09" y="-387.5" font-family="monospace" font-size="9.00" style="">              height: 360</text>
-<text text-anchor="start" x="1871.09" y="-376.7" font-family="monospace" font-size="9.00" style="">           framerate: 30/1</text>
-<text text-anchor="start" x="1871.09" y="-365.9" font-family="monospace" font-size="9.00" style="">  coded-picture-structure: frame</text>
-<text text-anchor="start" x="1871.09" y="-355.1" font-family="monospace" font-size="9.00" style="">       chroma-format: 4:2:0</text>
-<text text-anchor="start" x="1871.09" y="-344.3" font-family="monospace" font-size="9.00" style="">      bit-depth-luma: 8</text>
-<text text-anchor="start" x="1871.09" y="-333.5" font-family="monospace" font-size="9.00" style="">    bit-depth-chroma: 8</text>
-<text text-anchor="start" x="1871.09" y="-322.7" font-family="monospace" font-size="9.00" style="">         colorimetry: bt601</text>
-<text text-anchor="start" x="1871.09" y="-311.9" font-family="monospace" font-size="9.00" style="">              parsed: true</text>
-<text text-anchor="start" x="1871.09" y="-301.1" font-family="monospace" font-size="9.00" style="">           alignment: au</text>
-<text text-anchor="start" x="1871.09" y="-290.3" font-family="monospace" font-size="9.00" style="">             profile: high</text>
-<text text-anchor="start" x="1871.09" y="-279.5" font-family="monospace" font-size="9.00" style="">               level: 3</text>
-<text text-anchor="start" x="1871.09" y="-268.7" font-family="monospace" font-size="9.00" style="">          codec_data: 0164001effe1001e676400...</text>
-</g>
-<!-- srtsink0_0x1560c0350_sink_0x1530f28b0 -->
-<g id="node32" class="node" pointer-events="visible" data-name="srtsink0_0x1560c0350_sink_0x1530f28b0">
-
-<polygon fill="#aaaaff" stroke="black" points="825.44,-67.6 771.44,-67.6 771.44,-46.4 825.44,-46.4 825.44,-67.6" style=""/>
-<text text-anchor="middle" x="798.44" y="-59.7" font-family="sans" font-size="9.00" style="">sink</text>
-<text text-anchor="middle" x="798.44" y="-48.9" font-family="sans" font-size="9.00" style="">[&gt;][bfb]</text>
-</g>
-<!-- audio_queue_0x1530df920_sink_0x1560515a0 -->
-<g id="node33" class="node" pointer-events="visible" data-name="audio_queue_0x1530df920_sink_0x1560515a0">
-
-<polygon fill="#aaaaff" stroke="black" points="1457.13,-169.6 1403.13,-169.6 1403.13,-148.4 1457.13,-148.4 1457.13,-169.6" style=""/>
-<text text-anchor="middle" x="1430.13" y="-161.7" font-family="sans" font-size="9.00" style="">sink</text>
-<text text-anchor="middle" x="1430.13" y="-150.9" font-family="sans" font-size="9.00" style="">[&gt;][bfb]</text>
-</g>
-<!-- audio_queue_0x1530df920_src_0x1530f2410 -->
-<g id="node34" class="node" pointer-events="visible" data-name="audio_queue_0x1530df920_src_0x1530f2410">
-
-<polygon fill="#ffaaaa" stroke="black" points="1544.13,-169.6 1490.13,-169.6 1490.13,-148.4 1544.13,-148.4 1544.13,-169.6" style=""/>
-<text text-anchor="middle" x="1517.13" y="-161.7" font-family="sans" font-size="9.00" style="">src</text>
-<text text-anchor="middle" x="1517.13" y="-150.9" font-family="sans" font-size="9.00" style="">[&gt;][bfb][T]</text>
-</g>
-<!-- audio_queue_0x1530df920_sink_0x1560515a0&#45;&gt;audio_queue_0x1530df920_src_0x1530f2410 -->
-<!-- audio_queue_0x1530df920_src_0x1530f2410&#45;&gt;aacparse1_0x15606d600_sink_0x153134c30 -->
-<g id="edge30" class="edge" data-name="audio_queue_0x1530df920_src_0x1530f2410-&gt;aacparse1_0x15606d600_sink_0x153134c30">
-
-<path fill="none" stroke="black" d="M1544.36,-158.88C1581.9,-158.7 1651.14,-158.38 1694.23,-158.18" style=""/>
-<polygon fill="black" stroke="black" points="1694.14,-161.68 1704.12,-158.13 1694.11,-154.68 1694.14,-161.68" style=""/>
-<text text-anchor="start" x="1582.12" y="-182.3" font-family="monospace" font-size="9.00" style="">audio/mpeg</text>
-<text text-anchor="start" x="1582.12" y="-171.5" font-family="monospace" font-size="9.00" style="">         mpegversion: 4</text>
-<text text-anchor="start" x="1582.12" y="-160.7" font-family="monospace" font-size="9.00" style="">       stream-format: adts</text>
-</g>
-<!-- video_queue_0x1530ded20_sink_0x156051100 -->
-<g id="node35" class="node" pointer-events="visible" data-name="video_queue_0x1530ded20_sink_0x156051100">
-
-<polygon fill="#aaaaff" stroke="black" points="1457.13,-270.6 1403.13,-270.6 1403.13,-249.4 1457.13,-249.4 1457.13,-270.6" style=""/>
-<text text-anchor="middle" x="1430.13" y="-262.7" font-family="sans" font-size="9.00" style="">sink</text>
-<text text-anchor="middle" x="1430.13" y="-251.9" font-family="sans" font-size="9.00" style="">[&gt;][bfb]</text>
-</g>
-<!-- video_queue_0x1530ded20_src_0x156051350 -->
-<g id="node36" class="node" pointer-events="visible" data-name="video_queue_0x1530ded20_src_0x156051350">
-
-<polygon fill="#ffaaaa" stroke="black" points="1544.13,-270.6 1490.13,-270.6 1490.13,-249.4 1544.13,-249.4 1544.13,-270.6" style=""/>
-<text text-anchor="middle" x="1517.13" y="-262.7" font-family="sans" font-size="9.00" style="">src</text>
-<text text-anchor="middle" x="1517.13" y="-251.9" font-family="sans" font-size="9.00" style="">[&gt;][bfb][T]</text>
-</g>
-<!-- video_queue_0x1530ded20_sink_0x156051100&#45;&gt;video_queue_0x1530ded20_src_0x156051350 -->
-<!-- video_queue_0x1530ded20_src_0x156051350&#45;&gt;h264parse1_0x1560d4270_sink_0x1530f3b30 -->
-<g id="edge32" class="edge" data-name="video_queue_0x1530ded20_src_0x156051350-&gt;h264parse1_0x1560d4270_sink_0x1530f3b30">
-
-<path fill="none" stroke="black" d="M1544.36,-260.74C1581.9,-261.79 1651.14,-263.73 1694.23,-264.94" style=""/>
-<polygon fill="black" stroke="black" points="1694.03,-268.43 1704.12,-265.22 1694.22,-261.44 1694.03,-268.43" style=""/>
-<text text-anchor="start" x="1568.13" y="-277.5" font-family="monospace" font-size="9.00" style="">video/x-h264</text>
-<text text-anchor="start" x="1568.13" y="-266.7" font-family="monospace" font-size="9.00" style="">       stream-format: byte-stream</text>
-</g>
-<!-- demux_0x1530df020_sink_0x156050320 -->
-<g id="node37" class="node" pointer-events="visible" data-name="demux_0x1530df020_sink_0x156050320">
-
-<polygon fill="#aaaaff" stroke="black" points="1154.17,-252.6 1100.17,-252.6 1100.17,-231.4 1154.17,-231.4 1154.17,-252.6" style=""/>
-<text text-anchor="middle" x="1127.17" y="-244.7" font-family="sans" font-size="9.00" style="">sink</text>
-<text text-anchor="middle" x="1127.17" y="-233.9" font-family="sans" font-size="9.00" style="">[&gt;][bfb]</text>
-</g>
-<!-- demux_0x1530df020_video_0_0041_0x1530f3690 -->
-<g id="node38" class="node" pointer-events="visible" data-name="demux_0x1530df020_video_0_0041_0x1530f3690">
-
-<polygon fill="#ffaaaa" stroke="black" stroke-dasharray="1,5" points="1241.17,-252.6 1187.17,-252.6 1187.17,-231.4 1241.17,-231.4 1241.17,-252.6" style=""/>
-<text text-anchor="middle" x="1214.17" y="-244.7" font-family="sans" font-size="9.00" style="">video_0_0041</text>
-<text text-anchor="middle" x="1214.17" y="-233.9" font-family="sans" font-size="9.00" style="">[&gt;][bfb]</text>
-</g>
-<!-- demux_0x1530df020_sink_0x156050320&#45;&gt;demux_0x1530df020_video_0_0041_0x1530f3690 -->
-<!-- demux_0x1530df020_video_0_0041_0x1530f3690&#45;&gt;video_queue_0x1530ded20_sink_0x156051100 -->
-<g id="edge34" class="edge" data-name="demux_0x1530df020_video_0_0041_0x1530f3690-&gt;video_queue_0x1530ded20_sink_0x156051100">
-
-<path fill="none" stroke="black" d="M1241.4,-244.21C1278.94,-247.36 1348.18,-253.19 1391.27,-256.81" style=""/>
-<polygon fill="black" stroke="black" points="1390.91,-260.3 1401.17,-257.65 1391.5,-253.32 1390.91,-260.3" style=""/>
-<text text-anchor="start" x="1265.17" y="-268.5" font-family="monospace" font-size="9.00" style="">video/x-h264</text>
-<text text-anchor="start" x="1265.17" y="-257.7" font-family="monospace" font-size="9.00" style="">       stream-format: byte-stream</text>
-</g>
-<!-- demux_0x1530df020_audio_0_0042_0x1530f38e0 -->
-<g id="node39" class="node" pointer-events="visible" data-name="demux_0x1530df020_audio_0_0042_0x1530f38e0">
-
-<polygon fill="#ffaaaa" stroke="black" stroke-dasharray="1,5" points="1241.17,-223.6 1187.17,-223.6 1187.17,-202.4 1241.17,-202.4 1241.17,-223.6" style=""/>
-<text text-anchor="middle" x="1214.17" y="-215.7" font-family="sans" font-size="9.00" style="">audio_0_0042</text>
-<text text-anchor="middle" x="1214.17" y="-204.9" font-family="sans" font-size="9.00" style="">[&gt;][bfb]</text>
-</g>
-<!-- demux_0x1530df020_audio_0_0042_0x1530f38e0&#45;&gt;audio_queue_0x1530df920_sink_0x1560515a0 -->
-<g id="edge35" class="edge" data-name="demux_0x1530df020_audio_0_0042_0x1530f38e0-&gt;audio_queue_0x1530df920_sink_0x1560515a0">
-
-<path fill="none" stroke="black" d="M1241.4,-206.38C1279.02,-196.88 1348.48,-179.35 1391.54,-168.49" style=""/>
-<polygon fill="black" stroke="black" points="1392.37,-171.89 1401.21,-166.05 1390.66,-165.1 1392.37,-171.89" style=""/>
-<text text-anchor="start" x="1279.16" y="-223.3" font-family="monospace" font-size="9.00" style="">audio/mpeg</text>
-<text text-anchor="start" x="1279.16" y="-212.5" font-family="monospace" font-size="9.00" style="">         mpegversion: 4</text>
-<text text-anchor="start" x="1279.16" y="-201.7" font-family="monospace" font-size="9.00" style="">       stream-format: adts</text>
-</g>
-<!-- typefind_0x15605c250_sink_0x156050c60 -->
-<g id="node40" class="node" pointer-events="visible" data-name="typefind_0x15605c250_sink_0x156050c60">
-
-<polygon fill="#aaaaff" stroke="black" points="825.44,-252.6 771.44,-252.6 771.44,-231.4 825.44,-231.4 825.44,-252.6" style=""/>
-<text text-anchor="middle" x="798.44" y="-244.7" font-family="sans" font-size="9.00" style="">sink</text>
-<text text-anchor="middle" x="798.44" y="-233.9" font-family="sans" font-size="9.00" style="">[&gt;][bfb]</text>
-</g>
-<!-- typefind_0x15605c250_src_0x156050570 -->
-<g id="node41" class="node" pointer-events="visible" data-name="typefind_0x15605c250_src_0x156050570">
-
-<polygon fill="#ffaaaa" stroke="black" points="953.44,-252.6 899.44,-252.6 899.44,-231.4 953.44,-231.4 953.44,-252.6" style=""/>
-<text text-anchor="middle" x="926.44" y="-244.7" font-family="sans" font-size="9.00" style="">src</text>
-<text text-anchor="middle" x="926.44" y="-233.9" font-family="sans" font-size="9.00" style="">[&gt;][bfb]</text>
-</g>
-<!-- typefind_0x15605c250_sink_0x156050c60&#45;&gt;typefind_0x15605c250_src_0x156050570 -->
-<!-- typefind_0x15605c250_src_0x156050570&#45;&gt;demux_0x1530df020_sink_0x156050320 -->
-<g id="edge37" class="edge" data-name="typefind_0x15605c250_src_0x156050570-&gt;demux_0x1530df020_sink_0x156050320">
-
-<path fill="none" stroke="black" d="M953.83,-242C988.27,-242 1048.8,-242 1088.18,-242" style=""/>
-<polygon fill="black" stroke="black" points="1088.16,-245.5 1098.16,-242 1088.16,-238.5 1088.16,-245.5" style=""/>
-<text text-anchor="start" x="990.44" y="-266.3" font-family="monospace" font-size="9.00" style="">video/mpegts</text>
-<text text-anchor="start" x="990.44" y="-255.5" font-family="monospace" font-size="9.00" style="">        systemstream: true</text>
-<text text-anchor="start" x="990.44" y="-244.7" font-family="monospace" font-size="9.00" style="">          packetsize: 188</text>
-</g>
-<!-- srt_queue_0x1530dfc20_sink_0x1530f2660 -->
-<g id="node42" class="node" pointer-events="visible" data-name="srt_queue_0x1530dfc20_sink_0x1530f2660">
-
-<polygon fill="#aaaaff" stroke="black" points="596.94,-85.6 542.94,-85.6 542.94,-64.4 596.94,-64.4 596.94,-85.6" style=""/>
-<text text-anchor="middle" x="569.94" y="-77.7" font-family="sans" font-size="9.00" style="">sink</text>
-<text text-anchor="middle" x="569.94" y="-66.9" font-family="sans" font-size="9.00" style="">[&gt;][bfb]</text>
-</g>
-<!-- srt_queue_0x1530dfc20_src_0x1530f2b00 -->
-<g id="node43" class="node" pointer-events="visible" data-name="srt_queue_0x1530dfc20_src_0x1530f2b00">
-
-<polygon fill="#ffaaaa" stroke="black" points="683.94,-85.6 629.94,-85.6 629.94,-64.4 683.94,-64.4 683.94,-85.6" style=""/>
-<text text-anchor="middle" x="656.94" y="-77.7" font-family="sans" font-size="9.00" style="">src</text>
-<text text-anchor="middle" x="656.94" y="-66.9" font-family="sans" font-size="9.00" style="">[&gt;][bfb][T]</text>
-</g>
-<!-- srt_queue_0x1530dfc20_sink_0x1530f2660&#45;&gt;srt_queue_0x1530dfc20_src_0x1530f2b00 -->
-<!-- srt_queue_0x1530dfc20_src_0x1530f2b00&#45;&gt;srtsink0_0x1560c0350_sink_0x1530f28b0 -->
-<g id="edge39" class="edge" data-name="srt_queue_0x1530dfc20_src_0x1530f2b00-&gt;srtsink0_0x1560c0350_sink_0x1530f28b0">
-
-<path fill="none" stroke="black" d="M684.18,-71.61C705.61,-68.85 736.17,-64.91 760.14,-61.81" style=""/>
-<polygon fill="black" stroke="black" points="760.34,-65.32 769.81,-60.56 759.45,-58.37 760.34,-65.32" style=""/>
-<text text-anchor="middle" x="717.69" y="-70.7" font-family="monospace" font-size="9.00" style="">ANY</text>
-</g>
-<!-- whep_queue_0x1530de120_sink_0x1531340a0 -->
-<g id="node44" class="node" pointer-events="visible" data-name="whep_queue_0x1530de120_sink_0x1531340a0">
-
-<polygon fill="#aaaaff" stroke="black" points="596.94,-241.6 542.94,-241.6 542.94,-220.4 596.94,-220.4 596.94,-241.6" style=""/>
-<text text-anchor="middle" x="569.94" y="-233.7" font-family="sans" font-size="9.00" style="">sink</text>
-<text text-anchor="middle" x="569.94" y="-222.9" font-family="sans" font-size="9.00" style="">[&gt;][bfb]</text>
-</g>
-<!-- whep_queue_0x1530de120_src_0x1560500d0 -->
-<g id="node45" class="node" pointer-events="visible" data-name="whep_queue_0x1530de120_src_0x1560500d0">
-
-<polygon fill="#ffaaaa" stroke="black" points="683.94,-241.6 629.94,-241.6 629.94,-220.4 683.94,-220.4 683.94,-241.6" style=""/>
-<text text-anchor="middle" x="656.94" y="-233.7" font-family="sans" font-size="9.00" style="">src</text>
-<text text-anchor="middle" x="656.94" y="-222.9" font-family="sans" font-size="9.00" style="">[&gt;][bfb][T]</text>
-</g>
-<!-- whep_queue_0x1530de120_sink_0x1531340a0&#45;&gt;whep_queue_0x1530de120_src_0x1560500d0 -->
-<!-- whep_queue_0x1530de120_src_0x1560500d0&#45;&gt;typefind_0x15605c250_sink_0x156050c60 -->
-<g id="edge41" class="edge" data-name="whep_queue_0x1530de120_src_0x1560500d0-&gt;typefind_0x15605c250_sink_0x156050c60">
-
-<path fill="none" stroke="black" d="M684.18,-233.07C705.61,-234.76 736.17,-237.17 760.14,-239.06" style=""/>
-<polygon fill="black" stroke="black" points="759.56,-242.52 769.81,-239.82 760.11,-235.55 759.56,-242.52" style=""/>
-<text text-anchor="middle" x="717.69" y="-238.7" font-family="monospace" font-size="9.00" style="">ANY</text>
-</g>
-<!-- input_tee_0x15312c000_sink_0x156050eb0 -->
-<g id="node46" class="node" pointer-events="visible" data-name="input_tee_0x15312c000_sink_0x156050eb0">
-
-<polygon fill="#aaaaff" stroke="black" points="388.44,-193.6 334.44,-193.6 334.44,-172.4 388.44,-172.4 388.44,-193.6" style=""/>
-<text text-anchor="middle" x="361.44" y="-185.7" font-family="sans" font-size="9.00" style="">sink</text>
-<text text-anchor="middle" x="361.44" y="-174.9" font-family="sans" font-size="9.00" style="">[&gt;][bfb]</text>
-</g>
-<!-- input_tee_0x15312c000_src_0_0x15605e300 -->
-<g id="node47" class="node" pointer-events="visible" data-name="input_tee_0x15312c000_src_0_0x15605e300">
-
-<polygon fill="#ffaaaa" stroke="black" stroke-dasharray="5,2" points="475.44,-193.6 421.44,-193.6 421.44,-172.4 475.44,-172.4 475.44,-193.6" style=""/>
-<text text-anchor="middle" x="448.44" y="-185.7" font-family="sans" font-size="9.00" style="">src_0</text>
-<text text-anchor="middle" x="448.44" y="-174.9" font-family="sans" font-size="9.00" style="">[&gt;][bfb]</text>
-</g>
-<!-- input_tee_0x15312c000_sink_0x156050eb0&#45;&gt;input_tee_0x15312c000_src_0_0x15605e300 -->
-<!-- input_tee_0x15312c000_src_0_0x15605e300&#45;&gt;whep_queue_0x1530de120_sink_0x1531340a0 -->
-<g id="edge43" class="edge" data-name="input_tee_0x15312c000_src_0_0x15605e300-&gt;whep_queue_0x1530de120_sink_0x1531340a0">
-
-<path fill="none" stroke="black" d="M475.66,-193.53C492.24,-200.19 513.91,-208.9 532.19,-216.24" style=""/>
-<polygon fill="black" stroke="black" points="530.78,-219.45 541.37,-219.93 533.39,-212.95 530.78,-219.45" style=""/>
-<text text-anchor="middle" x="509.19" y="-211.7" font-family="monospace" font-size="9.00" style="">ANY</text>
-</g>
-<!-- input_tee_0x15312c000_src_1_0x15605e560 -->
-<g id="node48" class="node" pointer-events="visible" data-name="input_tee_0x15312c000_src_1_0x15605e560">
-
-<polygon fill="#ffaaaa" stroke="black" stroke-dasharray="5,2" points="475.44,-164.6 421.44,-164.6 421.44,-143.4 475.44,-143.4 475.44,-164.6" style=""/>
-<text text-anchor="middle" x="448.44" y="-156.7" font-family="sans" font-size="9.00" style="">src_1</text>
-<text text-anchor="middle" x="448.44" y="-145.9" font-family="sans" font-size="9.00" style="">[&gt;][bfb]</text>
-</g>
-<!-- input_tee_0x15312c000_src_1_0x15605e560&#45;&gt;srt_queue_0x1530dfc20_sink_0x1530f2660 -->
-<g id="edge44" class="edge" data-name="input_tee_0x15312c000_src_1_0x15605e560-&gt;srt_queue_0x1530dfc20_sink_0x1530f2660">
-
-<path fill="none" stroke="black" d="M466.05,-143.02C486.03,-129.81 519.78,-107.5 543.15,-92.05" style=""/>
-<polygon fill="black" stroke="black" points="544.79,-95.16 551.2,-86.73 540.93,-89.32 544.79,-95.16" style=""/>
-<text text-anchor="middle" x="509.19" y="-121.7" font-family="monospace" font-size="9.00" style="">ANY</text>
-</g>
-<!-- srtsrc0_0x156054630_src_0x1530f3440 -->
-<g id="node49" class="node" pointer-events="visible" data-name="srtsrc0_0x156054630_src_0x1530f3440">
-
-<polygon fill="#ffaaaa" stroke="black" points="168.47,-193.6 114.47,-193.6 114.47,-172.4 168.47,-172.4 168.47,-193.6" style=""/>
-<text text-anchor="middle" x="141.47" y="-185.7" font-family="sans" font-size="9.00" style="">src</text>
-<text text-anchor="middle" x="141.47" y="-174.9" font-family="sans" font-size="9.00" style="">[&gt;][bfb][T]</text>
-</g>
-<!-- srtsrc0_0x156054630_src_0x1530f3440&#45;&gt;input_tee_0x15312c000_sink_0x156050eb0 -->
-<g id="edge45" class="edge" data-name="srtsrc0_0x156054630_src_0x1530f3440-&gt;input_tee_0x15312c000_sink_0x156050eb0">
-
-<path fill="none" stroke="black" d="M168.76,-183C207.14,-183 278.7,-183 322.69,-183" style=""/>
-<polygon fill="black" stroke="black" points="322.54,-186.5 332.54,-183 322.54,-179.5 322.54,-186.5" style=""/>
-<text text-anchor="middle" x="300.69" y="-185.7" font-family="monospace" font-size="9.00" style="">ANY</text>
+<polygon fill="lightgrey" stroke="black" points="282.91,-133.25 0.03,-133.25 0.03,-71.25 282.91,-71.25 282.91,-133.25" style=""/>
+<text text-anchor="start" x="4" y="-121.15" font-family="sans" font-size="9.00" style="">Legend</text>
+<text text-anchor="start" x="4" y="-110.35" font-family="sans" font-size="9.00" style="">Element-States: [~] void-pending, [0] null, [-] ready, [=] paused, [&gt;] playing</text>
+<text text-anchor="start" x="4" y="-99.55" font-family="sans" font-size="9.00" style="">Pad-Activation: [-] none, [&gt;] push, [&lt;] pull</text>
+<text text-anchor="start" x="4" y="-88.75" font-family="sans" font-size="9.00" style="">Pad-Flags: [b]locked, [f]lushing, [b]locking, [E]OS; upper-case is set</text>
+<text text-anchor="start" x="4" y="-77.95" font-family="sans" font-size="9.00" style="">Pad-Task: [T] has started task, [t] has paused task</text>
+</g>
+<!-- audio_queue_310fad4d_1442_4461_914d_73c817351dfa_0x121920740_sink_0x120116c60 -->
+<g id="node2" class="node" pointer-events="visible" data-name="audio_queue_310fad4d_1442_4461_914d_73c817351dfa_0x121920740_sink_0x120116c60">
+
+<polygon fill="#aaaaff" stroke="black" points="3870.48,-118.85 3816.48,-118.85 3816.48,-97.65 3870.48,-97.65 3870.48,-118.85" style=""/>
+<text text-anchor="middle" x="3843.48" y="-110.95" font-family="sans" font-size="9.00" style="">sink</text>
+<text text-anchor="middle" x="3843.48" y="-100.15" font-family="sans" font-size="9.00" style="">[&gt;][bfb]</text>
+</g>
+<!-- audio_queue_310fad4d_1442_4461_914d_73c817351dfa_0x121920740_src_0x1201175a0 -->
+<g id="node3" class="node" pointer-events="visible" data-name="audio_queue_310fad4d_1442_4461_914d_73c817351dfa_0x121920740_src_0x1201175a0">
+
+<polygon fill="#ffaaaa" stroke="black" points="3998.48,-118.85 3944.48,-118.85 3944.48,-97.65 3998.48,-97.65 3998.48,-118.85" style=""/>
+<text text-anchor="middle" x="3971.48" y="-110.95" font-family="sans" font-size="9.00" style="">src</text>
+<text text-anchor="middle" x="3971.48" y="-100.15" font-family="sans" font-size="9.00" style="">[&gt;][bfb][T]</text>
+</g>
+<!-- audio_queue_310fad4d_1442_4461_914d_73c817351dfa_0x121920740_sink_0x120116c60&#45;&gt;audio_queue_310fad4d_1442_4461_914d_73c817351dfa_0x121920740_src_0x1201175a0 -->
+<!-- whip_sink_310fad4d_1442_4461_914d_73c817351dfa_0x1200a51f0_audio_0_0x118144540 -->
+<g id="node4" class="node" pointer-events="visible" data-name="whip_sink_310fad4d_1442_4461_914d_73c817351dfa_0x1200a51f0_audio_0_0x118144540">
+
+<polygon fill="#ddddff" stroke="black" stroke-dasharray="5,2" points="4270.08,-141.85 4216.08,-141.85 4216.08,-120.65 4270.08,-120.65 4270.08,-141.85" style=""/>
+<text text-anchor="middle" x="4243.08" y="-133.95" font-family="sans" font-size="9.00" style="">audio_0</text>
+<text text-anchor="middle" x="4243.08" y="-123.15" font-family="sans" font-size="9.00" style="">[&gt;][bfb]</text>
+</g>
+<!-- audio_queue_310fad4d_1442_4461_914d_73c817351dfa_0x121920740_src_0x1201175a0&#45;&gt;whip_sink_310fad4d_1442_4461_914d_73c817351dfa_0x1200a51f0_audio_0_0x118144540 -->
+<g id="edge2" class="edge" data-name="audio_queue_310fad4d_1442_4461_914d_73c817351dfa_0x121920740_src_0x1201175a0-&gt;whip_sink_310fad4d_1442_4461_914d_73c817351dfa_0x1200a51f0_audio_0_0x118144540">
+
+<path fill="none" stroke="black" d="M3998.82,-110.5C4046.84,-114.59 4148.76,-123.29 4204.21,-128.02" style=""/>
+<polygon fill="black" stroke="black" points="4203.86,-131.5 4214.12,-128.87 4204.46,-124.53 4203.86,-131.5" style=""/>
+<text text-anchor="start" x="4028.48" y="-193.75" font-family="monospace" font-size="9.00" style="">audio/x-opus</text>
+<text text-anchor="start" x="4028.48" y="-182.95" font-family="monospace" font-size="9.00" style="">                rate: 48000</text>
+<text text-anchor="start" x="4028.48" y="-172.15" font-family="monospace" font-size="9.00" style="">            channels: 1</text>
+<text text-anchor="start" x="4028.48" y="-161.35" font-family="monospace" font-size="9.00" style="">  channel-mapping-family: 0</text>
+<text text-anchor="start" x="4028.48" y="-150.55" font-family="monospace" font-size="9.00" style="">        stream-count: 1</text>
+<text text-anchor="start" x="4028.48" y="-139.75" font-family="monospace" font-size="9.00" style="">       coupled-count: 0</text>
+<text text-anchor="start" x="4028.48" y="-128.95" font-family="monospace" font-size="9.00" style="">        streamheader: &lt; (buffer)4f70757348... &gt;</text>
+</g>
+<!-- _proxypad29_0x121919ac0 -->
+<g id="node9" class="node" pointer-events="visible" data-name="_proxypad29_0x121919ac0">
+
+<polygon fill="#ddddff" stroke="black" points="4270.08,-170.85 4216.08,-170.85 4216.08,-149.65 4270.08,-149.65 4270.08,-170.85" style=""/>
+<text text-anchor="middle" x="4243.08" y="-162.95" font-family="sans" font-size="9.00" style="">proxypad29</text>
+<text text-anchor="middle" x="4243.08" y="-152.15" font-family="sans" font-size="9.00" style="">[&gt;][bfb]</text>
+</g>
+<!-- whip_sink_310fad4d_1442_4461_914d_73c817351dfa_0x1200a51f0_audio_0_0x118144540&#45;&gt;_proxypad29_0x121919ac0 -->
+<g id="edge6" class="edge" data-name="whip_sink_310fad4d_1442_4461_914d_73c817351dfa_0x1200a51f0_audio_0_0x118144540-&gt;_proxypad29_0x121919ac0">
+
+<path fill="none" stroke="black" stroke-dasharray="5,2" d="M4243.08,-142.13C4243.08,-142.27 4243.08,-142.42 4243.08,-142.57" style=""/>
+<polygon fill="black" stroke="black" points="4239.58,-137.69 4243.08,-147.69 4246.58,-137.69 4239.58,-137.69" style=""/>
+</g>
+<!-- video_queue_310fad4d_1442_4461_914d_73c817351dfa_0x1200afcc0_sink_0x12194cb30 -->
+<g id="node5" class="node" pointer-events="visible" data-name="video_queue_310fad4d_1442_4461_914d_73c817351dfa_0x1200afcc0_sink_0x12194cb30">
+
+<polygon fill="#aaaaff" stroke="black" points="2505.98,-354.85 2451.98,-354.85 2451.98,-333.65 2505.98,-333.65 2505.98,-354.85" style=""/>
+<text text-anchor="middle" x="2478.98" y="-346.95" font-family="sans" font-size="9.00" style="">sink</text>
+<text text-anchor="middle" x="2478.98" y="-336.15" font-family="sans" font-size="9.00" style="">[&gt;][bfb]</text>
+</g>
+<!-- video_queue_310fad4d_1442_4461_914d_73c817351dfa_0x1200afcc0_src_0x120116eb0 -->
+<g id="node6" class="node" pointer-events="visible" data-name="video_queue_310fad4d_1442_4461_914d_73c817351dfa_0x1200afcc0_src_0x120116eb0">
+
+<polygon fill="#ffaaaa" stroke="black" points="2633.98,-354.85 2579.98,-354.85 2579.98,-333.65 2633.98,-333.65 2633.98,-354.85" style=""/>
+<text text-anchor="middle" x="2606.98" y="-346.95" font-family="sans" font-size="9.00" style="">src</text>
+<text text-anchor="middle" x="2606.98" y="-336.15" font-family="sans" font-size="9.00" style="">[&gt;][bfb][T]</text>
+</g>
+<!-- video_queue_310fad4d_1442_4461_914d_73c817351dfa_0x1200afcc0_sink_0x12194cb30&#45;&gt;video_queue_310fad4d_1442_4461_914d_73c817351dfa_0x1200afcc0_src_0x120116eb0 -->
+<!-- whip_sink_310fad4d_1442_4461_914d_73c817351dfa_0x1200a51f0_video_0_0x118144a20 -->
+<g id="node7" class="node" pointer-events="visible" data-name="whip_sink_310fad4d_1442_4461_914d_73c817351dfa_0x1200a51f0_video_0_0x118144a20">
+
+<polygon fill="#ddddff" stroke="black" stroke-dasharray="5,2" points="4270.08,-83.85 4216.08,-83.85 4216.08,-62.65 4270.08,-62.65 4270.08,-83.85" style=""/>
+<text text-anchor="middle" x="4243.08" y="-75.95" font-family="sans" font-size="9.00" style="">video_0</text>
+<text text-anchor="middle" x="4243.08" y="-65.15" font-family="sans" font-size="9.00" style="">[&gt;][bfb]</text>
+</g>
+<!-- video_queue_310fad4d_1442_4461_914d_73c817351dfa_0x1200afcc0_src_0x120116eb0&#45;&gt;whip_sink_310fad4d_1442_4461_914d_73c817351dfa_0x1200a51f0_video_0_0x118144a20 -->
+<g id="edge4" class="edge" data-name="video_queue_310fad4d_1442_4461_914d_73c817351dfa_0x1200afcc0_src_0x120116eb0-&gt;whip_sink_310fad4d_1442_4461_914d_73c817351dfa_0x1200a51f0_video_0_0x118144a20">
+
+<path fill="none" stroke="black" d="M2634.16,-343.83C2673.09,-343.24 2748.55,-342.25 2812.71,-342.25 2812.71,-342.25 2812.71,-342.25 3972.48,-342.25 4087.99,-342.25 4132.89,-302.44 4192.08,-203.25 4205.21,-181.25 4184.6,-108.67 4200.08,-88.25 4201.8,-85.98 4203.89,-84.06 4206.21,-82.42" style=""/>
+<polygon fill="black" stroke="black" points="4207.32,-85.78 4214.65,-78.13 4204.15,-79.54 4207.32,-85.78" style=""/>
+<text text-anchor="start" x="3239.43" y="-496.15" font-family="monospace" font-size="9.00" style="">video/x-h264</text>
+<text text-anchor="start" x="3239.43" y="-485.35" font-family="monospace" font-size="9.00" style="">       stream-format: avc</text>
+<text text-anchor="start" x="3239.43" y="-474.55" font-family="monospace" font-size="9.00" style="">  pixel-aspect-ratio: 1/1</text>
+<text text-anchor="start" x="3239.43" y="-463.75" font-family="monospace" font-size="9.00" style="">               width: 1280</text>
+<text text-anchor="start" x="3239.43" y="-452.95" font-family="monospace" font-size="9.00" style="">              height: 720</text>
+<text text-anchor="start" x="3239.43" y="-442.15" font-family="monospace" font-size="9.00" style="">           framerate: 30/1</text>
+<text text-anchor="start" x="3239.43" y="-431.35" font-family="monospace" font-size="9.00" style="">  coded-picture-structure: frame</text>
+<text text-anchor="start" x="3239.43" y="-420.55" font-family="monospace" font-size="9.00" style="">       chroma-format: 4:2:0</text>
+<text text-anchor="start" x="3239.43" y="-409.75" font-family="monospace" font-size="9.00" style="">      bit-depth-luma: 8</text>
+<text text-anchor="start" x="3239.43" y="-398.95" font-family="monospace" font-size="9.00" style="">    bit-depth-chroma: 8</text>
+<text text-anchor="start" x="3239.43" y="-388.15" font-family="monospace" font-size="9.00" style="">              parsed: true</text>
+<text text-anchor="start" x="3239.43" y="-377.35" font-family="monospace" font-size="9.00" style="">           alignment: au</text>
+<text text-anchor="start" x="3239.43" y="-366.55" font-family="monospace" font-size="9.00" style="">             profile: constrained-baseline</text>
+<text text-anchor="start" x="3239.43" y="-355.75" font-family="monospace" font-size="9.00" style="">               level: 3.1</text>
+<text text-anchor="start" x="3239.43" y="-344.95" font-family="monospace" font-size="9.00" style="">          codec_data: 0142c01fffe100176742c0...</text>
+</g>
+<!-- _proxypad28_0x121848520 -->
+<g id="node8" class="node" pointer-events="visible" data-name="_proxypad28_0x121848520">
+
+<polygon fill="#ddddff" stroke="black" points="4270.08,-112.85 4216.08,-112.85 4216.08,-91.65 4270.08,-91.65 4270.08,-112.85" style=""/>
+<text text-anchor="middle" x="4243.08" y="-104.95" font-family="sans" font-size="9.00" style="">proxypad28</text>
+<text text-anchor="middle" x="4243.08" y="-94.15" font-family="sans" font-size="9.00" style="">[&gt;][bfb]</text>
+</g>
+<!-- whip_sink_310fad4d_1442_4461_914d_73c817351dfa_0x1200a51f0_video_0_0x118144a20&#45;&gt;_proxypad28_0x121848520 -->
+<g id="edge5" class="edge" data-name="whip_sink_310fad4d_1442_4461_914d_73c817351dfa_0x1200a51f0_video_0_0x118144a20-&gt;_proxypad28_0x121848520">
+
+<path fill="none" stroke="black" stroke-dasharray="5,2" d="M4243.08,-84.13C4243.08,-84.27 4243.08,-84.42 4243.08,-84.57" style=""/>
+<polygon fill="black" stroke="black" points="4239.58,-79.69 4243.08,-89.69 4246.58,-79.69 4239.58,-79.69" style=""/>
+</g>
+<!-- clocksync5_0x1180de110_sink_0x11a81e770 -->
+<g id="node11" class="node" pointer-events="visible" data-name="clocksync5_0x1180de110_sink_0x11a81e770">
+
+<polygon fill="#aaaaff" stroke="black" points="4531.53,-54.85 4477.53,-54.85 4477.53,-33.65 4531.53,-33.65 4531.53,-54.85" style=""/>
+<text text-anchor="middle" x="4504.53" y="-46.95" font-family="sans" font-size="9.00" style="">sink</text>
+<text text-anchor="middle" x="4504.53" y="-36.15" font-family="sans" font-size="9.00" style="">[&gt;][bfb]</text>
+</g>
+<!-- _proxypad28_0x121848520&#45;&gt;clocksync5_0x1180de110_sink_0x11a81e770 -->
+<g id="edge8" class="edge" data-name="_proxypad28_0x121848520-&gt;clocksync5_0x1180de110_sink_0x11a81e770">
+
+<path fill="none" stroke="black" d="M4270.29,-94.19C4273.28,-92.32 4276,-90.04 4278.08,-87.25 4294.95,-64.62 4264.9,-42.91 4286.08,-24.25 4337.56,21.11 4424.94,-7.67 4471.72,-28.42" style=""/>
+<polygon fill="black" stroke="black" points="4470.23,-31.59 4480.78,-32.59 4473.15,-25.23 4470.23,-31.59" style=""/>
+<text text-anchor="start" x="4286.08" y="-178.15" font-family="monospace" font-size="9.00" style="">video/x-h264</text>
+<text text-anchor="start" x="4286.08" y="-167.35" font-family="monospace" font-size="9.00" style="">       stream-format: avc</text>
+<text text-anchor="start" x="4286.08" y="-156.55" font-family="monospace" font-size="9.00" style="">  pixel-aspect-ratio: 1/1</text>
+<text text-anchor="start" x="4286.08" y="-145.75" font-family="monospace" font-size="9.00" style="">               width: 1280</text>
+<text text-anchor="start" x="4286.08" y="-134.95" font-family="monospace" font-size="9.00" style="">              height: 720</text>
+<text text-anchor="start" x="4286.08" y="-124.15" font-family="monospace" font-size="9.00" style="">           framerate: 30/1</text>
+<text text-anchor="start" x="4286.08" y="-113.35" font-family="monospace" font-size="9.00" style="">  coded-picture-structure: frame</text>
+<text text-anchor="start" x="4286.08" y="-102.55" font-family="monospace" font-size="9.00" style="">       chroma-format: 4:2:0</text>
+<text text-anchor="start" x="4286.08" y="-91.75" font-family="monospace" font-size="9.00" style="">      bit-depth-luma: 8</text>
+<text text-anchor="start" x="4286.08" y="-80.95" font-family="monospace" font-size="9.00" style="">    bit-depth-chroma: 8</text>
+<text text-anchor="start" x="4286.08" y="-70.15" font-family="monospace" font-size="9.00" style="">              parsed: true</text>
+<text text-anchor="start" x="4286.08" y="-59.35" font-family="monospace" font-size="9.00" style="">           alignment: au</text>
+<text text-anchor="start" x="4286.08" y="-48.55" font-family="monospace" font-size="9.00" style="">             profile: constrained-baseline</text>
+<text text-anchor="start" x="4286.08" y="-37.75" font-family="monospace" font-size="9.00" style="">               level: 3.1</text>
+<text text-anchor="start" x="4286.08" y="-26.95" font-family="monospace" font-size="9.00" style="">          codec_data: 0142c01fffe100176742c0...</text>
+</g>
+<!-- clocksync4_0x1218cfdb0_sink_0x120117350 -->
+<g id="node14" class="node" pointer-events="visible" data-name="clocksync4_0x1218cfdb0_sink_0x120117350">
+
+<polygon fill="#aaaaff" stroke="black" points="4531.53,-208.85 4477.53,-208.85 4477.53,-187.65 4531.53,-187.65 4531.53,-208.85" style=""/>
+<text text-anchor="middle" x="4504.53" y="-200.95" font-family="sans" font-size="9.00" style="">sink</text>
+<text text-anchor="middle" x="4504.53" y="-190.15" font-family="sans" font-size="9.00" style="">[&gt;][bfb]</text>
+</g>
+<!-- _proxypad29_0x121919ac0&#45;&gt;clocksync4_0x1218cfdb0_sink_0x120117350 -->
+<g id="edge11" class="edge" data-name="_proxypad29_0x121919ac0-&gt;clocksync4_0x1218cfdb0_sink_0x120117350">
+
+<path fill="none" stroke="black" d="M4257.16,-171.2C4265.02,-177.11 4275.52,-183.86 4286.08,-187.25 4346.73,-206.74 4421.78,-205.34 4465.97,-202.1" style=""/>
+<polygon fill="black" stroke="black" points="4466.12,-205.6 4475.81,-201.3 4465.56,-198.62 4466.12,-205.6" style=""/>
+<text text-anchor="start" x="4288" y="-270.75" font-family="monospace" font-size="9.00" style="">audio/x-opus</text>
+<text text-anchor="start" x="4288" y="-259.95" font-family="monospace" font-size="9.00" style="">                rate: 48000</text>
+<text text-anchor="start" x="4288" y="-249.15" font-family="monospace" font-size="9.00" style="">            channels: 1</text>
+<text text-anchor="start" x="4288" y="-238.35" font-family="monospace" font-size="9.00" style="">  channel-mapping-family: 0</text>
+<text text-anchor="start" x="4288" y="-227.55" font-family="monospace" font-size="9.00" style="">        stream-count: 1</text>
+<text text-anchor="start" x="4288" y="-216.75" font-family="monospace" font-size="9.00" style="">       coupled-count: 0</text>
+<text text-anchor="start" x="4288" y="-205.95" font-family="monospace" font-size="9.00" style="">        streamheader: &lt; (buffer)4f70757348... &gt;</text>
+</g>
+<!-- appsink5_0x12090e6a0_sink_0x121954c20 -->
+<g id="node10" class="node" pointer-events="visible" data-name="appsink5_0x12090e6a0_sink_0x121954c20">
+
+<polygon fill="#aaaaff" stroke="black" points="4935.98,-54.85 4881.98,-54.85 4881.98,-33.65 4935.98,-33.65 4935.98,-54.85" style=""/>
+<text text-anchor="middle" x="4908.98" y="-46.95" font-family="sans" font-size="9.00" style="">sink</text>
+<text text-anchor="middle" x="4908.98" y="-36.15" font-family="sans" font-size="9.00" style="">[&gt;][bfb]</text>
+</g>
+<!-- clocksync5_0x1180de110_src_0x11a81e520 -->
+<g id="node12" class="node" pointer-events="visible" data-name="clocksync5_0x1180de110_src_0x11a81e520">
+
+<polygon fill="#ffaaaa" stroke="black" points="4618.53,-54.85 4564.53,-54.85 4564.53,-33.65 4618.53,-33.65 4618.53,-54.85" style=""/>
+<text text-anchor="middle" x="4591.53" y="-46.95" font-family="sans" font-size="9.00" style="">src</text>
+<text text-anchor="middle" x="4591.53" y="-36.15" font-family="sans" font-size="9.00" style="">[&gt;][bfb]</text>
+</g>
+<!-- clocksync5_0x1180de110_sink_0x11a81e770&#45;&gt;clocksync5_0x1180de110_src_0x11a81e520 -->
+<!-- clocksync5_0x1180de110_src_0x11a81e520&#45;&gt;appsink5_0x12090e6a0_sink_0x121954c20 -->
+<g id="edge9" class="edge" data-name="clocksync5_0x1180de110_src_0x11a81e520-&gt;appsink5_0x12090e6a0_sink_0x121954c20">
+
+<path fill="none" stroke="black" d="M4618.89,-34.14C4626.41,-31.71 4634.69,-29.47 4642.53,-28.25 4716.06,-16.77 4735.8,-22.23 4809.98,-28.25 4829.99,-29.87 4852.08,-33.33 4870.22,-36.62" style=""/>
+<polygon fill="black" stroke="black" points="4869.54,-40.05 4880.01,-38.46 4870.83,-33.17 4869.54,-40.05" style=""/>
+<text text-anchor="start" x="4642.53" y="-182.15" font-family="monospace" font-size="9.00" style="">video/x-h264</text>
+<text text-anchor="start" x="4642.53" y="-171.35" font-family="monospace" font-size="9.00" style="">       stream-format: avc</text>
+<text text-anchor="start" x="4642.53" y="-160.55" font-family="monospace" font-size="9.00" style="">  pixel-aspect-ratio: 1/1</text>
+<text text-anchor="start" x="4642.53" y="-149.75" font-family="monospace" font-size="9.00" style="">               width: 1280</text>
+<text text-anchor="start" x="4642.53" y="-138.95" font-family="monospace" font-size="9.00" style="">              height: 720</text>
+<text text-anchor="start" x="4642.53" y="-128.15" font-family="monospace" font-size="9.00" style="">           framerate: 30/1</text>
+<text text-anchor="start" x="4642.53" y="-117.35" font-family="monospace" font-size="9.00" style="">  coded-picture-structure: frame</text>
+<text text-anchor="start" x="4642.53" y="-106.55" font-family="monospace" font-size="9.00" style="">       chroma-format: 4:2:0</text>
+<text text-anchor="start" x="4642.53" y="-95.75" font-family="monospace" font-size="9.00" style="">      bit-depth-luma: 8</text>
+<text text-anchor="start" x="4642.53" y="-84.95" font-family="monospace" font-size="9.00" style="">    bit-depth-chroma: 8</text>
+<text text-anchor="start" x="4642.53" y="-74.15" font-family="monospace" font-size="9.00" style="">              parsed: true</text>
+<text text-anchor="start" x="4642.53" y="-63.35" font-family="monospace" font-size="9.00" style="">           alignment: au</text>
+<text text-anchor="start" x="4642.53" y="-52.55" font-family="monospace" font-size="9.00" style="">             profile: constrained-baseline</text>
+<text text-anchor="start" x="4642.53" y="-41.75" font-family="monospace" font-size="9.00" style="">               level: 3.1</text>
+<text text-anchor="start" x="4642.53" y="-30.95" font-family="monospace" font-size="9.00" style="">          codec_data: 0142c01fffe100176742c0...</text>
+</g>
+<!-- appsink4_0x12090dfd0_sink_0x11a81e9c0 -->
+<g id="node13" class="node" pointer-events="visible" data-name="appsink4_0x12090dfd0_sink_0x11a81e9c0">
+
+<polygon fill="#aaaaff" stroke="black" points="4935.98,-200.85 4881.98,-200.85 4881.98,-179.65 4935.98,-179.65 4935.98,-200.85" style=""/>
+<text text-anchor="middle" x="4908.98" y="-192.95" font-family="sans" font-size="9.00" style="">sink</text>
+<text text-anchor="middle" x="4908.98" y="-182.15" font-family="sans" font-size="9.00" style="">[&gt;][bfb]</text>
+</g>
+<!-- clocksync4_0x1218cfdb0_src_0x11a81ec10 -->
+<g id="node15" class="node" pointer-events="visible" data-name="clocksync4_0x1218cfdb0_src_0x11a81ec10">
+
+<polygon fill="#ffaaaa" stroke="black" points="4618.53,-208.85 4564.53,-208.85 4564.53,-187.65 4618.53,-187.65 4618.53,-208.85" style=""/>
+<text text-anchor="middle" x="4591.53" y="-200.95" font-family="sans" font-size="9.00" style="">src</text>
+<text text-anchor="middle" x="4591.53" y="-190.15" font-family="sans" font-size="9.00" style="">[&gt;][bfb]</text>
+</g>
+<!-- clocksync4_0x1218cfdb0_sink_0x120117350&#45;&gt;clocksync4_0x1218cfdb0_src_0x11a81ec10 -->
+<!-- clocksync4_0x1218cfdb0_src_0x11a81ec10&#45;&gt;appsink4_0x12090dfd0_sink_0x11a81e9c0 -->
+<g id="edge12" class="edge" data-name="clocksync4_0x1218cfdb0_src_0x11a81ec10-&gt;appsink4_0x12090dfd0_sink_0x11a81e9c0">
+
+<path fill="none" stroke="black" d="M4618.88,-197.58C4674.78,-196.16 4805.41,-192.85 4870.18,-191.21" style=""/>
+<polygon fill="black" stroke="black" points="4870.06,-194.71 4879.97,-190.96 4869.88,-187.72 4870.06,-194.71" style=""/>
+<text text-anchor="start" x="4644.45" y="-263.75" font-family="monospace" font-size="9.00" style="">audio/x-opus</text>
+<text text-anchor="start" x="4644.45" y="-252.95" font-family="monospace" font-size="9.00" style="">                rate: 48000</text>
+<text text-anchor="start" x="4644.45" y="-242.15" font-family="monospace" font-size="9.00" style="">            channels: 1</text>
+<text text-anchor="start" x="4644.45" y="-231.35" font-family="monospace" font-size="9.00" style="">  channel-mapping-family: 0</text>
+<text text-anchor="start" x="4644.45" y="-220.55" font-family="monospace" font-size="9.00" style="">        stream-count: 1</text>
+<text text-anchor="start" x="4644.45" y="-209.75" font-family="monospace" font-size="9.00" style="">       coupled-count: 0</text>
+<text text-anchor="start" x="4644.45" y="-198.95" font-family="monospace" font-size="9.00" style="">        streamheader: &lt; (buffer)4f70757348... &gt;</text>
+</g>
+<!-- fakesink1_0x1200e47e0_sink_0x12189cf70 -->
+<g id="node16" class="node" pointer-events="visible" data-name="fakesink1_0x1200e47e0_sink_0x12189cf70">
+
+<polygon fill="#aaaaff" stroke="black" points="3870.48,-246.85 3816.48,-246.85 3816.48,-225.65 3870.48,-225.65 3870.48,-246.85" style=""/>
+<text text-anchor="middle" x="3843.48" y="-238.95" font-family="sans" font-size="9.00" style="">sink</text>
+<text text-anchor="middle" x="3843.48" y="-228.15" font-family="sans" font-size="9.00" style="">[&gt;][bfb]</text>
+</g>
+<!-- output_tee_audio_0x1200abd20_sink_0x12189cd20 -->
+<g id="node17" class="node" pointer-events="visible" data-name="output_tee_audio_0x1200abd20_sink_0x12189cd20">
+
+<polygon fill="#aaaaff" stroke="black" points="3484.88,-124.85 3430.88,-124.85 3430.88,-103.65 3484.88,-103.65 3484.88,-124.85" style=""/>
+<text text-anchor="middle" x="3457.88" y="-116.95" font-family="sans" font-size="9.00" style="">sink</text>
+<text text-anchor="middle" x="3457.88" y="-106.15" font-family="sans" font-size="9.00" style="">[&gt;][bfb]</text>
+</g>
+<!-- output_tee_audio_0x1200abd20_src_0_0x1180b4f10 -->
+<g id="node18" class="node" pointer-events="visible" data-name="output_tee_audio_0x1200abd20_src_0_0x1180b4f10">
+
+<polygon fill="#ffaaaa" stroke="black" stroke-dasharray="5,2" points="3571.88,-147.85 3517.88,-147.85 3517.88,-126.65 3571.88,-126.65 3571.88,-147.85" style=""/>
+<text text-anchor="middle" x="3544.88" y="-139.95" font-family="sans" font-size="9.00" style="">src_0</text>
+<text text-anchor="middle" x="3544.88" y="-129.15" font-family="sans" font-size="9.00" style="">[&gt;][bfb]</text>
+</g>
+<!-- output_tee_audio_0x1200abd20_sink_0x12189cd20&#45;&gt;output_tee_audio_0x1200abd20_src_0_0x1180b4f10 -->
+<!-- output_tee_audio_0x1200abd20_src_0_0x1180b4f10&#45;&gt;fakesink1_0x1200e47e0_sink_0x12189cf70 -->
+<g id="edge14" class="edge" data-name="output_tee_audio_0x1200abd20_src_0_0x1180b4f10-&gt;fakesink1_0x1200e47e0_sink_0x12189cf70">
+
+<path fill="none" stroke="black" d="M3554.18,-148.24C3563.19,-159.36 3578.63,-176.17 3595.88,-185.25 3663.75,-220.97 3754.41,-231.68 3804.75,-234.89" style=""/>
+<polygon fill="black" stroke="black" points="3804.35,-238.37 3814.53,-235.44 3804.75,-231.38 3804.35,-238.37" style=""/>
+<text text-anchor="start" x="3595.88" y="-297.75" font-family="monospace" font-size="9.00" style="">audio/x-opus</text>
+<text text-anchor="start" x="3595.88" y="-286.95" font-family="monospace" font-size="9.00" style="">                rate: 48000</text>
+<text text-anchor="start" x="3595.88" y="-276.15" font-family="monospace" font-size="9.00" style="">            channels: 1</text>
+<text text-anchor="start" x="3595.88" y="-265.35" font-family="monospace" font-size="9.00" style="">  channel-mapping-family: 0</text>
+<text text-anchor="start" x="3595.88" y="-254.55" font-family="monospace" font-size="9.00" style="">        stream-count: 1</text>
+<text text-anchor="start" x="3595.88" y="-243.75" font-family="monospace" font-size="9.00" style="">       coupled-count: 0</text>
+<text text-anchor="start" x="3595.88" y="-232.95" font-family="monospace" font-size="9.00" style="">        streamheader: &lt; (buffer)4f70757348... &gt;</text>
+</g>
+<!-- output_tee_audio_0x1200abd20_src_2_0x121848050 -->
+<g id="node19" class="node" pointer-events="visible" data-name="output_tee_audio_0x1200abd20_src_2_0x121848050">
+
+<polygon fill="#ffaaaa" stroke="black" stroke-dasharray="5,2" points="3571.88,-118.85 3517.88,-118.85 3517.88,-97.65 3571.88,-97.65 3571.88,-118.85" style=""/>
+<text text-anchor="middle" x="3544.88" y="-110.95" font-family="sans" font-size="9.00" style="">src_2</text>
+<text text-anchor="middle" x="3544.88" y="-100.15" font-family="sans" font-size="9.00" style="">[&gt;][bfb]</text>
+</g>
+<!-- output_tee_audio_0x1200abd20_src_2_0x121848050&#45;&gt;audio_queue_310fad4d_1442_4461_914d_73c817351dfa_0x121920740_sink_0x120116c60 -->
+<g id="edge15" class="edge" data-name="output_tee_audio_0x1200abd20_src_2_0x121848050-&gt;audio_queue_310fad4d_1442_4461_914d_73c817351dfa_0x121920740_sink_0x120116c60">
+
+<path fill="none" stroke="black" d="M3572.2,-108.25C3624.97,-108.25 3743.84,-108.25 3804.83,-108.25" style=""/>
+<polygon fill="black" stroke="black" points="3804.7,-111.75 3814.7,-108.25 3804.7,-104.75 3804.7,-111.75" style=""/>
+<text text-anchor="start" x="3595.88" y="-175.75" font-family="monospace" font-size="9.00" style="">audio/x-opus</text>
+<text text-anchor="start" x="3595.88" y="-164.95" font-family="monospace" font-size="9.00" style="">                rate: 48000</text>
+<text text-anchor="start" x="3595.88" y="-154.15" font-family="monospace" font-size="9.00" style="">            channels: 1</text>
+<text text-anchor="start" x="3595.88" y="-143.35" font-family="monospace" font-size="9.00" style="">  channel-mapping-family: 0</text>
+<text text-anchor="start" x="3595.88" y="-132.55" font-family="monospace" font-size="9.00" style="">        stream-count: 1</text>
+<text text-anchor="start" x="3595.88" y="-121.75" font-family="monospace" font-size="9.00" style="">       coupled-count: 0</text>
+<text text-anchor="start" x="3595.88" y="-110.95" font-family="monospace" font-size="9.00" style="">        streamheader: &lt; (buffer)4f70757348... &gt;</text>
+</g>
+<!-- opusenc0_0x1200fc320_sink_0x12189c880 -->
+<g id="node20" class="node" pointer-events="visible" data-name="opusenc0_0x1200fc320_sink_0x12189c880">
+
+<polygon fill="#aaaaff" stroke="black" points="3128.43,-121.85 3074.43,-121.85 3074.43,-100.65 3128.43,-100.65 3128.43,-121.85" style=""/>
+<text text-anchor="middle" x="3101.43" y="-113.95" font-family="sans" font-size="9.00" style="">sink</text>
+<text text-anchor="middle" x="3101.43" y="-103.15" font-family="sans" font-size="9.00" style="">[&gt;][bfb]</text>
+</g>
+<!-- opusenc0_0x1200fc320_src_0x12189cad0 -->
+<g id="node21" class="node" pointer-events="visible" data-name="opusenc0_0x1200fc320_src_0x12189cad0">
+
+<polygon fill="#ffaaaa" stroke="black" points="3215.43,-121.85 3161.43,-121.85 3161.43,-100.65 3215.43,-100.65 3215.43,-121.85" style=""/>
+<text text-anchor="middle" x="3188.43" y="-113.95" font-family="sans" font-size="9.00" style="">src</text>
+<text text-anchor="middle" x="3188.43" y="-103.15" font-family="sans" font-size="9.00" style="">[&gt;][bfb]</text>
+</g>
+<!-- opusenc0_0x1200fc320_sink_0x12189c880&#45;&gt;opusenc0_0x1200fc320_src_0x12189cad0 -->
+<!-- opusenc0_0x1200fc320_src_0x12189cad0&#45;&gt;output_tee_audio_0x1200abd20_sink_0x12189cd20 -->
+<g id="edge17" class="edge" data-name="opusenc0_0x1200fc320_src_0x12189cad0-&gt;output_tee_audio_0x1200abd20_sink_0x12189cd20">
+
+<path fill="none" stroke="black" d="M3215.56,-111.54C3263.2,-112.08 3364.3,-113.21 3419.32,-113.83" style=""/>
+<polygon fill="black" stroke="black" points="3419.09,-117.33 3429.13,-113.94 3419.17,-110.33 3419.09,-117.33" style=""/>
+<text text-anchor="start" x="3241.36" y="-180.75" font-family="monospace" font-size="9.00" style="">audio/x-opus</text>
+<text text-anchor="start" x="3241.36" y="-169.95" font-family="monospace" font-size="9.00" style="">                rate: 48000</text>
+<text text-anchor="start" x="3241.36" y="-159.15" font-family="monospace" font-size="9.00" style="">            channels: 1</text>
+<text text-anchor="start" x="3241.36" y="-148.35" font-family="monospace" font-size="9.00" style="">  channel-mapping-family: 0</text>
+<text text-anchor="start" x="3241.36" y="-137.55" font-family="monospace" font-size="9.00" style="">        stream-count: 1</text>
+<text text-anchor="start" x="3241.36" y="-126.75" font-family="monospace" font-size="9.00" style="">       coupled-count: 0</text>
+<text text-anchor="start" x="3241.36" y="-115.95" font-family="monospace" font-size="9.00" style="">        streamheader: &lt; (buffer)4f70757348... &gt;</text>
+</g>
+<!-- audioresample0_0x1200f4310_sink_0x12189c3e0 -->
+<g id="node22" class="node" pointer-events="visible" data-name="audioresample0_0x1200f4310_sink_0x12189c3e0">
+
+<polygon fill="#aaaaff" stroke="black" points="2840.71,-119.85 2786.71,-119.85 2786.71,-98.65 2840.71,-98.65 2840.71,-119.85" style=""/>
+<text text-anchor="middle" x="2813.71" y="-111.95" font-family="sans" font-size="9.00" style="">sink</text>
+<text text-anchor="middle" x="2813.71" y="-101.15" font-family="sans" font-size="9.00" style="">[&gt;][bfb]</text>
+</g>
+<!-- audioresample0_0x1200f4310_src_0x12189c630 -->
+<g id="node23" class="node" pointer-events="visible" data-name="audioresample0_0x1200f4310_src_0x12189c630">
+
+<polygon fill="#ffaaaa" stroke="black" points="2927.71,-119.85 2873.71,-119.85 2873.71,-98.65 2927.71,-98.65 2927.71,-119.85" style=""/>
+<text text-anchor="middle" x="2900.71" y="-111.95" font-family="sans" font-size="9.00" style="">src</text>
+<text text-anchor="middle" x="2900.71" y="-101.15" font-family="sans" font-size="9.00" style="">[&gt;][bfb]</text>
+</g>
+<!-- audioresample0_0x1200f4310_sink_0x12189c3e0&#45;&gt;audioresample0_0x1200f4310_src_0x12189c630 -->
+<!-- audioresample0_0x1200f4310_src_0x12189c630&#45;&gt;opusenc0_0x1200fc320_sink_0x12189c880 -->
+<g id="edge19" class="edge" data-name="audioresample0_0x1200f4310_src_0x12189c630-&gt;opusenc0_0x1200fc320_sink_0x12189c880">
+
+<path fill="none" stroke="black" d="M2928.1,-109.52C2962.54,-109.86 3023.06,-110.47 3062.44,-110.87" style=""/>
+<polygon fill="black" stroke="black" points="3062.38,-114.37 3072.42,-110.97 3062.45,-107.37 3062.38,-114.37" style=""/>
+<text text-anchor="start" x="2951.71" y="-156.15" font-family="monospace" font-size="9.00" style="">audio/x-raw</text>
+<text text-anchor="start" x="2951.71" y="-145.35" font-family="monospace" font-size="9.00" style="">                rate: 48000</text>
+<text text-anchor="start" x="2951.71" y="-134.55" font-family="monospace" font-size="9.00" style="">            channels: 1</text>
+<text text-anchor="start" x="2951.71" y="-123.75" font-family="monospace" font-size="9.00" style="">              format: S16LE</text>
+<text text-anchor="start" x="2951.71" y="-112.95" font-family="monospace" font-size="9.00" style="">              layout: interleaved</text>
+</g>
+<!-- audioconvert0_0x1218a0590_sink_0x1200bfcc0 -->
+<g id="node24" class="node" pointer-events="visible" data-name="audioconvert0_0x1218a0590_sink_0x1200bfcc0">
+
+<polygon fill="#aaaaff" stroke="black" points="2505.98,-115.85 2451.98,-115.85 2451.98,-94.65 2505.98,-94.65 2505.98,-115.85" style=""/>
+<text text-anchor="middle" x="2478.98" y="-107.95" font-family="sans" font-size="9.00" style="">sink</text>
+<text text-anchor="middle" x="2478.98" y="-97.15" font-family="sans" font-size="9.00" style="">[&gt;][bfb]</text>
+</g>
+<!-- audioconvert0_0x1218a0590_src_0x12189c190 -->
+<g id="node25" class="node" pointer-events="visible" data-name="audioconvert0_0x1218a0590_src_0x12189c190">
+
+<polygon fill="#ffaaaa" stroke="black" points="2633.98,-115.85 2579.98,-115.85 2579.98,-94.65 2633.98,-94.65 2633.98,-115.85" style=""/>
+<text text-anchor="middle" x="2606.98" y="-107.95" font-family="sans" font-size="9.00" style="">src</text>
+<text text-anchor="middle" x="2606.98" y="-97.15" font-family="sans" font-size="9.00" style="">[&gt;][bfb]</text>
+</g>
+<!-- audioconvert0_0x1218a0590_sink_0x1200bfcc0&#45;&gt;audioconvert0_0x1218a0590_src_0x12189c190 -->
+<!-- audioconvert0_0x1218a0590_src_0x12189c190&#45;&gt;audioresample0_0x1200f4310_sink_0x12189c3e0 -->
+<g id="edge21" class="edge" data-name="audioconvert0_0x1218a0590_src_0x12189c190-&gt;audioresample0_0x1200f4310_sink_0x12189c3e0">
+
+<path fill="none" stroke="black" d="M2634.33,-105.76C2670.11,-106.46 2734.27,-107.72 2775.1,-108.52" style=""/>
+<polygon fill="black" stroke="black" points="2774.88,-112.01 2784.95,-108.71 2775.02,-105.01 2774.88,-112.01" style=""/>
+<text text-anchor="start" x="2663.98" y="-153.15" font-family="monospace" font-size="9.00" style="">audio/x-raw</text>
+<text text-anchor="start" x="2663.98" y="-142.35" font-family="monospace" font-size="9.00" style="">                rate: 44100</text>
+<text text-anchor="start" x="2663.98" y="-131.55" font-family="monospace" font-size="9.00" style="">              format: S16LE</text>
+<text text-anchor="start" x="2663.98" y="-120.75" font-family="monospace" font-size="9.00" style="">            channels: 1</text>
+<text text-anchor="start" x="2663.98" y="-109.95" font-family="monospace" font-size="9.00" style="">              layout: interleaved</text>
+</g>
+<!-- avdec_aac0_0x1200ec2e0_sink_0x1200bf820 -->
+<g id="node26" class="node" pointer-events="visible" data-name="avdec_aac0_0x1200ec2e0_sink_0x1200bf820">
+
+<polygon fill="#aaaaff" stroke="black" points="2116.54,-115.85 2062.54,-115.85 2062.54,-94.65 2116.54,-94.65 2116.54,-115.85" style=""/>
+<text text-anchor="middle" x="2089.54" y="-107.95" font-family="sans" font-size="9.00" style="">sink</text>
+<text text-anchor="middle" x="2089.54" y="-97.15" font-family="sans" font-size="9.00" style="">[&gt;][bfb]</text>
+</g>
+<!-- avdec_aac0_0x1200ec2e0_src_0x1200bfa70 -->
+<g id="node27" class="node" pointer-events="visible" data-name="avdec_aac0_0x1200ec2e0_src_0x1200bfa70">
+
+<polygon fill="#ffaaaa" stroke="black" points="2203.54,-115.85 2149.54,-115.85 2149.54,-94.65 2203.54,-94.65 2203.54,-115.85" style=""/>
+<text text-anchor="middle" x="2176.54" y="-107.95" font-family="sans" font-size="9.00" style="">src</text>
+<text text-anchor="middle" x="2176.54" y="-97.15" font-family="sans" font-size="9.00" style="">[&gt;][bfb]</text>
+</g>
+<!-- avdec_aac0_0x1200ec2e0_sink_0x1200bf820&#45;&gt;avdec_aac0_0x1200ec2e0_src_0x1200bfa70 -->
+<!-- avdec_aac0_0x1200ec2e0_src_0x1200bfa70&#45;&gt;audioconvert0_0x1218a0590_sink_0x1200bfcc0 -->
+<g id="edge23" class="edge" data-name="avdec_aac0_0x1200ec2e0_src_0x1200bfa70-&gt;audioconvert0_0x1218a0590_sink_0x1200bfcc0">
+
+<path fill="none" stroke="black" d="M2203.93,-105.25C2257.48,-105.25 2378.97,-105.25 2440.61,-105.25" style=""/>
+<polygon fill="black" stroke="black" points="2440.24,-108.75 2450.24,-105.25 2440.24,-101.75 2440.24,-108.75" style=""/>
+<text text-anchor="start" x="2253.65" y="-151.15" font-family="monospace" font-size="9.00" style="">audio/x-raw</text>
+<text text-anchor="start" x="2253.65" y="-140.35" font-family="monospace" font-size="9.00" style="">              format: F32LE</text>
+<text text-anchor="start" x="2253.65" y="-129.55" font-family="monospace" font-size="9.00" style="">              layout: non-interleaved</text>
+<text text-anchor="start" x="2253.65" y="-118.75" font-family="monospace" font-size="9.00" style="">                rate: 44100</text>
+<text text-anchor="start" x="2253.65" y="-107.95" font-family="monospace" font-size="9.00" style="">            channels: 1</text>
+</g>
+<!-- aacparse0_0x121898270_sink_0x1200bf380 -->
+<g id="node28" class="node" pointer-events="visible" data-name="aacparse0_0x121898270_sink_0x1200bf380">
+
+<polygon fill="#aaaaff" stroke="black" points="1760.09,-115.85 1706.09,-115.85 1706.09,-94.65 1760.09,-94.65 1760.09,-115.85" style=""/>
+<text text-anchor="middle" x="1733.09" y="-107.95" font-family="sans" font-size="9.00" style="">sink</text>
+<text text-anchor="middle" x="1733.09" y="-97.15" font-family="sans" font-size="9.00" style="">[&gt;][bfb]</text>
+</g>
+<!-- aacparse0_0x121898270_src_0x1200bf5d0 -->
+<g id="node29" class="node" pointer-events="visible" data-name="aacparse0_0x121898270_src_0x1200bf5d0">
+
+<polygon fill="#ffaaaa" stroke="black" points="1847.09,-115.85 1793.09,-115.85 1793.09,-94.65 1847.09,-94.65 1847.09,-115.85" style=""/>
+<text text-anchor="middle" x="1820.09" y="-107.95" font-family="sans" font-size="9.00" style="">src</text>
+<text text-anchor="middle" x="1820.09" y="-97.15" font-family="sans" font-size="9.00" style="">[&gt;][bfb]</text>
+</g>
+<!-- aacparse0_0x121898270_sink_0x1200bf380&#45;&gt;aacparse0_0x121898270_src_0x1200bf5d0 -->
+<!-- aacparse0_0x121898270_src_0x1200bf5d0&#45;&gt;avdec_aac0_0x1200ec2e0_sink_0x1200bf820 -->
+<g id="edge25" class="edge" data-name="aacparse0_0x121898270_src_0x1200bf5d0-&gt;avdec_aac0_0x1200ec2e0_sink_0x1200bf820">
+
+<path fill="none" stroke="black" d="M1847.22,-105.25C1894.85,-105.25 1995.96,-105.25 2050.97,-105.25" style=""/>
+<polygon fill="black" stroke="black" points="2050.78,-108.75 2060.78,-105.25 2050.78,-101.75 2050.78,-108.75" style=""/>
+<text text-anchor="start" x="1911.82" y="-194.35" font-family="monospace" font-size="9.00" style="">audio/mpeg</text>
+<text text-anchor="start" x="1911.82" y="-183.55" font-family="monospace" font-size="9.00" style="">              framed: true</text>
+<text text-anchor="start" x="1911.82" y="-172.75" font-family="monospace" font-size="9.00" style="">         mpegversion: 4</text>
+<text text-anchor="start" x="1911.82" y="-161.95" font-family="monospace" font-size="9.00" style="">               level: 2</text>
+<text text-anchor="start" x="1911.82" y="-151.15" font-family="monospace" font-size="9.00" style="">        base-profile: lc</text>
+<text text-anchor="start" x="1911.82" y="-140.35" font-family="monospace" font-size="9.00" style="">             profile: lc</text>
+<text text-anchor="start" x="1911.82" y="-129.55" font-family="monospace" font-size="9.00" style="">                rate: 44100</text>
+<text text-anchor="start" x="1911.82" y="-118.75" font-family="monospace" font-size="9.00" style="">            channels: 1</text>
+<text text-anchor="start" x="1911.82" y="-107.95" font-family="monospace" font-size="9.00" style="">       stream-format: adts</text>
+</g>
+<!-- fakesink0_0x1200e4290_sink_0x1200bf130 -->
+<g id="node30" class="node" pointer-events="visible" data-name="fakesink0_0x1200e4290_sink_0x1200bf130">
+
+<polygon fill="#aaaaff" stroke="black" points="2505.98,-214.85 2451.98,-214.85 2451.98,-193.65 2505.98,-193.65 2505.98,-214.85" style=""/>
+<text text-anchor="middle" x="2478.98" y="-206.95" font-family="sans" font-size="9.00" style="">sink</text>
+<text text-anchor="middle" x="2478.98" y="-196.15" font-family="sans" font-size="9.00" style="">[&gt;][bfb]</text>
+</g>
+<!-- output_tee_video_0x1200abbd0_sink_0x1200beee0 -->
+<g id="node31" class="node" pointer-events="visible" data-name="output_tee_video_0x1200abbd0_sink_0x1200beee0">
+
+<polygon fill="#aaaaff" stroke="black" points="2116.54,-262.85 2062.54,-262.85 2062.54,-241.65 2116.54,-241.65 2116.54,-262.85" style=""/>
+<text text-anchor="middle" x="2089.54" y="-254.95" font-family="sans" font-size="9.00" style="">sink</text>
+<text text-anchor="middle" x="2089.54" y="-244.15" font-family="sans" font-size="9.00" style="">[&gt;][bfb]</text>
+</g>
+<!-- output_tee_video_0x1200abbd0_src_0_0x1180b4cb0 -->
+<g id="node32" class="node" pointer-events="visible" data-name="output_tee_video_0x1200abbd0_src_0_0x1180b4cb0">
+
+<polygon fill="#ffaaaa" stroke="black" stroke-dasharray="5,2" points="2203.54,-262.85 2149.54,-262.85 2149.54,-241.65 2203.54,-241.65 2203.54,-262.85" style=""/>
+<text text-anchor="middle" x="2176.54" y="-254.95" font-family="sans" font-size="9.00" style="">src_0</text>
+<text text-anchor="middle" x="2176.54" y="-244.15" font-family="sans" font-size="9.00" style="">[&gt;][bfb]</text>
+</g>
+<!-- output_tee_video_0x1200abbd0_sink_0x1200beee0&#45;&gt;output_tee_video_0x1200abbd0_src_0_0x1180b4cb0 -->
+<!-- output_tee_video_0x1200abbd0_src_0_0x1180b4cb0&#45;&gt;fakesink0_0x1200e4290_sink_0x1200bf130 -->
+<g id="edge27" class="edge" data-name="output_tee_video_0x1200abbd0_src_0_0x1180b4cb0-&gt;fakesink0_0x1200e4290_sink_0x1200bf130">
+
+<path fill="none" stroke="black" d="M2182.5,-241.62C2189.94,-227.1 2205.5,-201.68 2227.54,-191.25 2297.05,-158.35 2389.87,-177.04 2440.74,-191.79" style=""/>
+<polygon fill="black" stroke="black" points="2439.5,-195.07 2450.09,-194.61 2441.52,-188.37 2439.5,-195.07" style=""/>
+<text text-anchor="start" x="2227.54" y="-344.15" font-family="monospace" font-size="9.00" style="">video/x-h264</text>
+<text text-anchor="start" x="2227.54" y="-333.35" font-family="monospace" font-size="9.00" style="">       stream-format: avc</text>
+<text text-anchor="start" x="2227.54" y="-322.55" font-family="monospace" font-size="9.00" style="">  pixel-aspect-ratio: 1/1</text>
+<text text-anchor="start" x="2227.54" y="-311.75" font-family="monospace" font-size="9.00" style="">               width: 1280</text>
+<text text-anchor="start" x="2227.54" y="-300.95" font-family="monospace" font-size="9.00" style="">              height: 720</text>
+<text text-anchor="start" x="2227.54" y="-290.15" font-family="monospace" font-size="9.00" style="">           framerate: 30/1</text>
+<text text-anchor="start" x="2227.54" y="-279.35" font-family="monospace" font-size="9.00" style="">  coded-picture-structure: frame</text>
+<text text-anchor="start" x="2227.54" y="-268.55" font-family="monospace" font-size="9.00" style="">       chroma-format: 4:2:0</text>
+<text text-anchor="start" x="2227.54" y="-257.75" font-family="monospace" font-size="9.00" style="">      bit-depth-luma: 8</text>
+<text text-anchor="start" x="2227.54" y="-246.95" font-family="monospace" font-size="9.00" style="">    bit-depth-chroma: 8</text>
+<text text-anchor="start" x="2227.54" y="-236.15" font-family="monospace" font-size="9.00" style="">              parsed: true</text>
+<text text-anchor="start" x="2227.54" y="-225.35" font-family="monospace" font-size="9.00" style="">           alignment: au</text>
+<text text-anchor="start" x="2227.54" y="-214.55" font-family="monospace" font-size="9.00" style="">             profile: constrained-baseline</text>
+<text text-anchor="start" x="2227.54" y="-203.75" font-family="monospace" font-size="9.00" style="">               level: 3.1</text>
+<text text-anchor="start" x="2227.54" y="-192.95" font-family="monospace" font-size="9.00" style="">          codec_data: 0142c01fffe100176742c0...</text>
+</g>
+<!-- output_tee_video_0x1200abbd0_src_2_0x121918550 -->
+<g id="node33" class="node" pointer-events="visible" data-name="output_tee_video_0x1200abbd0_src_2_0x121918550">
+
+<polygon fill="#ffaaaa" stroke="black" stroke-dasharray="5,2" points="2203.54,-291.85 2149.54,-291.85 2149.54,-270.65 2203.54,-270.65 2203.54,-291.85" style=""/>
+<text text-anchor="middle" x="2176.54" y="-283.95" font-family="sans" font-size="9.00" style="">src_2</text>
+<text text-anchor="middle" x="2176.54" y="-273.15" font-family="sans" font-size="9.00" style="">[&gt;][bfb]</text>
+</g>
+<!-- output_tee_video_0x1200abbd0_src_2_0x121918550&#45;&gt;video_queue_310fad4d_1442_4461_914d_73c817351dfa_0x1200afcc0_sink_0x12194cb30 -->
+<g id="edge28" class="edge" data-name="output_tee_video_0x1200abbd0_src_2_0x121918550-&gt;video_queue_310fad4d_1442_4461_914d_73c817351dfa_0x1200afcc0_sink_0x12194cb30">
+
+<path fill="none" stroke="black" d="M2181.64,-292.15C2188.4,-308.3 2203.55,-338.01 2227.54,-350.25 2296.15,-385.26 2389.69,-368.96 2440.83,-355.58" style=""/>
+<polygon fill="black" stroke="black" points="2441.5,-359.03 2450.22,-353.02 2439.65,-352.28 2441.5,-359.03" style=""/>
+<text text-anchor="start" x="2227.54" y="-525.15" font-family="monospace" font-size="9.00" style="">video/x-h264</text>
+<text text-anchor="start" x="2227.54" y="-514.35" font-family="monospace" font-size="9.00" style="">       stream-format: avc</text>
+<text text-anchor="start" x="2227.54" y="-503.55" font-family="monospace" font-size="9.00" style="">  pixel-aspect-ratio: 1/1</text>
+<text text-anchor="start" x="2227.54" y="-492.75" font-family="monospace" font-size="9.00" style="">               width: 1280</text>
+<text text-anchor="start" x="2227.54" y="-481.95" font-family="monospace" font-size="9.00" style="">              height: 720</text>
+<text text-anchor="start" x="2227.54" y="-471.15" font-family="monospace" font-size="9.00" style="">           framerate: 30/1</text>
+<text text-anchor="start" x="2227.54" y="-460.35" font-family="monospace" font-size="9.00" style="">  coded-picture-structure: frame</text>
+<text text-anchor="start" x="2227.54" y="-449.55" font-family="monospace" font-size="9.00" style="">       chroma-format: 4:2:0</text>
+<text text-anchor="start" x="2227.54" y="-438.75" font-family="monospace" font-size="9.00" style="">      bit-depth-luma: 8</text>
+<text text-anchor="start" x="2227.54" y="-427.95" font-family="monospace" font-size="9.00" style="">    bit-depth-chroma: 8</text>
+<text text-anchor="start" x="2227.54" y="-417.15" font-family="monospace" font-size="9.00" style="">              parsed: true</text>
+<text text-anchor="start" x="2227.54" y="-406.35" font-family="monospace" font-size="9.00" style="">           alignment: au</text>
+<text text-anchor="start" x="2227.54" y="-395.55" font-family="monospace" font-size="9.00" style="">             profile: constrained-baseline</text>
+<text text-anchor="start" x="2227.54" y="-384.75" font-family="monospace" font-size="9.00" style="">               level: 3.1</text>
+<text text-anchor="start" x="2227.54" y="-373.95" font-family="monospace" font-size="9.00" style="">          codec_data: 0142c01fffe100176742c0...</text>
+</g>
+<!-- h264parse0_0x1200dc070_sink_0x1200bea40 -->
+<g id="node34" class="node" pointer-events="visible" data-name="h264parse0_0x1200dc070_sink_0x1200bea40">
+
+<polygon fill="#aaaaff" stroke="black" points="1760.09,-262.85 1706.09,-262.85 1706.09,-241.65 1760.09,-241.65 1760.09,-262.85" style=""/>
+<text text-anchor="middle" x="1733.09" y="-254.95" font-family="sans" font-size="9.00" style="">sink</text>
+<text text-anchor="middle" x="1733.09" y="-244.15" font-family="sans" font-size="9.00" style="">[&gt;][bfb]</text>
+</g>
+<!-- h264parse0_0x1200dc070_src_0x1200bec90 -->
+<g id="node35" class="node" pointer-events="visible" data-name="h264parse0_0x1200dc070_src_0x1200bec90">
+
+<polygon fill="#ffaaaa" stroke="black" points="1847.09,-262.85 1793.09,-262.85 1793.09,-241.65 1847.09,-241.65 1847.09,-262.85" style=""/>
+<text text-anchor="middle" x="1820.09" y="-254.95" font-family="sans" font-size="9.00" style="">src</text>
+<text text-anchor="middle" x="1820.09" y="-244.15" font-family="sans" font-size="9.00" style="">[&gt;][bfb]</text>
+</g>
+<!-- h264parse0_0x1200dc070_sink_0x1200bea40&#45;&gt;h264parse0_0x1200dc070_src_0x1200bec90 -->
+<!-- h264parse0_0x1200dc070_src_0x1200bec90&#45;&gt;output_tee_video_0x1200abbd0_sink_0x1200beee0 -->
+<g id="edge30" class="edge" data-name="h264parse0_0x1200dc070_src_0x1200bec90-&gt;output_tee_video_0x1200abbd0_sink_0x1200beee0">
+
+<path fill="none" stroke="black" d="M1847.22,-252.25C1894.85,-252.25 1995.96,-252.25 2050.97,-252.25" style=""/>
+<polygon fill="black" stroke="black" points="2050.78,-255.75 2060.78,-252.25 2050.78,-248.75 2050.78,-255.75" style=""/>
+<text text-anchor="start" x="1871.09" y="-406.15" font-family="monospace" font-size="9.00" style="">video/x-h264</text>
+<text text-anchor="start" x="1871.09" y="-395.35" font-family="monospace" font-size="9.00" style="">       stream-format: avc</text>
+<text text-anchor="start" x="1871.09" y="-384.55" font-family="monospace" font-size="9.00" style="">  pixel-aspect-ratio: 1/1</text>
+<text text-anchor="start" x="1871.09" y="-373.75" font-family="monospace" font-size="9.00" style="">               width: 1280</text>
+<text text-anchor="start" x="1871.09" y="-362.95" font-family="monospace" font-size="9.00" style="">              height: 720</text>
+<text text-anchor="start" x="1871.09" y="-352.15" font-family="monospace" font-size="9.00" style="">           framerate: 30/1</text>
+<text text-anchor="start" x="1871.09" y="-341.35" font-family="monospace" font-size="9.00" style="">  coded-picture-structure: frame</text>
+<text text-anchor="start" x="1871.09" y="-330.55" font-family="monospace" font-size="9.00" style="">       chroma-format: 4:2:0</text>
+<text text-anchor="start" x="1871.09" y="-319.75" font-family="monospace" font-size="9.00" style="">      bit-depth-luma: 8</text>
+<text text-anchor="start" x="1871.09" y="-308.95" font-family="monospace" font-size="9.00" style="">    bit-depth-chroma: 8</text>
+<text text-anchor="start" x="1871.09" y="-298.15" font-family="monospace" font-size="9.00" style="">              parsed: true</text>
+<text text-anchor="start" x="1871.09" y="-287.35" font-family="monospace" font-size="9.00" style="">           alignment: au</text>
+<text text-anchor="start" x="1871.09" y="-276.55" font-family="monospace" font-size="9.00" style="">             profile: constrained-baseline</text>
+<text text-anchor="start" x="1871.09" y="-265.75" font-family="monospace" font-size="9.00" style="">               level: 3.1</text>
+<text text-anchor="start" x="1871.09" y="-254.95" font-family="monospace" font-size="9.00" style="">          codec_data: 0142c01fffe100176742c0...</text>
+</g>
+<!-- srtsink0_0x1200c4300_sink_0x1200be100 -->
+<g id="node36" class="node" pointer-events="visible" data-name="srtsink0_0x1200c4300_sink_0x1200be100">
+
+<polygon fill="#aaaaff" stroke="black" points="825.44,-58.85 771.44,-58.85 771.44,-37.65 825.44,-37.65 825.44,-58.85" style=""/>
+<text text-anchor="middle" x="798.44" y="-50.95" font-family="sans" font-size="9.00" style="">sink</text>
+<text text-anchor="middle" x="798.44" y="-40.15" font-family="sans" font-size="9.00" style="">[&gt;][bfb]</text>
+</g>
+<!-- audio_queue_0x1200aeac0_sink_0x1200a96c0 -->
+<g id="node37" class="node" pointer-events="visible" data-name="audio_queue_0x1200aeac0_sink_0x1200a96c0">
+
+<polygon fill="#aaaaff" stroke="black" points="1457.13,-115.85 1403.13,-115.85 1403.13,-94.65 1457.13,-94.65 1457.13,-115.85" style=""/>
+<text text-anchor="middle" x="1430.13" y="-107.95" font-family="sans" font-size="9.00" style="">sink</text>
+<text text-anchor="middle" x="1430.13" y="-97.15" font-family="sans" font-size="9.00" style="">[&gt;][bfb]</text>
+</g>
+<!-- audio_queue_0x1200aeac0_src_0x1200a9910 -->
+<g id="node38" class="node" pointer-events="visible" data-name="audio_queue_0x1200aeac0_src_0x1200a9910">
+
+<polygon fill="#ffaaaa" stroke="black" points="1544.13,-115.85 1490.13,-115.85 1490.13,-94.65 1544.13,-94.65 1544.13,-115.85" style=""/>
+<text text-anchor="middle" x="1517.13" y="-107.95" font-family="sans" font-size="9.00" style="">src</text>
+<text text-anchor="middle" x="1517.13" y="-97.15" font-family="sans" font-size="9.00" style="">[&gt;][bfb][T]</text>
+</g>
+<!-- audio_queue_0x1200aeac0_sink_0x1200a96c0&#45;&gt;audio_queue_0x1200aeac0_src_0x1200a9910 -->
+<!-- audio_queue_0x1200aeac0_src_0x1200a9910&#45;&gt;aacparse0_0x121898270_sink_0x1200bf380 -->
+<g id="edge32" class="edge" data-name="audio_queue_0x1200aeac0_src_0x1200a9910-&gt;aacparse0_0x121898270_sink_0x1200bf380">
+
+<path fill="none" stroke="black" d="M1544.36,-105.25C1581.9,-105.25 1651.14,-105.25 1694.23,-105.25" style=""/>
+<polygon fill="black" stroke="black" points="1694.12,-108.75 1704.12,-105.25 1694.12,-101.75 1694.12,-108.75" style=""/>
+<text text-anchor="start" x="1582.12" y="-129.55" font-family="monospace" font-size="9.00" style="">audio/mpeg</text>
+<text text-anchor="start" x="1582.12" y="-118.75" font-family="monospace" font-size="9.00" style="">         mpegversion: 4</text>
+<text text-anchor="start" x="1582.12" y="-107.95" font-family="monospace" font-size="9.00" style="">       stream-format: adts</text>
+</g>
+<!-- video_queue_0x1200ae7c0_sink_0x1200a9220 -->
+<g id="node39" class="node" pointer-events="visible" data-name="video_queue_0x1200ae7c0_sink_0x1200a9220">
+
+<polygon fill="#aaaaff" stroke="black" points="1457.13,-262.85 1403.13,-262.85 1403.13,-241.65 1457.13,-241.65 1457.13,-262.85" style=""/>
+<text text-anchor="middle" x="1430.13" y="-254.95" font-family="sans" font-size="9.00" style="">sink</text>
+<text text-anchor="middle" x="1430.13" y="-244.15" font-family="sans" font-size="9.00" style="">[&gt;][bfb]</text>
+</g>
+<!-- video_queue_0x1200ae7c0_src_0x1200a9470 -->
+<g id="node40" class="node" pointer-events="visible" data-name="video_queue_0x1200ae7c0_src_0x1200a9470">
+
+<polygon fill="#ffaaaa" stroke="black" points="1544.13,-262.85 1490.13,-262.85 1490.13,-241.65 1544.13,-241.65 1544.13,-262.85" style=""/>
+<text text-anchor="middle" x="1517.13" y="-254.95" font-family="sans" font-size="9.00" style="">src</text>
+<text text-anchor="middle" x="1517.13" y="-244.15" font-family="sans" font-size="9.00" style="">[&gt;][bfb][T]</text>
+</g>
+<!-- video_queue_0x1200ae7c0_sink_0x1200a9220&#45;&gt;video_queue_0x1200ae7c0_src_0x1200a9470 -->
+<!-- video_queue_0x1200ae7c0_src_0x1200a9470&#45;&gt;h264parse0_0x1200dc070_sink_0x1200bea40 -->
+<g id="edge34" class="edge" data-name="video_queue_0x1200ae7c0_src_0x1200a9470-&gt;h264parse0_0x1200dc070_sink_0x1200bea40">
+
+<path fill="none" stroke="black" d="M1544.36,-252.25C1581.9,-252.25 1651.14,-252.25 1694.23,-252.25" style=""/>
+<polygon fill="black" stroke="black" points="1694.12,-255.75 1704.12,-252.25 1694.12,-248.75 1694.12,-255.75" style=""/>
+<text text-anchor="start" x="1568.13" y="-265.75" font-family="monospace" font-size="9.00" style="">video/x-h264</text>
+<text text-anchor="start" x="1568.13" y="-254.95" font-family="monospace" font-size="9.00" style="">       stream-format: byte-stream</text>
+</g>
+<!-- demux_0x1200ae4c0_sink_0x1200a8fd0 -->
+<g id="node41" class="node" pointer-events="visible" data-name="demux_0x1200ae4c0_sink_0x1200a8fd0">
+
+<polygon fill="#aaaaff" stroke="black" points="1154.17,-234.85 1100.17,-234.85 1100.17,-213.65 1154.17,-213.65 1154.17,-234.85" style=""/>
+<text text-anchor="middle" x="1127.17" y="-226.95" font-family="sans" font-size="9.00" style="">sink</text>
+<text text-anchor="middle" x="1127.17" y="-216.15" font-family="sans" font-size="9.00" style="">[&gt;][bfb]</text>
+</g>
+<!-- demux_0x1200ae4c0_video_0_0100_0x1200be5a0 -->
+<g id="node42" class="node" pointer-events="visible" data-name="demux_0x1200ae4c0_video_0_0100_0x1200be5a0">
+
+<polygon fill="#ffaaaa" stroke="black" stroke-dasharray="1,5" points="1241.17,-234.85 1187.17,-234.85 1187.17,-213.65 1241.17,-213.65 1241.17,-234.85" style=""/>
+<text text-anchor="middle" x="1214.17" y="-226.95" font-family="sans" font-size="9.00" style="">video_0_0100</text>
+<text text-anchor="middle" x="1214.17" y="-216.15" font-family="sans" font-size="9.00" style="">[&gt;][bfb]</text>
+</g>
+<!-- demux_0x1200ae4c0_sink_0x1200a8fd0&#45;&gt;demux_0x1200ae4c0_video_0_0100_0x1200be5a0 -->
+<!-- demux_0x1200ae4c0_video_0_0100_0x1200be5a0&#45;&gt;video_queue_0x1200ae7c0_sink_0x1200a9220 -->
+<g id="edge36" class="edge" data-name="demux_0x1200ae4c0_video_0_0100_0x1200be5a0-&gt;video_queue_0x1200ae7c0_sink_0x1200a9220">
+
+<path fill="none" stroke="black" d="M1241.4,-227.68C1278.94,-232.6 1348.18,-241.66 1391.27,-247.3" style=""/>
+<polygon fill="black" stroke="black" points="1390.81,-250.76 1401.18,-248.59 1391.71,-243.82 1390.81,-250.76" style=""/>
+<text text-anchor="start" x="1265.17" y="-258.75" font-family="monospace" font-size="9.00" style="">video/x-h264</text>
+<text text-anchor="start" x="1265.17" y="-247.95" font-family="monospace" font-size="9.00" style="">       stream-format: byte-stream</text>
+</g>
+<!-- demux_0x1200ae4c0_audio_0_0101_0x1200be7f0 -->
+<g id="node43" class="node" pointer-events="visible" data-name="demux_0x1200ae4c0_audio_0_0101_0x1200be7f0">
+
+<polygon fill="#ffaaaa" stroke="black" stroke-dasharray="1,5" points="1241.17,-205.85 1187.17,-205.85 1187.17,-184.65 1241.17,-184.65 1241.17,-205.85" style=""/>
+<text text-anchor="middle" x="1214.17" y="-197.95" font-family="sans" font-size="9.00" style="">audio_0_0101</text>
+<text text-anchor="middle" x="1214.17" y="-187.15" font-family="sans" font-size="9.00" style="">[&gt;][bfb]</text>
+</g>
+<!-- demux_0x1200ae4c0_audio_0_0101_0x1200be7f0&#45;&gt;audio_queue_0x1200aeac0_sink_0x1200a96c0 -->
+<g id="edge37" class="edge" data-name="demux_0x1200ae4c0_audio_0_0101_0x1200be7f0-&gt;audio_queue_0x1200aeac0_sink_0x1200a96c0">
+
+<path fill="none" stroke="black" d="M1241.4,-184.21C1279.28,-168.28 1349.45,-138.77 1392.44,-120.68" style=""/>
+<polygon fill="black" stroke="black" points="1393.76,-123.93 1401.62,-116.82 1391.04,-117.47 1393.76,-123.93" style=""/>
+<text text-anchor="start" x="1279.16" y="-197.55" font-family="monospace" font-size="9.00" style="">audio/mpeg</text>
+<text text-anchor="start" x="1279.16" y="-186.75" font-family="monospace" font-size="9.00" style="">         mpegversion: 4</text>
+<text text-anchor="start" x="1279.16" y="-175.95" font-family="monospace" font-size="9.00" style="">       stream-format: adts</text>
+</g>
+<!-- typefind_0x1200b4020_sink_0x1200a8b30 -->
+<g id="node44" class="node" pointer-events="visible" data-name="typefind_0x1200b4020_sink_0x1200a8b30">
+
+<polygon fill="#aaaaff" stroke="black" points="825.44,-234.85 771.44,-234.85 771.44,-213.65 825.44,-213.65 825.44,-234.85" style=""/>
+<text text-anchor="middle" x="798.44" y="-226.95" font-family="sans" font-size="9.00" style="">sink</text>
+<text text-anchor="middle" x="798.44" y="-216.15" font-family="sans" font-size="9.00" style="">[&gt;][bfb]</text>
+</g>
+<!-- typefind_0x1200b4020_src_0x1200a8d80 -->
+<g id="node45" class="node" pointer-events="visible" data-name="typefind_0x1200b4020_src_0x1200a8d80">
+
+<polygon fill="#ffaaaa" stroke="black" points="953.44,-234.85 899.44,-234.85 899.44,-213.65 953.44,-213.65 953.44,-234.85" style=""/>
+<text text-anchor="middle" x="926.44" y="-226.95" font-family="sans" font-size="9.00" style="">src</text>
+<text text-anchor="middle" x="926.44" y="-216.15" font-family="sans" font-size="9.00" style="">[&gt;][bfb]</text>
+</g>
+<!-- typefind_0x1200b4020_sink_0x1200a8b30&#45;&gt;typefind_0x1200b4020_src_0x1200a8d80 -->
+<!-- typefind_0x1200b4020_src_0x1200a8d80&#45;&gt;demux_0x1200ae4c0_sink_0x1200a8fd0 -->
+<g id="edge39" class="edge" data-name="typefind_0x1200b4020_src_0x1200a8d80-&gt;demux_0x1200ae4c0_sink_0x1200a8fd0">
+
+<path fill="none" stroke="black" d="M953.83,-224.25C988.27,-224.25 1048.8,-224.25 1088.18,-224.25" style=""/>
+<polygon fill="black" stroke="black" points="1088.16,-227.75 1098.16,-224.25 1088.16,-220.75 1088.16,-227.75" style=""/>
+<text text-anchor="start" x="990.44" y="-248.55" font-family="monospace" font-size="9.00" style="">video/mpegts</text>
+<text text-anchor="start" x="990.44" y="-237.75" font-family="monospace" font-size="9.00" style="">        systemstream: true</text>
+<text text-anchor="start" x="990.44" y="-226.95" font-family="monospace" font-size="9.00" style="">          packetsize: 188</text>
+</g>
+<!-- srt_queue_0x1200aedc0_sink_0x1200a9b60 -->
+<g id="node46" class="node" pointer-events="visible" data-name="srt_queue_0x1200aedc0_sink_0x1200a9b60">
+
+<polygon fill="#aaaaff" stroke="black" points="596.94,-64.85 542.94,-64.85 542.94,-43.65 596.94,-43.65 596.94,-64.85" style=""/>
+<text text-anchor="middle" x="569.94" y="-56.95" font-family="sans" font-size="9.00" style="">sink</text>
+<text text-anchor="middle" x="569.94" y="-46.15" font-family="sans" font-size="9.00" style="">[&gt;][bfb]</text>
+</g>
+<!-- srt_queue_0x1200aedc0_src_0x1200a9db0 -->
+<g id="node47" class="node" pointer-events="visible" data-name="srt_queue_0x1200aedc0_src_0x1200a9db0">
+
+<polygon fill="#ffaaaa" stroke="black" points="683.94,-64.85 629.94,-64.85 629.94,-43.65 683.94,-43.65 683.94,-64.85" style=""/>
+<text text-anchor="middle" x="656.94" y="-56.95" font-family="sans" font-size="9.00" style="">src</text>
+<text text-anchor="middle" x="656.94" y="-46.15" font-family="sans" font-size="9.00" style="">[&gt;][bfb][T]</text>
+</g>
+<!-- srt_queue_0x1200aedc0_sink_0x1200a9b60&#45;&gt;srt_queue_0x1200aedc0_src_0x1200a9db0 -->
+<!-- srt_queue_0x1200aedc0_src_0x1200a9db0&#45;&gt;srtsink0_0x1200c4300_sink_0x1200be100 -->
+<g id="edge41" class="edge" data-name="srt_queue_0x1200aedc0_src_0x1200a9db0-&gt;srtsink0_0x1200c4300_sink_0x1200be100">
+
+<path fill="none" stroke="black" d="M684.18,-53.12C705.51,-52.2 735.89,-50.9 759.81,-49.87" style=""/>
+<polygon fill="black" stroke="black" points="759.96,-53.37 769.8,-49.44 759.66,-46.37 759.96,-53.37" style=""/>
+<text text-anchor="middle" x="717.69" y="-53.95" font-family="monospace" font-size="9.00" style="">ANY</text>
+</g>
+<!-- whep_queue_0x1200ae1c0_sink_0x1200a8690 -->
+<g id="node48" class="node" pointer-events="visible" data-name="whep_queue_0x1200ae1c0_sink_0x1200a8690">
+
+<polygon fill="#aaaaff" stroke="black" points="596.94,-230.85 542.94,-230.85 542.94,-209.65 596.94,-209.65 596.94,-230.85" style=""/>
+<text text-anchor="middle" x="569.94" y="-222.95" font-family="sans" font-size="9.00" style="">sink</text>
+<text text-anchor="middle" x="569.94" y="-212.15" font-family="sans" font-size="9.00" style="">[&gt;][bfb]</text>
+</g>
+<!-- whep_queue_0x1200ae1c0_src_0x1200a88e0 -->
+<g id="node49" class="node" pointer-events="visible" data-name="whep_queue_0x1200ae1c0_src_0x1200a88e0">
+
+<polygon fill="#ffaaaa" stroke="black" points="683.94,-230.85 629.94,-230.85 629.94,-209.65 683.94,-209.65 683.94,-230.85" style=""/>
+<text text-anchor="middle" x="656.94" y="-222.95" font-family="sans" font-size="9.00" style="">src</text>
+<text text-anchor="middle" x="656.94" y="-212.15" font-family="sans" font-size="9.00" style="">[&gt;][bfb][T]</text>
+</g>
+<!-- whep_queue_0x1200ae1c0_sink_0x1200a8690&#45;&gt;whep_queue_0x1200ae1c0_src_0x1200a88e0 -->
+<!-- whep_queue_0x1200ae1c0_src_0x1200a88e0&#45;&gt;typefind_0x1200b4020_sink_0x1200a8b30 -->
+<g id="edge43" class="edge" data-name="whep_queue_0x1200ae1c0_src_0x1200a88e0-&gt;typefind_0x1200b4020_sink_0x1200a8b30">
+
+<path fill="none" stroke="black" d="M684.18,-221C705.51,-221.61 735.89,-222.49 759.81,-223.17" style=""/>
+<polygon fill="black" stroke="black" points="759.7,-226.67 769.8,-223.46 759.91,-219.67 759.7,-226.67" style=""/>
+<text text-anchor="middle" x="717.69" y="-223.95" font-family="monospace" font-size="9.00" style="">ANY</text>
+</g>
+<!-- input_tee_0x1200ab000_sink_0x1200a8440 -->
+<g id="node50" class="node" pointer-events="visible" data-name="input_tee_0x1200ab000_sink_0x1200a8440">
+
+<polygon fill="#aaaaff" stroke="black" points="388.44,-178.85 334.44,-178.85 334.44,-157.65 388.44,-157.65 388.44,-178.85" style=""/>
+<text text-anchor="middle" x="361.44" y="-170.95" font-family="sans" font-size="9.00" style="">sink</text>
+<text text-anchor="middle" x="361.44" y="-160.15" font-family="sans" font-size="9.00" style="">[&gt;][bfb]</text>
+</g>
+<!-- input_tee_0x1200ab000_src_0_0x1180b40d0 -->
+<g id="node51" class="node" pointer-events="visible" data-name="input_tee_0x1200ab000_src_0_0x1180b40d0">
+
+<polygon fill="#ffaaaa" stroke="black" stroke-dasharray="5,2" points="475.44,-178.85 421.44,-178.85 421.44,-157.65 475.44,-157.65 475.44,-178.85" style=""/>
+<text text-anchor="middle" x="448.44" y="-170.95" font-family="sans" font-size="9.00" style="">src_0</text>
+<text text-anchor="middle" x="448.44" y="-160.15" font-family="sans" font-size="9.00" style="">[&gt;][bfb]</text>
+</g>
+<!-- input_tee_0x1200ab000_sink_0x1200a8440&#45;&gt;input_tee_0x1200ab000_src_0_0x1180b40d0 -->
+<!-- input_tee_0x1200ab000_src_0_0x1180b40d0&#45;&gt;whep_queue_0x1200ae1c0_sink_0x1200a8690 -->
+<g id="edge45" class="edge" data-name="input_tee_0x1200ab000_src_0_0x1180b40d0-&gt;whep_queue_0x1200ae1c0_sink_0x1200a8690">
+
+<path fill="none" stroke="black" d="M474.78,-179.28C491.73,-186.65 514.29,-196.47 533.08,-204.65" style=""/>
+<polygon fill="black" stroke="black" points="531.68,-207.85 542.24,-208.63 534.47,-201.43 531.68,-207.85" style=""/>
+<text text-anchor="middle" x="509.19" y="-199.95" font-family="monospace" font-size="9.00" style="">ANY</text>
+</g>
+<!-- input_tee_0x1200ab000_src_1_0x1180b4330 -->
+<g id="node52" class="node" pointer-events="visible" data-name="input_tee_0x1200ab000_src_1_0x1180b4330">
+
+<polygon fill="#ffaaaa" stroke="black" stroke-dasharray="5,2" points="475.44,-149.85 421.44,-149.85 421.44,-128.65 475.44,-128.65 475.44,-149.85" style=""/>
+<text text-anchor="middle" x="448.44" y="-141.95" font-family="sans" font-size="9.00" style="">src_1</text>
+<text text-anchor="middle" x="448.44" y="-131.15" font-family="sans" font-size="9.00" style="">[&gt;][bfb]</text>
+</g>
+<!-- input_tee_0x1200ab000_src_1_0x1180b4330&#45;&gt;srt_queue_0x1200aedc0_sink_0x1200a9b60 -->
+<g id="edge46" class="edge" data-name="input_tee_0x1200ab000_src_1_0x1180b4330-&gt;srt_queue_0x1200aedc0_sink_0x1200a9b60">
+
+<path fill="none" stroke="black" d="M464.57,-128.48C484.66,-114.19 520.4,-88.78 544.38,-71.72" style=""/>
+<polygon fill="black" stroke="black" points="546.19,-74.72 552.31,-66.07 542.14,-69.02 546.19,-74.72" style=""/>
+<text text-anchor="middle" x="509.19" y="-103.95" font-family="monospace" font-size="9.00" style="">ANY</text>
+</g>
+<!-- srtsrc0_0x1200a41e0_src_0x1200a81f0 -->
+<g id="node53" class="node" pointer-events="visible" data-name="srtsrc0_0x1200a41e0_src_0x1200a81f0">
+
+<polygon fill="#ffaaaa" stroke="black" points="168.47,-178.85 114.47,-178.85 114.47,-157.65 168.47,-157.65 168.47,-178.85" style=""/>
+<text text-anchor="middle" x="141.47" y="-170.95" font-family="sans" font-size="9.00" style="">src</text>
+<text text-anchor="middle" x="141.47" y="-160.15" font-family="sans" font-size="9.00" style="">[&gt;][bfb][T]</text>
+</g>
+<!-- srtsrc0_0x1200a41e0_src_0x1200a81f0&#45;&gt;input_tee_0x1200ab000_sink_0x1200a8440 -->
+<g id="edge47" class="edge" data-name="srtsrc0_0x1200a41e0_src_0x1200a81f0-&gt;input_tee_0x1200ab000_sink_0x1200a8440">
+
+<path fill="none" stroke="black" d="M168.76,-168.25C207.14,-168.25 278.7,-168.25 322.69,-168.25" style=""/>
+<polygon fill="black" stroke="black" points="322.54,-171.75 332.54,-168.25 322.54,-164.75 322.54,-171.75" style=""/>
+<text text-anchor="middle" x="300.69" y="-170.95" font-family="monospace" font-size="9.00" style="">ANY</text>
 </g>
 </g>
 </svg>
