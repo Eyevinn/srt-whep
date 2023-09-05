@@ -27,6 +27,7 @@ Here we have a list of supported production software.
 | FFMpeg            | :white_check_mark:   | A complete, cross-platform solution to record, convert and stream audio and video |
 | [OBS](https://obsproject.com)               | :white_check_mark:   | Free and open source software for video recording and live streaming                 |
 | GStreamer         | :white_check_mark:   | A pipeline-based multimedia framework    |
+| [Agile Live](https://docs.agilecontent.com/docs/acl/) | :white_check_mark: | A software-based platform for production of media using standard, off-the-shelf hardware and datacenter building blocks. |
 
 ## Getting Started
 It is suggested that
