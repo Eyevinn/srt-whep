@@ -28,6 +28,7 @@ Here we have a list of supported production software.
 | [OBS](https://obsproject.com)               | :white_check_mark:   | Free and open source software for video recording and live streaming                 |
 | GStreamer         | :white_check_mark:   | A pipeline-based multimedia framework    |
 | [Agile Live](https://docs.agilecontent.com/docs/acl/) | :white_check_mark: | A software-based platform for production of media using standard, off-the-shelf hardware and datacenter building blocks. |
+| [Intinor Direkt](https://intinor.com/) | :white_check_mark: | Intinor Direkt series is a product line of encoders and decoders for live video over the internet. |
 
 ## Getting Started
 It is suggested that
