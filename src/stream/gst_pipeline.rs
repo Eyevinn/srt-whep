@@ -221,6 +221,7 @@ impl PipelineBase for SharablePipeline {
 
         let src = gst::ElementFactory::make("srtsrc")
             .property("uri", uri)
+            .property("latency", 0)
             .build()?;
         let input_tee = gst::ElementFactory::make("tee").name("input_tee").build()?;
 
@@ -228,7 +229,10 @@ impl PipelineBase for SharablePipeline {
         let typefind = gst::ElementFactory::make("typefind")
             .name("typefind")
             .build()?;
-        let tsdemux = gst::ElementFactory::make("tsdemux").name("demux").build()?;
+        let tsdemux = gst::ElementFactory::make("tsdemux")
+            .name("demux")
+            .property("latency", 0)
+            .build()?;
 
         let video_queue = Self::create_custom_queue("video-queue", "0", "0", "no")?;
         let audio_queue = Self::create_custom_queue("audio-queue", "0", "0", "no")?;
