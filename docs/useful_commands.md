@@ -13,7 +13,7 @@ ffmpeg -f lavfi -re -i testsrc=size=1280x720:rate=30 -f lavfi -re \
 gst-launch-1.0 -v \
     videotestsrc ! clockoverlay ! video/x-raw, height=360, width=640 ! videoconvert ! x264enc tune=zerolatency ! video/x-h264, profile=constrained-baseline ! mux. \
     audiotestsrc ! audio/x-raw, format=S16LE, channels=2, rate=44100 ! audioconvert ! voaacenc ! aacparse ! mux. \
-    mpegtsmux name=mux ! queue ! srtsink uri="srt://127.0.0.1:1234?mode=caller" wait-for-connection=false
+    mpegtsmux name=mux ! queue ! srtsink uri="srt://127.0.0.1:1234?mode=caller" wait-for-connection=false latency=0
 ```
 - Our docker image (running in `listener` mode)
 ```

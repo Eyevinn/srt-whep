@@ -205,6 +205,10 @@ When working with SRT streams, there are several important considerations that c
 4. **Codecs and Profiles Compatibility:**
 - Video profiles, such as Baseline, Main, and High for H.264, play a crucial role in stream compatibility. While Chrome supports all profiles, Safari only accepts the Baseline profile. For further details, please refer to [this](./docs/supported_codecs.md) table.
 
+5. **SRT Stream Latency:**
+- SRT streams can be configured to have different latencies. For example, if you're using GStreamer to generate SRT streams, you can set the latency parameter of `srtsink` or `srtsrc` to fit your need. For example, `latency=200` sets the latency to 200ms, which is appropriate for most use cases.
+- Our tool adds a minimun latency to the stream by default. If you want to measure the end-to-end latency, you can try to generate a stream using OBS with a clock overlay (which adds a very low latency). Then you can compare the clock in the stream with the built-in clock from our WHEP player. The end-to-end latency should be around 300~500 ms.
+
 ## Discussion and Issues
 All relevant discussions are tracked in [issues](https://github.com/Eyevinn/srt-whep/issues/). Please feel free to open a new issue if you have any questions.
 
