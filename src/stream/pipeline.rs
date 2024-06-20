@@ -12,11 +12,11 @@ pub struct Args {
     /// SRT mode to use:
     /// 1) caller - run a discoverer and then connect to the SRT stream (in listener mode).
     /// 2) listener - wait for a SRT stream (in caller mode) to connect.
-    #[clap(short, long, value_enum, verbatim_doc_comment)]
+    #[clap(short, long, value_enum, verbatim_doc_comment, default_value_t = SRTMode::Caller)]
     pub srt_mode: SRTMode,
 
     /// Run discoverer before connecting to the SRT stream
-    #[clap(short, long)]
+    #[clap(short, long, default_value_t = false)]
     pub run_discoverer: bool,
 
     /// Timeout for discoverer in seconds
@@ -24,7 +24,7 @@ pub struct Args {
     pub discoverer_timeout_sec: u64,
 
     /// SRT output stream address(ip:port)
-    #[clap(short, long)]
+    #[clap(short, long, default_value_t = String::from("127.0.0.1:8888"))]
     pub output_address: String,
 
     /// Port for whep client
