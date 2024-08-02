@@ -1,4 +1,5 @@
 use super::{MyError, SessionDescription};
+use event_listener::{Event, Listener};
 use std::ops::{Deref, DerefMut};
 use std::{
     collections::{hash_map::Entry, HashMap},
@@ -8,21 +9,25 @@ use std::{
 };
 use timed_locks::Mutex;
 
-// The maximum times to wait for an offer
+// The maximum time in seconds to wait for an offer/anwser
 static MAXWAITTIMES: u32 = 10;
 
 // A struct to hold offer&answer for a webrtc connection
 #[derive(Debug)]
-struct Connection {
-    whip_offer: Option<SessionDescription>,
-    whep_answer: Option<SessionDescription>,
+pub struct Connection {
+    offer_available: Event,
+    whip_offer: Mutex<Option<SessionDescription>>,
+    answer_available: Event,
+    whep_answer: Mutex<Option<SessionDescription>>,
 }
 
 impl Connection {
     fn new() -> Self {
         Self {
-            whip_offer: None,
-            whep_answer: None,
+            offer_available: Event::new(),
+            whip_offer: Mutex::new(None),
+            answer_available: Event::new(),
+            whep_answer: Mutex::new(None),
         }
     }
 }
@@ -30,7 +35,7 @@ impl Connection {
 // A struct to hold all the connections.
 // The connections are stored in a hashmap with a unique id as the key
 pub struct AppState {
-    connections: HashMap<String, Connection>,
+    connections: HashMap<String, Arc<Connection>>,
 }
 
 impl AppState {
@@ -114,10 +119,20 @@ impl SharableAppState {
         match connections.entry(id.clone()) {
             Entry::Occupied(_) => Err(MyError::RepeatedConnection(id)),
             Entry::Vacant(entry) => {
-                entry.insert(Connection::new());
+                entry.insert(Arc::new(Connection::new()));
                 Ok(())
             }
         }
+    }
+
+    pub async fn get_connection(&self, id: String) -> Result<Arc<Connection>, MyError> {
+        let app_state = self.lock_err().await?;
+        let connections = &app_state.connections;
+
+        connections
+            .get(&id)
+            .cloned()
+            .ok_or(MyError::ConnectionNotFound(id))
     }
 
     pub async fn save_whip_offer(
@@ -126,46 +141,31 @@ impl SharableAppState {
         offer: SessionDescription,
     ) -> Result<(), MyError> {
         tracing::debug!("Save WHIP SDP offer: {:?}", offer);
-        let mut app_state = self.lock_err().await?;
-        let connections = &mut app_state.connections;
 
-        if let Some(con) = connections.get_mut(&id) {
-            con.whip_offer = Some(offer);
-            Ok(())
-        } else {
-            Err(MyError::ConnectionNotFound(id))
-        }
+        let connect = self.get_connection(id.clone()).await?;
+        let mut whip_offer = connect.whip_offer.lock().await;
+        *whip_offer = Some(offer);
+        connect.offer_available.notify(1);
+        Ok(())
     }
 
     pub async fn wait_on_whep_answer(&self, id: String) -> Result<SessionDescription, MyError> {
-        // Check every second if an answer is ready
-        // If the answer is ready, return it
-        // If not, wait for a second and check again
-        // If the answer is not ready after several tries, return an error
-        for i in 0..MAXWAITTIMES {
-            tracing::debug!(
-                "Wait on WHEP SDP answer: {} for {}/{} times",
-                id,
-                i,
-                MAXWAITTIMES
-            );
+        tracing::debug!(
+            "Wait on WHEP SDP answer: {} for {} seconds",
+            id,
+            MAXWAITTIMES
+        );
 
-            let mut app_state = self.lock_err().await?;
-            let connections = &mut app_state.connections;
-
-            if let Some(con) = connections.get_mut(&id) {
-                if con.whep_answer.is_some() {
-                    let whep_answer = con.whep_answer.as_mut().unwrap();
-                    whep_answer.set_as_passive();
-
-                    return Ok(con.whep_answer.clone().unwrap());
-                }
-            }
-
-            tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
+        let connect = self.get_connection(id.clone()).await?;
+        let answer_await = connect.answer_available.listen();
+        if answer_await
+            .wait_timeout(Duration::from_secs(MAXWAITTIMES as u64))
+            .is_some()
+        {
+            Ok(connect.whep_answer.lock().await.clone().unwrap())
+        } else {
+            Err(MyError::AnswerMissing)
         }
-
-        Err(MyError::AnswerMissing)
     }
 
     pub async fn save_whep_answer(
@@ -174,45 +174,29 @@ impl SharableAppState {
         offer: SessionDescription,
     ) -> Result<(), MyError> {
         tracing::debug!("Save WHEP SDP answer: {:?}", offer);
-        let mut app_state = self.lock_err().await?;
-        let connections = &mut app_state.connections;
-
-        if let Some(con) = connections.get_mut(&id) {
-            con.whep_answer = Some(offer);
-            Ok(())
-        } else {
-            Err(MyError::ConnectionNotFound(id))
-        }
+        let connect = self.get_connection(id.clone()).await?;
+        let mut whep_answer = connect.whep_answer.lock().await;
+        *whep_answer = Some(offer);
+        connect.answer_available.notify(1);
+        Ok(())
     }
 
     pub async fn wait_on_whip_offer(&self, id: String) -> Result<SessionDescription, MyError> {
-        // Check every second if an offer is ready
-        // If the offer is ready, return it
-        // If not, wait for a second and check again
-        // If the offer is not ready after several tries, return an error
-        for i in 0..MAXWAITTIMES {
-            tracing::debug!(
-                "Wait on WHIP SDP offer: {} for {}/{} times",
-                id,
-                i,
-                MAXWAITTIMES
-            );
+        tracing::debug!(
+            "Wait on WHIP SDP offer: {} for {} seconds",
+            id,
+            MAXWAITTIMES
+        );
 
-            let mut app_state = self.lock_err().await?;
-            let connections = &mut app_state.connections;
-
-            if let Some(con) = connections.get_mut(&id) {
-                if con.whip_offer.is_some() {
-                    let whip_offer = con.whip_offer.as_mut().unwrap();
-                    whip_offer.set_as_active();
-
-                    return Ok(con.whip_offer.clone().unwrap());
-                }
-            }
-
-            tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
+        let connect = self.get_connection(id.clone()).await?;
+        let offer_await = connect.offer_available.listen();
+        if offer_await
+            .wait_timeout(Duration::from_secs(MAXWAITTIMES as u64))
+            .is_some()
+        {
+            Ok(connect.whip_offer.lock().await.clone().unwrap())
+        } else {
+            Err(MyError::OfferMissing)
         }
-
-        Err(MyError::OfferMissing)
     }
 }
