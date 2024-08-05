@@ -1,14 +1,14 @@
 # syntax=docker/dockerfile:1
-FROM lukemathwalker/cargo-chef:latest-rust-1.71.1-bookworm as chef
+FROM lukemathwalker/cargo-chef:latest-rust-1.76-bookworm AS chef
 WORKDIR /app
 RUN apt update && apt install lld clang -y
 
-FROM chef as planner
+FROM chef AS planner
 COPY . .
 # Compute a lock-like file for our project
 RUN cargo chef prepare  --recipe-path recipe.json
 
-FROM chef as builder
+FROM chef AS builder
 ENV DEBIAN_FRONTEND=noninteractive
 
 # Update default packages
@@ -46,9 +46,9 @@ COPY --from=planner /app/recipe.json recipe.json
 RUN cargo chef cook --release --recipe-path recipe.json
 COPY . .
 # Build our application
-RUN cargo update && cargo build --release
+RUN cargo build --release
 
-FROM debian:bookworm-slim as runtime
+FROM debian:bookworm-slim AS runtime
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update
 RUN apt-get install -y libgstreamer1.0-0 \
