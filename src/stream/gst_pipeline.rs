@@ -94,7 +94,8 @@ impl PipelineBase for SharablePipeline {
         let demux = pipeline
             .by_name("demux")
             .ok_or(MyError::MissingElement("demux".to_string()))?;
-        let whipsink = gst::ElementFactory::make("whipwebrtcsink")
+        // WhipWebRTCSink is renamed as 'whipclientsink' since gst-plugin-webrtc version 0.13.0
+        let whipsink = gst::ElementFactory::make("whipclientsink")
             .name("whip-sink-".to_string() + &id)
             .build()?;
         pipeline.add_many([&whipsink])?;

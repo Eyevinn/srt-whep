@@ -1,12 +1,7 @@
 use anyhow::Error;
-use derive_more::{Display, Error};
 use gst_pbutils::{prelude::*, DiscovererInfo, DiscovererStreamInfo};
 use gstreamer as gst;
 use gstreamer_pbutils as gst_pbutils;
-
-#[derive(Debug, Display, Error)]
-#[display(fmt = "Discoverer error {_0}")]
-struct DiscovererError(#[error(not(source))] &'static str);
 
 fn print_tags(info: &DiscovererInfo) {
     tracing::info!("Tags:");
@@ -36,11 +31,7 @@ fn print_discoverer_info(info: &DiscovererInfo) -> Result<(), Error> {
     tracing::info!("Duration: {}", info.duration().display());
 
     print_tags(info);
-    print_stream_info(
-        &info
-            .stream_info()
-            .ok_or(DiscovererError("Error while obtaining stream info"))?,
-    );
+    print_stream_info(&info.stream_info().unwrap());
 
     let children = info.stream_list();
     tracing::info!("Children streams:");

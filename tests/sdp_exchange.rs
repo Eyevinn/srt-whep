@@ -71,7 +71,7 @@ async fn subscribe_returns_a_200_after_exchange_offer() {
             .await
             .expect("Failed to send whip offer");
 
-        assert_eq!(StatusCode::OK, whip_response.status());
+        assert_eq!(StatusCode::OK, whip_response.status().as_u16());
         assert_eq!("application/sdp", whip_response.headers()["content-type"]);
         assert!(whip_response
             .text()
@@ -89,7 +89,7 @@ async fn subscribe_returns_a_200_after_exchange_offer() {
         .await
         .expect("Failed to send whep post");
 
-    assert_eq!(StatusCode::CREATED, whep_post_response.status());
+    assert_eq!(StatusCode::CREATED, whep_post_response.status().as_u16());
     let header = whep_post_response.headers().clone();
     assert_eq!("application/sdp", header["content-type"]);
     let url = header["Location"].to_str().unwrap();
@@ -106,7 +106,10 @@ async fn subscribe_returns_a_200_after_exchange_offer() {
         .await
         .expect("Failed to send whep patch");
 
-    assert_eq!(StatusCode::NO_CONTENT, whep_patch_response.status());
+    assert_eq!(
+        StatusCode::NO_CONTENT,
+        whep_patch_response.status().as_u16()
+    );
     handle.await.unwrap();
 }
 
