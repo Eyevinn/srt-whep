@@ -35,6 +35,11 @@ gst-launch-1.0 srtsrc uri="srt://127.0.0.1:1234?mode=caller" ! queue ! decodebin
 ### Video & Audio
 #### producer
 gst-launch-1.0 -v \
+    videotestsrc ! clockoverlay ! video/x-raw, height=360, width=640 ! videoconvert ! x264enc tune=zerolatency ! video/x-h264, profile=constrained-baseline ! hls. \
+    audiotestsrc ! audioconvert ! audioresample ! avenc_aac ! hls. \
+    hlssink3 name=hls max-files=5 target-duration=3 playlist-type=vod
+
+gst-launch-1.0 -v \
     videotestsrc ! clockoverlay ! video/x-raw, height=360, width=640 ! videoconvert ! x264enc tune=zerolatency ! video/x-h264, profile=constrained-baseline ! mux. \
     audiotestsrc ! audio/x-raw, format=S16LE, channels=2, rate=44100 ! audioconvert ! voaacenc ! aacparse ! mux. \
     mpegtsmux name=mux ! queue ! srtsink uri="srt://127.0.0.1:1234?mode=caller" wait-for-connection=false latency=5000
