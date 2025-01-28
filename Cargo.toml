@@ -3,11 +3,11 @@ name = "srt_whep"
 description = "SRT to WHEP (WebRTC)"
 repository = "https://github.com/Eyevinn/srt-whep"
 license = "Apache-2.0"
-version = "1.2.5"
+version = "1.2.6"
 authors = ["Kun Wu <kun.wu@eyevinn.se>; Jonas Birmé <jonas.birme@eyevinn.se>"]
 edition = "2021"
 exclude = ["docs/*"]
-rust-version = "1.76"
+rust-version = "1.84"
 
 [lib]
 path = "src/lib.rs"
