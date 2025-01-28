@@ -48,9 +48,9 @@ COPY . .
 # Build our application
 RUN cargo build --release
 
-FROM debian:bookworm-slim AS runtime
+FROM lukemathwalker/cargo-chef:latest-rust-slim-bookworm AS runtime
 ENV DEBIAN_FRONTEND=noninteractive
-RUN apt-get update
+RUN apt update
 RUN apt-get install -y libgstreamer1.0-0 \
     gstreamer1.0-plugins-base \
     gstreamer1.0-plugins-good \
