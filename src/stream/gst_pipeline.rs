@@ -16,6 +16,7 @@ use crate::stream::utils::run_discoverer;
 #[derive(Clone)]
 pub struct PipelineWrapper {
     pipeline: Option<Pipeline>,
+    main_loop: Option<glib::MainLoop>,
     port: u32,
 }
 
@@ -23,6 +24,7 @@ impl PipelineWrapper {
     fn new(args: Args) -> Self {
         Self {
             pipeline: None,
+            main_loop: None,
             port: args.port,
         }
     }
@@ -58,8 +60,15 @@ impl DerefMut for SharablePipeline {
 impl PipelineBase for SharablePipeline {
     /// Check if SRT input stream is available
     async fn ready(&self) -> Result<bool, Error> {
-        let pipeline_state = self.lock_err().await?;
-        let pipeline = pipeline_state.pipeline.as_ref().unwrap();
+        let pipeline_state = self.lock_err().await.inspect_err(|e| {
+            tracing::error!("Failed to lock pipeline: {}", e);
+        })?;
+        let pipeline = pipeline_state.pipeline.as_ref();
+        if pipeline.is_none() {
+            tracing::error!("Pipeline is not missing");
+            return Ok(false);
+        }
+        let pipeline = pipeline.unwrap();
 
         let demux = pipeline
             .by_name("demux")
@@ -480,7 +489,7 @@ impl PipelineBase for SharablePipeline {
 
     /// Run pipeline and wait until the message bus receives an EOS or error message
     async fn run(&self) -> Result<(), Error> {
-        let pipeline_state = self.lock_err().await?;
+        let mut pipeline_state = self.lock_err().await?;
         let pipeline = pipeline_state
             .pipeline
             .as_ref()
@@ -488,9 +497,10 @@ impl PipelineBase for SharablePipeline {
                 "Pipeline called before initialization".to_string(),
             ))?;
         let bus = pipeline.bus().unwrap();
+        let main_loop = glib::MainLoop::new(None, false);
+        pipeline_state.main_loop = Some(main_loop.clone());
         drop(pipeline_state);
 
-        let main_loop = glib::MainLoop::new(None, false);
         // Wait until an EOS or error message appears
         let main_loop_clone = main_loop.clone();
         let _bus_watch = bus.add_watch(move |_, msg| {
@@ -531,7 +541,26 @@ impl PipelineBase for SharablePipeline {
     async fn end(&self) -> Result<(), Error> {
         let pipeline_state = self.lock_err().await?;
         if let Some(pipeline) = pipeline_state.pipeline.as_ref() {
-            pipeline.send_event(gst::event::Eos::new());
+            tracing::debug!("Stopping pipeline");
+            let result = pipeline.send_event(gst::event::Eos::new());
+            if !result {
+                tracing::error!("Failed to send EOS to pipeline");
+            }
+        } else {
+            tracing::error!("Pipeline is missing");
+        }
+
+        Ok(())
+    }
+
+    /// Quit pipeline by sending a quit message to the main loop
+    /// This function is used to restart the pipeline in case of
+    /// unrecoverable errors
+    async fn quit(&self) -> Result<(), Error> {
+        let pipeline_state = self.lock_err().await?;
+        if let Some(main_loop) = pipeline_state.main_loop.as_ref() {
+            tracing::debug!("Force-quit pipeline");
+            main_loop.quit();
         }
 
         Ok(())
@@ -541,11 +570,13 @@ impl PipelineBase for SharablePipeline {
     async fn clean_up(&self) -> Result<(), Error> {
         let mut pipeline_state = self.lock_err().await?;
         if let Some(pipeline) = pipeline_state.pipeline.as_ref() {
-            pipeline.call_async(move |pipeline| {
-                let _ = pipeline.set_state(gst::State::Null).inspect_err(|e| {
-                    tracing::error!("Failed to clean pipeline up: {}", e);
-                });
-            });
+            pipeline
+                .call_async_future(move |pipeline| {
+                    let _ = pipeline.set_state(gst::State::Null).inspect_err(|e| {
+                        tracing::error!("Failed to clean pipeline up: {}", e);
+                    });
+                })
+                .await;
             pipeline_state.pipeline = None;
         }
 
@@ -559,6 +590,8 @@ impl PipelineBase for SharablePipeline {
         let pipeline_state = self.lock_err().await?;
         if let Some(pipeline) = pipeline_state.pipeline.as_ref() {
             pipeline.debug_to_dot_file(DebugGraphDetails::all(), "pipeline");
+        } else {
+            tracing::error!("Pipeline is missing");
         }
 
         Ok(())
@@ -607,25 +640,26 @@ impl SharablePipeline {
         let pipeline_weak = pipeline.downgrade();
         // To set state to NULL from an async tokio context, one has to make use of gst::Element::call_async
         // and set the state to NULL from there, without blocking the runtime
-        let result = element.call_async_future(move |element| {
-            // Here we temporarily retrieve a strong reference on the pipeline from the weak one
-            // we moved into this callback.
-            let pipeline = match pipeline_weak.upgrade() {
-                Some(pipeline) => pipeline,
-                None => return,
-            };
-            let _ = element.set_state(gst::State::Null).inspect_err(|e| {
-                tracing::error!("Failed to set {} to NULL: {}", element.name(), e)
-            });
+        element
+            .call_async_future(move |element| {
+                // Here we temporarily retrieve a strong reference on the pipeline from the weak one
+                // we moved into this callback.
+                let pipeline = match pipeline_weak.upgrade() {
+                    Some(pipeline) => pipeline,
+                    None => return,
+                };
+                let _ = element.set_state(gst::State::Null).inspect_err(|e| {
+                    tracing::error!("Failed to set {} to NULL: {}", element.name(), e)
+                });
 
-            if pipeline.remove(element).is_ok() {
-                tracing::debug!("{} is removed from pipeline", element.name());
-            } else {
-                tracing::error!("Failed to remove {} from pipeline", element.name());
-            }
-        });
+                if pipeline.remove(element).is_ok() {
+                    tracing::debug!("{} is removed from pipeline", element.name());
+                } else {
+                    tracing::error!("Failed to remove {} from pipeline", element.name());
+                }
+            })
+            .await;
 
-        result.await;
         Ok(())
     }
 
@@ -667,7 +701,7 @@ impl SharablePipeline {
                 .ok_or(MyError::MissingElement("output_tee".to_string()))?;
 
             // Pause tee before removing pad and resume afterward
-            let result = tee.call_async_future(move |tee| {
+            tee.call_async_future(move |tee| {
                 let _ = tee.set_state(gst::State::Paused).inspect_err(|e| {
                     tracing::error!("Failed to pause tee: {}", e);
                 });
@@ -679,8 +713,8 @@ impl SharablePipeline {
                 let _ = tee.set_state(gst::State::Playing).inspect_err(|e| {
                     tracing::error!("Failed to resume tee: {}", e);
                 });
-            });
-            result.await;
+            })
+            .await;
 
             Self::remove_element_from_pipeline(pipeline, &queue).await?;
         } else {

@@ -59,9 +59,9 @@ pub async fn whep_handler<T: PipelineBase>(
 
             // Reset pipeline and app state if SDP offer is not received
             pipeline_state
-                .end()
+                .quit()
                 .await
-                .context("Failed to reset pipeline")?;
+                .context("Failed to stop pipeline")?;
 
             app_state
                 .reset()

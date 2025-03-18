@@ -55,9 +55,9 @@ pub async fn whip_handler<T: PipelineBase>(
 
             // Reset pipeline and app state if SDP answer is not received
             pipeline_state
-                .end()
+                .quit()
                 .await
-                .context("Failed to reset pipeline")?;
+                .context("Failed to stop pipeline")?;
 
             app_state
                 .reset()
