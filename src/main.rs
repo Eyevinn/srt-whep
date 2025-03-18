@@ -10,7 +10,6 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use tokio::signal;
 use tokio::task;
-use tokio::time::{sleep, Duration};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
@@ -39,8 +38,6 @@ async fn main() -> Result<(), Box<dyn Error>> {
             } else {
                 tracing::info!("Pipeline reaches EOS. Reset and rerun the pipeline.");
             }
-
-            sleep(Duration::from_secs(1)).await;
         }
     });
 

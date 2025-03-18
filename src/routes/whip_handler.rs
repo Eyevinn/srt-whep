@@ -53,15 +53,16 @@ pub async fn whip_handler<T: PipelineBase>(
         Err(err) => {
             tracing::error!("No WHEP SDP answer received from client: {}", err);
 
+            // Reset pipeline and app state if SDP answer is not received
             pipeline_state
-                .remove_connection(conn_id.clone())
+                .end()
                 .await
-                .context("Failed to remove client")?;
+                .context("Failed to reset pipeline")?;
 
             app_state
-                .remove_connection(conn_id.clone())
+                .reset()
                 .await
-                .context("Failed to remove connection")?;
+                .context("Failed to reset app state")?;
 
             Err(SubscribeError::ValidationError(MyError::AnswerMissing))
         }

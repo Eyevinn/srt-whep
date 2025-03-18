@@ -176,14 +176,15 @@ impl PipelineBase for SharablePipeline {
         let whip_sink_name = "whip-sink-".to_string() + &id;
 
         // Remove video/audio branch from pipeline
-        Self::remove_branch_from_pipeline(pipeline, &video_queue_name)?;
-        Self::remove_branch_from_pipeline(pipeline, &audio_queue_name)?;
+        Self::remove_branch_from_pipeline(pipeline, &video_queue_name).await?;
+        Self::remove_branch_from_pipeline(pipeline, &audio_queue_name).await?;
 
         // Remove whip sink from pipeline
         // If whip sink fails to send offer, it is removed from
         // pipeline automatically (so no need to remove it again)
         if let Some(whip_sink) = pipeline.by_name(&whip_sink_name) {
-            Self::remove_element_from_pipeline(pipeline, &whip_sink)?;
+            tracing::debug!("Removing {} from pipeline", whip_sink_name);
+            Self::remove_element_from_pipeline(pipeline, &whip_sink).await?;
         }
 
         Ok(())
@@ -221,12 +222,13 @@ impl PipelineBase for SharablePipeline {
         }
 
         let src = gst::ElementFactory::make("srtsrc")
+            .name("srt_source")
             .property("uri", uri)
             .property("latency", 0)
             .build()?;
         let input_tee = gst::ElementFactory::make("tee").name("input_tee").build()?;
 
-        let whep_queue = Self::create_custom_queue("whep_queue", "0", "0", "no")?;
+        let whep_queue = Self::create_custom_queue("whep-queue", "0", "0", "no")?;
         let typefind = gst::ElementFactory::make("typefind")
             .name("typefind")
             .build()?;
@@ -540,7 +542,9 @@ impl PipelineBase for SharablePipeline {
         let mut pipeline_state = self.lock_err().await?;
         if let Some(pipeline) = pipeline_state.pipeline.as_ref() {
             pipeline.call_async(move |pipeline| {
-                let _ = pipeline.set_state(gst::State::Null);
+                let _ = pipeline.set_state(gst::State::Null).inspect_err(|e| {
+                    tracing::error!("Failed to clean pipeline up: {}", e);
+                });
             });
             pipeline_state.pipeline = None;
         }
@@ -596,21 +600,23 @@ impl SharablePipeline {
     ///
     /// To remove an element from a pipeline, one has to set the state of the element to NULL
     /// and remove it from the pipeline. This function MUST be called when the pipeline is in locked state
-    fn remove_element_from_pipeline(
+    async fn remove_element_from_pipeline(
         pipeline: &Pipeline,
         element: &gst::Element,
     ) -> Result<(), Error> {
         let pipeline_weak = pipeline.downgrade();
         // To set state to NULL from an async tokio context, one has to make use of gst::Element::call_async
         // and set the state to NULL from there, without blocking the runtime
-        element.call_async(move |element| {
+        let result = element.call_async_future(move |element| {
             // Here we temporarily retrieve a strong reference on the pipeline from the weak one
             // we moved into this callback.
             let pipeline = match pipeline_weak.upgrade() {
                 Some(pipeline) => pipeline,
                 None => return,
             };
-            let _ = element.set_state(gst::State::Null);
+            let _ = element.set_state(gst::State::Null).inspect_err(|e| {
+                tracing::error!("Failed to set {} to NULL: {}", element.name(), e)
+            });
 
             if pipeline.remove(element).is_ok() {
                 tracing::debug!("{} is removed from pipeline", element.name());
@@ -619,6 +625,7 @@ impl SharablePipeline {
             }
         });
 
+        result.await;
         Ok(())
     }
 
@@ -629,7 +636,10 @@ impl SharablePipeline {
     ///
     /// To remove a branch from a pipeline, one has to remove the src pad from the tee element
     /// and remove the queue element from the pipeline. This function MUST be called when the pipeline is in locked state
-    fn remove_branch_from_pipeline(pipeline: &Pipeline, queue_name: &str) -> Result<(), Error> {
+    async fn remove_branch_from_pipeline(
+        pipeline: &Pipeline,
+        queue_name: &str,
+    ) -> Result<(), Error> {
         tracing::debug!("Removing {} from pipeline", queue_name);
         // Check if queue exists
         let queue = pipeline.by_name(queue_name);
@@ -657,17 +667,22 @@ impl SharablePipeline {
                 .ok_or(MyError::MissingElement("output_tee".to_string()))?;
 
             // Pause tee before removing pad and resume afterward
-            tee.call_async(move |tee| {
-                let _ = tee.set_state(gst::State::Paused);
+            let result = tee.call_async_future(move |tee| {
+                let _ = tee.set_state(gst::State::Paused).inspect_err(|e| {
+                    tracing::error!("Failed to pause tee: {}", e);
+                });
                 if tee.remove_pad(&tee_src_pad).is_ok() {
                     tracing::debug!("Pad is removed from tee");
                 } else {
                     tracing::error!("Failed to remove Pad from tee");
                 }
-                let _ = tee.set_state(gst::State::Playing);
+                let _ = tee.set_state(gst::State::Playing).inspect_err(|e| {
+                    tracing::error!("Failed to resume tee: {}", e);
+                });
             });
+            result.await;
 
-            Self::remove_element_from_pipeline(pipeline, &queue)?;
+            Self::remove_element_from_pipeline(pipeline, &queue).await?;
         } else {
             return Err(MyError::FailedOperation(format!(
                 "Queue {} is not linked and can not be removed.",
