@@ -57,16 +57,16 @@ pub async fn whep_handler<T: PipelineBase>(
         Err(err) => {
             tracing::error!("Failed to receive SDP offer from WHIP sink: {}", err);
 
-            // Remove connection from pipeline and app state if SDP offer is not received
+            // Reset pipeline and app state if SDP offer is not received
             pipeline_state
-                .remove_connection(id.clone())
+                .quit()
                 .await
-                .context("Failed to remove connection from pipeline")?;
+                .context("Failed to stop pipeline")?;
 
             app_state
-                .remove_connection(id.clone())
+                .reset()
                 .await
-                .context("Failed to remove connection from app state")?;
+                .context("Failed to reset app state")?;
 
             Err(SubscribeError::ValidationError(MyError::OfferMissing))
         }

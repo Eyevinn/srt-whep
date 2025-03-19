@@ -28,9 +28,14 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let should_stop_clone = should_stop.clone();
     let appstate_clone = appstate.clone();
     let pipeline_clone = pipeline.clone();
+
     // Run the pipeline in a separate thread
     let pipeline_thread = task::spawn(async move {
+        let mut loops = 0;
         while !should_stop_clone.load(Ordering::Relaxed) {
+            tracing::debug!("Looping pipeline: {}", loops);
+            loops += 1;
+
             let mut pipeline_guard =
                 PipelineGuard::new(pipeline_clone.clone(), args.clone(), appstate_clone.clone());
 

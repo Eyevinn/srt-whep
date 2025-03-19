@@ -63,6 +63,7 @@ pub trait PipelineBase: Clone + Send + Sync {
     async fn run(&self) -> Result<(), Error>;
     async fn ready(&self) -> Result<bool, Error>;
     async fn end(&self) -> Result<(), Error>;
+    async fn quit(&self) -> Result<(), Error>;
     async fn clean_up(&self) -> Result<(), Error>;
 
     async fn print(&self) -> Result<(), Error>;
@@ -100,6 +101,10 @@ impl PipelineBase for DumpPipeline {
     }
 
     async fn end(&self) -> Result<(), Error> {
+        Ok(())
+    }
+
+    async fn quit(&self) -> Result<(), Error> {
         Ok(())
     }
 
