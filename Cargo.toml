@@ -42,7 +42,7 @@ tracing-actix-web = "0.7"
 secrecy = { version = "0.10", features = ["serde"] }
 futures = "0.3.31"
 glib = "0.20.7"
-gstreamer = "0.23.4"
+gstreamer = "0.23.7"
 gstreamer-pbutils = "0.23.4"
 gst-plugin-webrtc = "0.13.4"
 gst-plugin-rtp = "0.13.4"
