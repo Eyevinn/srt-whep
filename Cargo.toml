@@ -44,7 +44,7 @@ futures = "0.3.31"
 glib = "0.20.7"
 gstreamer = "0.23.4"
 gstreamer-pbutils = "0.23.4"
-gst-plugin-webrtc = "0.13.4"
+gst-plugin-webrtc = "0.13.7"
 gst-plugin-rtp = "0.13.4"
 clap = { version = "4.5.53", features = ["derive"] }
 actix-cors = "0.7.1"
