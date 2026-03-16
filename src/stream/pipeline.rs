@@ -30,6 +30,13 @@ pub struct Args {
     /// Port for whep client
     #[clap(short, long, default_value_t = 8000)]
     pub port: u32,
+
+    /// Decode H264 video before passing to whipclientsink.
+    /// Workaround for a caps negotiation bug in webrtcsink 0.15.0 on macOS
+    /// where H264 passthrough fails with not-negotiated on GstAppSrc:video_0.
+    /// When enabled, avdec_h264 decodes to raw video and webrtcsink re-encodes.
+    #[clap(short = 'D', long, default_value_t = false)]
+    pub decode_video: bool,
 }
 
 #[derive(ValueEnum, Clone, Debug, PartialEq)]
