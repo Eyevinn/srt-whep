@@ -18,6 +18,7 @@ pub struct PipelineWrapper {
     pipeline: Option<Pipeline>,
     main_loop: Option<glib::MainLoop>,
     port: u32,
+    decode_video: bool,
 }
 
 impl PipelineWrapper {
@@ -26,6 +27,7 @@ impl PipelineWrapper {
             pipeline: None,
             main_loop: None,
             port: args.port,
+            decode_video: args.decode_video,
         }
     }
 }
@@ -128,11 +130,25 @@ impl PipelineBase for SharablePipeline {
                 .name("video-queue-".to_string() + &id)
                 .build()?;
             pipeline.add_many([&queue_video])?;
-            gst::Element::link_many([&output_tee_video, &queue_video, &whipsink])?;
 
-            let video_elements = &[&output_tee_video, &queue_video];
-            for e in video_elements {
-                e.sync_state_with_parent()?;
+            if pipeline_state.decode_video {
+                let avdec_h264: gst::Element = gst::ElementFactory::make("avdec_h264")
+                    .name("avdec-h264-".to_string() + &id)
+                    .build()?;
+                pipeline.add_many([&avdec_h264])?;
+                gst::Element::link_many([&output_tee_video, &queue_video, &avdec_h264, &whipsink])?;
+
+                let video_elements = &[&output_tee_video, &queue_video, &avdec_h264];
+                for e in video_elements {
+                    e.sync_state_with_parent()?;
+                }
+            } else {
+                gst::Element::link_many([&output_tee_video, &queue_video, &whipsink])?;
+
+                let video_elements = &[&output_tee_video, &queue_video];
+                for e in video_elements {
+                    e.sync_state_with_parent()?;
+                }
             }
 
             tracing::debug!("Successfully linked video to whip sink");
@@ -182,11 +198,18 @@ impl PipelineBase for SharablePipeline {
 
         let video_queue_name = "video-queue-".to_string() + &id;
         let audio_queue_name = "audio-queue-".to_string() + &id;
+        let avdec_h264_name = "avdec-h264-".to_string() + &id;
         let whip_sink_name = "whip-sink-".to_string() + &id;
 
         // Remove video/audio branch from pipeline
         Self::remove_branch_from_pipeline(pipeline, &video_queue_name).await?;
         Self::remove_branch_from_pipeline(pipeline, &audio_queue_name).await?;
+
+        // Remove avdec_h264 element if it was added (decode_video mode)
+        if let Some(avdec_h264) = pipeline.by_name(&avdec_h264_name) {
+            tracing::debug!("Removing {} from pipeline", avdec_h264_name);
+            Self::remove_element_from_pipeline(pipeline, &avdec_h264).await?;
+        }
 
         // Remove whip sink from pipeline
         // If whip sink fails to send offer, it is removed from
