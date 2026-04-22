@@ -1425,9 +1425,9 @@ dependencies = [
 
 [[package]]
 name = "gst-plugin-rtp"
-version = "0.13.4"
+version = "0.13.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "eab07628a6b15e95e5ccfcd847e470a441f03df2c620dab42169d22c496d2438"
+checksum = "97f1cb4760e9744f11d2a7ed8bd64fc720872eec233cd372137fd2d3a62fd5aa"
 dependencies = [
  "anyhow",
  "atomic_refcell",
@@ -1446,12 +1446,12 @@ dependencies = [
  "hex",
  "log",
  "once_cell",
- "rand 0.8.5",
+ "rand 0.9.2",
  "rtcp-types",
  "rtp-types",
  "slab",
  "smallvec",
- "thiserror 1.0.69",
+ "thiserror 2.0.18",
  "time",
  "tokio",
 ]
@@ -3278,9 +3278,9 @@ dependencies = [
 
 [[package]]
 name = "rtcp-types"
-version = "0.1.0"
+version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ce5248489db464de29835170cd1f6e19933146b0016789effc59cb53d9f13844"
+checksum = "d0f21b493eabbc715ef2107c4e022874c06769047b3008a9b645a86ea8048f61"
 dependencies = [
  "thiserror 1.0.69",
 ]
