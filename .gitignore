@@ -1,5 +1,8 @@
 /target
 /dot
+/pipe/
+/source/
+/srt/
 .vscode
 .DS_Store
 docs/.DS_Store

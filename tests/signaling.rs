@@ -1,8 +1,8 @@
 use once_cell::sync::Lazy;
 use reqwest::StatusCode;
 use srt_whep::domain::{VALID_WHEP_ANSWER, VALID_WHIP_OFFER};
-use srt_whep::signal::{spawn_coordinator, CoordinatorConfig};
-use srt_whep::startup::run;
+use srt_whep::signal::CoordinatorConfig;
+use srt_whep::startup::Application;
 use srt_whep::stream::TestPipeline;
 use srt_whep::telemetry::{get_subscriber, init_subscriber};
 use std::net::TcpListener;
@@ -46,13 +46,16 @@ fn expiring_config(watchdog_threshold: u32) -> CoordinatorConfig {
 fn spawn_app(config: CoordinatorConfig) -> (String, TestPipeline) {
     Lazy::force(&TRACING);
     let listener = TcpListener::bind("127.0.0.1:0").expect("Failed to bind random port");
-    let port = listener.local_addr().unwrap().port();
     let pipeline = TestPipeline::default();
     pipeline.set_ready(true);
-    let signal = spawn_coordinator(pipeline.clone(), config);
-    let server = run(listener, signal).expect("Failed to start server");
-    tokio::spawn(server);
-    (format!("http://127.0.0.1:{}", port), pipeline)
+    // The production wiring, supervisor included: TestPipeline::run parks
+    // until end/quit, so the supervisor sits idle unless the watchdog
+    // trips — exactly like the real pipeline between restarts.
+    let app =
+        Application::assemble(listener, pipeline.clone(), config).expect("Failed to assemble app");
+    let address = format!("http://127.0.0.1:{}", app.port());
+    tokio::spawn(app.run_until_stopped(std::future::pending()));
+    (address, pipeline)
 }
 
 /// In production the coordinator's add_connection points a whipclientsink at
@@ -280,6 +283,86 @@ async fn watchdog_restarts_pipeline_after_consecutive_failures() {
 
     // Threshold 2: the second consecutive failure quits the pipeline.
     assert_eq!(1, pipeline.snapshot().quit_count);
+}
+
+#[tokio::test]
+async fn whip_resource_location_is_routable_and_delete_removes_the_connection() {
+    let (address, pipeline) = spawn_app(functional_config());
+    let id = complete_exchange(&address, &pipeline, 0).await;
+
+    // complete_exchange asserted the WHEP Location; fetch the WHIP one now.
+    let response = http_client()
+        .post(format!("{}/whip_sink/{}", address, id))
+        .header("Content-Type", "application/sdp")
+        .body(VALID_WHIP_OFFER)
+        .send()
+        .await
+        .unwrap();
+    // Re-posting on an established connection is a wrong-state error, which
+    // the signaling contract (src/signal/errors.rs) maps to 409 Conflict.
+    assert_eq!(409, response.status().as_u16());
+
+    // Drive a full second handshake (WHEP POST blocks until the WHIP offer
+    // arrives, then the WHIP POST blocks until the WHEP PATCH answer
+    // arrives) so the WHIP side actually reaches 201 and we can inspect its
+    // Location header.
+    let whep_task = {
+        let address = address.clone();
+        tokio::spawn(async move {
+            http_client()
+                .post(format!("{}/channel", address))
+                .header("Content-Type", "application/sdp")
+                .send()
+                .await
+                .unwrap()
+        })
+    };
+    let second_id = wait_for_added_connection(&pipeline, 1).await;
+    let whip_task = {
+        let address = address.clone();
+        let second_id = second_id.clone();
+        tokio::spawn(async move {
+            http_client()
+                .post(format!("{}/whip_sink/{}", address, second_id))
+                .header("Content-Type", "application/sdp")
+                .body(VALID_WHIP_OFFER)
+                .send()
+                .await
+                .unwrap()
+        })
+    };
+
+    let whep_response = whep_task.await.unwrap();
+    assert_eq!(201, whep_response.status().as_u16());
+    let whep_location = whep_response.headers()["Location"]
+        .to_str()
+        .unwrap()
+        .to_string();
+    let patch_response = http_client()
+        .patch(format!("{}{}", address, whep_location))
+        .header("Content-Type", "application/sdp")
+        .body(VALID_WHEP_ANSWER)
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(204, patch_response.status().as_u16());
+
+    let whip_response = whip_task.await.unwrap();
+    assert_eq!(201, whip_response.status().as_u16());
+    let location = whip_response.headers()["Location"]
+        .to_str()
+        .unwrap()
+        .to_string();
+    assert_eq!(format!("/whip_sink/{}", second_id), location);
+
+    // The advertised resource URL must actually work: DELETE terminates.
+    let del = http_client()
+        .delete(format!("{}{}", address, location))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(200, del.status().as_u16());
+    assert!(pipeline.snapshot().removed.contains(&second_id));
 }
 
 #[tokio::test]

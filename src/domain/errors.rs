@@ -1,21 +1,15 @@
 use std::fmt::Debug;
 use thiserror::Error;
-use timed_locks::Error as TimedLockError;
 
+/// SDP validation failures — the domain's only error language.
 #[derive(Error)]
-pub enum MyError {
+pub enum SdpError {
     #[error("Invalid SDP: {0}")]
-    InvalidSDP(String),
-    #[error("Lock is timeout")]
-    LockTimeout(#[from] TimedLockError),
-    #[error("Failed to find element: {0}")]
-    MissingElement(String),
-    #[error("Failed Operation: {0}")]
-    FailedOperation(String),
+    InvalidSdp(String),
 }
 
 // We are still using a bespoke implementation of `Debug` to get a nice report using the error source chain
-impl Debug for MyError {
+impl Debug for SdpError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         error_chain_fmt(self, f)
     }

@@ -8,7 +8,7 @@ pub use errors::SignalError;
 pub use messages::{Command, ConnectionId, ConnectionInfo};
 
 use crate::domain::SessionDescription;
-use crate::stream::PipelineBase;
+use crate::stream::BranchControl;
 use tokio::sync::{mpsc, oneshot};
 
 /// Clone-able handle to the coordinator actor. HTTP handlers and the
@@ -19,7 +19,7 @@ pub struct SignalHandle {
 }
 
 /// Spawn the coordinator actor and return the handle for it.
-pub fn spawn_coordinator<P: PipelineBase + 'static>(
+pub fn spawn_coordinator<P: BranchControl + 'static>(
     pipeline: P,
     config: CoordinatorConfig,
 ) -> SignalHandle {

@@ -1,14 +1,14 @@
 use std::convert::TryFrom;
 use std::fmt::{Debug, Display};
 
-use super::MyError;
+use super::SdpError;
 
 #[derive(Debug, Clone)]
 pub struct SessionDescription(String);
 
 impl SessionDescription {
     /// Returns an instance of `SessionDescription` if the input satisfies all our validation constraints.
-    pub fn parse(s: String) -> Result<SessionDescription, MyError> {
+    pub fn parse(s: String) -> Result<SessionDescription, SdpError> {
         // `.trim()` returns a view over the input `s` without trailing
         // whitespace-like characters.
         // `.is_empty` checks if the view contains any character.
@@ -21,7 +21,7 @@ impl SessionDescription {
         let sendonly_or_recvonly = s.contains("a=sendonly") || s.contains("a=recvonly");
 
         if is_empty_or_whitespace || !starts_with_v0 || !sendonly_or_recvonly {
-            Err(MyError::InvalidSDP(
+            Err(SdpError::InvalidSdp(
                 "SDP must start with v=0 and contain a=sendonly or a=recvonly".to_string(),
             ))
         } else {
@@ -32,14 +32,10 @@ impl SessionDescription {
     pub fn is_sendonly(&self) -> bool {
         self.0.contains("a=sendonly")
     }
-
-    pub fn is_empty(&self) -> bool {
-        self.0.trim().is_empty()
-    }
 }
 
 impl TryFrom<String> for SessionDescription {
-    type Error = MyError;
+    type Error = SdpError;
 
     fn try_from(value: String) -> Result<Self, Self::Error> {
         let sdp = SessionDescription::parse(value)?;

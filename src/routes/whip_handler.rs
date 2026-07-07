@@ -1,7 +1,7 @@
 use crate::domain::SessionDescription;
 use crate::signal::{SignalError, SignalHandle};
+use crate::stream::whip_sink_path;
 use actix_web::{web, HttpResponse};
-use uuid::Uuid;
 
 #[tracing::instrument(name = "WHIP SINK", skip(form, signal))]
 pub async fn whip_handler(
@@ -10,8 +10,7 @@ pub async fn whip_handler(
     signal: web::Data<SignalHandle>,
 ) -> Result<HttpResponse, SignalError> {
     let conn_id = path.into_inner();
-    let sdp =
-        SessionDescription::parse(form).map_err(|e| SignalError::InvalidSdp(e.to_string()))?;
+    let sdp = SessionDescription::parse(form).map_err(SignalError::from)?;
     if !sdp.is_sendonly() {
         return Err(SignalError::InvalidSdp(
             "Received a recv-only SDP from whipsink; expected sendonly.".to_string(),
@@ -21,12 +20,8 @@ pub async fn whip_handler(
     tracing::info!("Received SDP offer for connection {}", conn_id);
     let answer = signal.offer_received(conn_id.clone(), sdp).await?;
 
-    let resource_id = Uuid::new_v4().to_string();
     Ok(HttpResponse::Created()
-        .append_header((
-            "Location",
-            format!("/whip_sink/{}/{}", conn_id, resource_id),
-        ))
+        .append_header(("Location", whip_sink_path(&conn_id)))
         .content_type("application/sdp")
         .body(answer.as_ref().to_string()))
 }
