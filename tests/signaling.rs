@@ -1,8 +1,8 @@
 use once_cell::sync::Lazy;
 use reqwest::StatusCode;
 use srt_whep::domain::{VALID_WHEP_ANSWER, VALID_WHIP_OFFER};
-use srt_whep::signal::{spawn_coordinator, CoordinatorConfig};
-use srt_whep::startup::run;
+use srt_whep::signal::CoordinatorConfig;
+use srt_whep::startup::Application;
 use srt_whep::stream::TestPipeline;
 use srt_whep::telemetry::{get_subscriber, init_subscriber};
 use std::net::TcpListener;
@@ -46,13 +46,16 @@ fn expiring_config(watchdog_threshold: u32) -> CoordinatorConfig {
 fn spawn_app(config: CoordinatorConfig) -> (String, TestPipeline) {
     Lazy::force(&TRACING);
     let listener = TcpListener::bind("127.0.0.1:0").expect("Failed to bind random port");
-    let port = listener.local_addr().unwrap().port();
     let pipeline = TestPipeline::default();
     pipeline.set_ready(true);
-    let signal = spawn_coordinator(pipeline.clone(), config);
-    let server = run(listener, signal).expect("Failed to start server");
-    tokio::spawn(server);
-    (format!("http://127.0.0.1:{}", port), pipeline)
+    // The production wiring, supervisor included: TestPipeline::run parks
+    // until end/quit, so the supervisor sits idle unless the watchdog
+    // trips — exactly like the real pipeline between restarts.
+    let app =
+        Application::assemble(listener, pipeline.clone(), config).expect("Failed to assemble app");
+    let address = format!("http://127.0.0.1:{}", app.port());
+    tokio::spawn(app.run_until_stopped(std::future::pending()));
+    (address, pipeline)
 }
 
 /// In production the coordinator's add_connection points a whipclientsink at
