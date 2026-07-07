@@ -18,10 +18,9 @@
 //! the shared pipeline. Media playout is verified manually with the WHEP player.
 use gst::prelude::*;
 use gstreamer as gst;
-use srt_whep::signal::{spawn_coordinator, CoordinatorConfig};
-use srt_whep::startup::run;
-use srt_whep::stream::{Args, BranchControl, PipelineLifecycle, SRTMode, SharablePipeline};
-use srt_whep::utils::PipelineGuard;
+use srt_whep::signal::CoordinatorConfig;
+use srt_whep::startup::Application;
+use srt_whep::stream::{Args, BranchControl, SRTMode, SharablePipeline};
 use std::net::TcpListener;
 use std::time::Duration;
 
@@ -67,25 +66,15 @@ async fn pipeline_survives_repeated_handshake_failures() {
         watchdog_threshold: 10, // deliberate failures below must not trip it
         sweep_interval: Duration::from_millis(200),
     };
-    let signal = spawn_coordinator(pipeline.clone(), config);
 
     let listener =
         TcpListener::bind(format!("127.0.0.1:{}", HTTP_PORT)).expect("e2e HTTP port in use");
-    let server = run(listener, signal.clone()).unwrap();
-    let server_handle = tokio::spawn(server);
-
-    // Supervise the pipeline exactly like main.rs does.
-    let pipeline_clone = pipeline.clone();
-    let signal_clone = signal.clone();
-    let supervisor = tokio::spawn(async move {
-        loop {
-            let guard = PipelineGuard::new(pipeline_clone.clone(), signal_clone.clone());
-            if let Err(e) = guard.run().await {
-                eprintln!("pipeline error: {}", e);
-            }
-            tokio::time::sleep(Duration::from_secs(1)).await;
-        }
-    });
+    // The production wiring: coordinator + supervisor + HTTP server.
+    let app = Application::assemble(listener, pipeline.clone(), config).unwrap();
+    let (stop_tx, stop_rx) = tokio::sync::oneshot::channel::<()>();
+    let app_task = tokio::spawn(app.run_until_stopped(async move {
+        let _ = stop_rx.await;
+    }));
 
     let client = reqwest::Client::new();
     let base = format!("http://127.0.0.1:{}", HTTP_PORT);
@@ -155,25 +144,28 @@ async fn pipeline_survives_repeated_handshake_failures() {
     }
     .await;
 
-    // Orderly shutdown: stop the supervisor from re-spawning the pipeline, quit
-    // the glib MainLoop so the parked worker thread unblocks, then tear the
-    // pipeline and server down. Without this the multi-thread runtime hangs on
-    // drop — a thread stuck in MainLoop::run() cannot be cancelled. Bounded so a
-    // wedged element can't hang teardown itself.
-    supervisor.abort();
-    let _ = tokio::time::timeout(Duration::from_secs(5), pipeline.quit()).await;
-    let _ = tokio::time::timeout(Duration::from_secs(5), pipeline.clean_up()).await;
-    server_handle.abort();
+    // Orderly teardown = the production shutdown path: one stop signal fans
+    // out to the supervisor (EOS → bounded join) and the HTTP server. Bounded
+    // by an outer timeout so a wedged element can't hang teardown itself.
+    let _ = stop_tx.send(());
+    let shutdown = tokio::time::timeout(Duration::from_secs(15), app_task).await;
     let _ = source.set_state(gst::State::Null);
 
-    if let Err(reason) = outcome {
-        // On the happy path the test returns here and the runtime drops cleanly.
-        // But a *flaked* round (e.g. the live whipclientsink failing to emit its
-        // offer in time under back-to-back runs) can leave a GStreamer element
-        // stuck at the NULL transition; unwinding through a panic would then hang
-        // the process on runtime drop joining that worker. Report and hard-exit
-        // so the failure surfaces instead of hanging.
+    let shutdown_clean = shutdown.is_ok();
+    if let Err(reason) = &outcome {
+        // On the happy path the test returns normally and the runtime drops
+        // cleanly. But a *flaked* round (e.g. the live whipclientsink failing
+        // to emit its offer in time under back-to-back runs) can leave a
+        // GStreamer element stuck at the NULL transition; unwinding through a
+        // panic would then hang the process on runtime drop joining that
+        // worker. Report and hard-exit so the failure surfaces instead of
+        // hanging.
         eprintln!("\n=== e2e assertion failed: {} ===\n", reason);
+    }
+    if !shutdown_clean {
+        eprintln!("\n=== e2e: production shutdown path did not finish within 15s ===\n");
+    }
+    if outcome.is_err() || !shutdown_clean {
         std::process::exit(1);
     }
 }

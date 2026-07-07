@@ -5,4 +5,3 @@ pub mod startup;
 pub mod stream;
 pub mod supervisor;
 pub mod telemetry;
-pub mod utils;
