@@ -97,7 +97,12 @@ impl PipelineBase for SharablePipeline {
         }
 
         let pipeline_state = self.lock_err().await?;
-        let pipeline = pipeline_state.pipeline.as_ref().unwrap();
+        let pipeline = pipeline_state
+            .pipeline
+            .as_ref()
+            .ok_or(MyError::FailedOperation(
+                "Pipeline is not initialized".to_string(),
+            ))?;
         tracing::debug!("Add connection {} to pipeline", id);
 
         let demux = pipeline
@@ -177,7 +182,12 @@ impl PipelineBase for SharablePipeline {
     /// After removing the branch, we remove the whip sink from the pipeline
     async fn remove_connection(&self, id: String) -> Result<(), Error> {
         let pipeline_state = self.lock_err().await?;
-        let pipeline = pipeline_state.pipeline.as_ref().unwrap();
+        let pipeline = pipeline_state
+            .pipeline
+            .as_ref()
+            .ok_or(MyError::FailedOperation(
+                "Pipeline is not initialized".to_string(),
+            ))?;
         tracing::debug!("Remove connection {} from pipeline", id);
 
         let video_queue_name = "video-queue-".to_string() + &id;

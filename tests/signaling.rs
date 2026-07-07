@@ -13,6 +13,15 @@ static TRACING: Lazy<()> = Lazy::new(|| {
     init_subscriber(subscriber);
 });
 
+/// Test HTTP client that ignores system/env proxy settings, so these
+/// integration tests stay hermetic regardless of the environment they run in.
+fn http_client() -> reqwest::Client {
+    reqwest::Client::builder()
+        .no_proxy()
+        .build()
+        .expect("failed to build test client")
+}
+
 /// Comfortable timeouts for functional tests: long enough that a slow CI
 /// machine never trips them accidentally.
 fn functional_config() -> CoordinatorConfig {
@@ -64,7 +73,7 @@ async fn complete_exchange(address: &str, pipeline: &TestPipeline, index: usize)
     let whep_task = {
         let address = address.to_string();
         tokio::spawn(async move {
-            reqwest::Client::new()
+            http_client()
                 .post(format!("{}/channel", address))
                 .header("Content-Type", "application/sdp")
                 .send()
@@ -79,7 +88,7 @@ async fn complete_exchange(address: &str, pipeline: &TestPipeline, index: usize)
         let address = address.to_string();
         let id = id.clone();
         tokio::spawn(async move {
-            reqwest::Client::new()
+            http_client()
                 .post(format!("{}/whip_sink/{}", address, id))
                 .header("Content-Type", "application/sdp")
                 .body(VALID_WHIP_OFFER)
@@ -103,7 +112,7 @@ async fn complete_exchange(address: &str, pipeline: &TestPipeline, index: usize)
     let offer = whep_response.text().await.unwrap();
     assert!(offer.contains("a=sendonly"));
 
-    let patch_response = reqwest::Client::new()
+    let patch_response = http_client()
         .patch(format!("{}{}", address, location))
         .header("Content-Type", "application/sdp")
         .body(VALID_WHEP_ANSWER)
@@ -130,7 +139,7 @@ async fn full_sdp_exchange_succeeds() {
 #[tokio::test]
 async fn non_empty_channel_post_is_rejected() {
     let (address, _pipeline) = spawn_app(functional_config());
-    let response = reqwest::Client::new()
+    let response = http_client()
         .post(format!("{}/channel", address))
         .header("Content-Type", "application/sdp")
         .body(VALID_WHIP_OFFER)
@@ -145,7 +154,7 @@ async fn not_ready_pipeline_returns_503_with_retry_after() {
     let (address, pipeline) = spawn_app(functional_config());
     pipeline.set_ready(false);
 
-    let response = reqwest::Client::new()
+    let response = http_client()
         .post(format!("{}/channel", address))
         .send()
         .await
@@ -157,7 +166,7 @@ async fn not_ready_pipeline_returns_503_with_retry_after() {
 #[tokio::test]
 async fn invalid_sdps_are_rejected_with_400() {
     let (address, _pipeline) = spawn_app(functional_config());
-    let client = reqwest::Client::new();
+    let client = http_client();
 
     let test_cases = vec![
         ("v=1", "invalid version"),
@@ -186,7 +195,7 @@ async fn invalid_sdps_are_rejected_with_400() {
 #[tokio::test]
 async fn unknown_ids_return_404() {
     let (address, _pipeline) = spawn_app(functional_config());
-    let client = reqwest::Client::new();
+    let client = http_client();
 
     // Valid offer, but nobody created this connection.
     let response = client
@@ -218,7 +227,7 @@ async fn unknown_ids_return_404() {
 #[tokio::test]
 async fn options_reports_cors_and_accept_post() {
     let (address, _pipeline) = spawn_app(functional_config());
-    let response = reqwest::Client::new()
+    let response = http_client()
         .request(reqwest::Method::OPTIONS, format!("{}/channel", address))
         .send()
         .await
@@ -235,7 +244,7 @@ async fn failed_handshake_does_not_affect_the_next_one() {
     let (address, pipeline) = spawn_app(expiring_config(3));
 
     // First viewer: nothing ever answers the whipsink leg -> offer times out.
-    let response = reqwest::Client::new()
+    let response = http_client()
         .post(format!("{}/channel", address))
         .send()
         .await
@@ -258,7 +267,7 @@ async fn failed_handshake_does_not_affect_the_next_one() {
 #[tokio::test]
 async fn watchdog_restarts_pipeline_after_consecutive_failures() {
     let (address, pipeline) = spawn_app(expiring_config(2));
-    let client = reqwest::Client::new();
+    let client = http_client();
 
     for _ in 0..2 {
         let response = client
@@ -276,7 +285,7 @@ async fn watchdog_restarts_pipeline_after_consecutive_failures() {
 #[tokio::test]
 async fn list_and_delete_manage_the_connection_lifecycle() {
     let (address, pipeline) = spawn_app(functional_config());
-    let client = reqwest::Client::new();
+    let client = http_client();
 
     let id = complete_exchange(&address, &pipeline, 0).await;
 

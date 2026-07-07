@@ -37,7 +37,7 @@ fn start_srt_source() -> gst::Pipeline {
     pipeline
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 #[ignore]
 async fn pipeline_survives_repeated_handshake_failures() {
     let source = start_srt_source();

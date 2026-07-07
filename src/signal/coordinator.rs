@@ -108,6 +108,7 @@ impl<P: PipelineBase> Coordinator<P> {
             }
             Command::Reset { reply } => {
                 self.reset_all();
+                self.watchdog.record_success();
                 let _ = reply.send(());
             }
         }
@@ -652,6 +653,44 @@ mod tests {
         assert!(whip_rx.await.unwrap().is_ok());
 
         // Two more failures: still below threshold thanks to the reset.
+        for i in 2..4 {
+            let (whep_tx, whep_rx) = oneshot::channel();
+            tx.send(Command::CreateConnection {
+                id: format!("fail-{}", i),
+                reply: whep_tx,
+            })
+            .await
+            .unwrap();
+            let _ = whep_rx.await.unwrap();
+        }
+
+        tokio::task::yield_now().await;
+        assert_eq!(0, pipeline.snapshot().quit_count);
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn reset_clears_the_watchdog_counter() {
+        let pipeline = ready_pipeline();
+        let tx = spawn_actor(pipeline.clone(), test_config()); // threshold 3
+
+        // Two consecutive timeout failures.
+        for i in 0..2 {
+            let (whep_tx, whep_rx) = oneshot::channel();
+            tx.send(Command::CreateConnection {
+                id: format!("fail-{}", i),
+                reply: whep_tx,
+            })
+            .await
+            .unwrap();
+            let _ = whep_rx.await.unwrap();
+        }
+
+        // Pipeline restarted: supervisor sends Reset.
+        let (reset_tx, reset_rx) = oneshot::channel();
+        tx.send(Command::Reset { reply: reset_tx }).await.unwrap();
+        reset_rx.await.unwrap();
+
+        // Two more failures on the fresh pipeline: still below threshold.
         for i in 2..4 {
             let (whep_tx, whep_rx) = oneshot::channel();
             tx.send(Command::CreateConnection {

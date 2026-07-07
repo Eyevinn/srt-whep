@@ -21,7 +21,9 @@ impl SessionDescription {
         let sendonly_or_recvonly = s.contains("a=sendonly") || s.contains("a=recvonly");
 
         if is_empty_or_whitespace || !starts_with_v0 || !sendonly_or_recvonly {
-            Err(MyError::InvalidSDP(s))
+            Err(MyError::InvalidSDP(
+                "SDP must start with v=0 and contain a=sendonly or a=recvonly".to_string(),
+            ))
         } else {
             Ok(Self(s))
         }
