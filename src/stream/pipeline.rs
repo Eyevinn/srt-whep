@@ -1,6 +1,7 @@
 use anyhow::{Error, Ok};
 use async_trait::async_trait;
 use clap::{Parser, ValueEnum};
+use std::sync::Arc;
 
 #[derive(Parser, Debug, Clone)]
 #[command(author, version, about, long_about = None)]
@@ -125,5 +126,94 @@ impl PipelineBase for DumpPipeline {
 
     async fn print(&self) -> Result<(), Error> {
         Ok(())
+    }
+}
+
+/// Snapshot of everything a test pipeline has recorded.
+#[derive(Clone, Debug, Default)]
+pub struct TestPipelineState {
+    pub ready: bool,
+    pub added: Vec<String>,
+    pub removed: Vec<String>,
+    pub quit_count: u32,
+}
+
+/// A recording fake for unit and integration tests: `ready` is settable and
+/// every connection add/remove and quit call is recorded for assertions.
+#[derive(Clone, Default)]
+pub struct TestPipeline(Arc<std::sync::Mutex<TestPipelineState>>);
+
+impl TestPipeline {
+    pub fn set_ready(&self, ready: bool) {
+        self.0.lock().unwrap().ready = ready;
+    }
+
+    pub fn snapshot(&self) -> TestPipelineState {
+        self.0.lock().unwrap().clone()
+    }
+}
+
+#[async_trait]
+impl PipelineBase for TestPipeline {
+    async fn add_connection(&self, id: String) -> Result<(), Error> {
+        self.0.lock().unwrap().added.push(id);
+        Ok(())
+    }
+
+    async fn remove_connection(&self, id: String) -> Result<(), Error> {
+        self.0.lock().unwrap().removed.push(id);
+        Ok(())
+    }
+
+    async fn init(&mut self, _args: &Args) -> Result<(), Error> {
+        Ok(())
+    }
+
+    async fn run(&self) -> Result<(), Error> {
+        Ok(())
+    }
+
+    async fn ready(&self) -> Result<bool, Error> {
+        Ok(self.0.lock().unwrap().ready)
+    }
+
+    async fn end(&self) -> Result<(), Error> {
+        Ok(())
+    }
+
+    async fn quit(&self) -> Result<(), Error> {
+        self.0.lock().unwrap().quit_count += 1;
+        Ok(())
+    }
+
+    async fn clean_up(&self) -> Result<(), Error> {
+        Ok(())
+    }
+
+    async fn print(&self) -> Result<(), Error> {
+        Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{PipelineBase, TestPipeline};
+
+    #[tokio::test]
+    async fn test_pipeline_records_calls() {
+        let pipeline = TestPipeline::default();
+        assert!(!pipeline.ready().await.unwrap());
+
+        pipeline.set_ready(true);
+        assert!(pipeline.ready().await.unwrap());
+
+        pipeline.add_connection("a".to_string()).await.unwrap();
+        pipeline.remove_connection("a".to_string()).await.unwrap();
+        pipeline.quit().await.unwrap();
+
+        let snap = pipeline.snapshot();
+        assert_eq!(vec!["a".to_string()], snap.added);
+        assert_eq!(vec!["a".to_string()], snap.removed);
+        assert_eq!(1, snap.quit_count);
     }
 }
