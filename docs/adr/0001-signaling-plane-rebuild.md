@@ -31,8 +31,8 @@ Full design and rationale: `docs/superpowers/specs/2026-07-07-signaling-plane-re
 - Serializing branch calls inside the coordinator's mailbox is an accepted
   trade-off: a slow GStreamer branch operation (add/remove) stalls the rest
   of the signaling plane, since `list`/`remove`/the periodic sweep all queue
-  behind it in the same mailbox. This has not been observed to matter in
-  practice; if it does, un-serializing branch calls requires formally
+  behind it in the same mailbox. No operational data yet on how often this
+  matters; if it does, un-serializing branch calls requires formally
   revisiting this ADR, not a local patch.
 - Per-connection isolation and watchdog semantics are pinned by unit tests
   (paused-clock actor tests) and HTTP integration tests
