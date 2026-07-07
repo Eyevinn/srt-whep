@@ -428,21 +428,23 @@ impl PipelineLifecycle for SharablePipeline {
 
     /// Run pipeline and wait until the message bus receives an EOS or error message
     async fn run(&self) -> Result<(), Error> {
-        let mut pipeline_state = self.0.lock_err().await?;
-        let pipeline = pipeline_state
-            .pipeline
-            .as_ref()
-            .ok_or(MyError::FailedOperation(
-                "Pipeline called before initialization".to_string(),
-            ))?;
-        let bus = pipeline.bus().unwrap();
-        let main_loop = glib::MainLoop::new(None, false);
-        pipeline_state.main_loop = Some(main_loop.clone());
-        drop(pipeline_state);
+        let (bus, main_loop) = {
+            let mut pipeline_state = self.0.lock_err().await?;
+            let pipeline = pipeline_state
+                .pipeline
+                .as_ref()
+                .ok_or(MyError::FailedOperation(
+                    "Pipeline called before initialization".to_string(),
+                ))?;
+            let bus = pipeline.bus().unwrap();
+            let main_loop = glib::MainLoop::new(None, false);
+            pipeline_state.main_loop = Some(main_loop.clone());
+            (bus, main_loop)
+        };
 
         // Wait until an EOS or error message appears
         let main_loop_clone = main_loop.clone();
-        let _bus_watch = bus.add_watch(move |_, msg| {
+        let bus_watch = move |_: &gst::Bus, msg: &gst::Message| {
             use gst::MessageView;
 
             let main_loop = &main_loop_clone;
@@ -495,11 +497,30 @@ impl PipelineLifecycle for SharablePipeline {
 
             // Tell the mainloop to continue executing this callback.
             glib::ControlFlow::Continue
-        })?;
+        };
 
-        // Operate GStreamer's bus, facilliating GLib's mainloop here.
-        // This function call will block until you tell the mainloop to quit
-        main_loop.run();
+        // The GLib main loop is synchronous: parking it on a tokio worker
+        // starves the runtime (the documented e2e hang on current_thread
+        // runtimes). It gets its own named OS thread instead, and this
+        // async fn just awaits the loop's completion signal.
+        let (done_tx, done_rx) = tokio::sync::oneshot::channel::<Result<(), Error>>();
+        std::thread::Builder::new()
+            .name("gst-main-loop".to_string())
+            .spawn(move || match bus.add_watch(bus_watch) {
+                std::result::Result::Ok(_watch_guard) => {
+                    // Blocks until EOS/fatal error/quit; the watch guard
+                    // must live exactly as long as the loop runs.
+                    main_loop.run();
+                    let _ = done_tx.send(Ok(()));
+                }
+                std::result::Result::Err(e) => {
+                    let _ = done_tx.send(Err(e.into()));
+                }
+            })?;
+
+        done_rx.await.map_err(|_| {
+            MyError::FailedOperation("GLib main loop thread died unexpectedly".to_string())
+        })??;
 
         Ok(())
     }
