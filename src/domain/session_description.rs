@@ -34,14 +34,6 @@ impl SessionDescription {
     pub fn is_empty(&self) -> bool {
         self.0.trim().is_empty()
     }
-
-    pub fn set_as_active(&mut self) {
-        self.0 = self.0.replace("a=setup:actpass", "a=setup:active");
-    }
-
-    pub fn set_as_passive(&mut self) {
-        self.0 = self.0.replace("a=setup:actpass", "a=setup:passive");
-    }
 }
 
 impl TryFrom<String> for SessionDescription {

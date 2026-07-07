@@ -1,9 +1,9 @@
 use clap::Parser;
-use srt_whep::domain::SharableAppState;
+use srt_whep::signal::{spawn_coordinator, CoordinatorConfig};
 use srt_whep::startup::run;
 use srt_whep::stream::{Args, PipelineBase, SharablePipeline};
 use srt_whep::telemetry::{get_subscriber, init_subscriber};
-use srt_whep::utils::*;
+use srt_whep::utils::PipelineGuard;
 use std::error::Error;
 use std::net::TcpListener;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -19,14 +19,14 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let subscriber = get_subscriber("srt_whep".into(), "debug".into(), std::io::stdout);
     init_subscriber(subscriber);
 
-    let appstate = SharableAppState::new();
     let pipeline = SharablePipeline::new(args.clone());
+    let signal_handle = spawn_coordinator(pipeline.clone(), CoordinatorConfig::default());
     let listener =
         TcpListener::bind(format!("0.0.0.0:{}", args.port)).expect("WHEP port is already in use");
     let should_stop = Arc::new(AtomicBool::new(false));
 
     let should_stop_clone = should_stop.clone();
-    let appstate_clone = appstate.clone();
+    let signal_clone = signal_handle.clone();
     let pipeline_clone = pipeline.clone();
 
     // Run the pipeline in a separate thread
@@ -37,7 +37,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
             loops += 1;
 
             let mut pipeline_guard =
-                PipelineGuard::new(pipeline_clone.clone(), args.clone(), appstate_clone.clone());
+                PipelineGuard::new(pipeline_clone.clone(), args.clone(), signal_clone.clone());
 
             if let Err(err) = pipeline_guard.run().await {
                 tracing::error!("Pipeline runs into error: {}", err);
@@ -50,12 +50,12 @@ async fn main() -> Result<(), Box<dyn Error>> {
     });
 
     // Start the http server
-    run(listener, appstate, pipeline.clone())?.await?;
+    run(listener, signal_handle)?.await?;
 
     signal::ctrl_c().await?;
     tracing::debug!("Received Ctrl-C signal");
 
-    // Mannually stop the pipeline thread
+    // Manually stop the pipeline thread
     should_stop.store(true, Ordering::Relaxed);
     pipeline.end().await?;
     pipeline_thread.await?;

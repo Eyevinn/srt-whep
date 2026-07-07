@@ -81,54 +81,6 @@ pub trait PipelineBase: Clone + Send + Sync {
     async fn print(&self) -> Result<(), Error>;
 }
 
-#[derive(Clone)]
-pub struct DumpPipeline {}
-
-impl DumpPipeline {
-    pub fn new(_args: Args) -> Self {
-        Self {}
-    }
-}
-
-#[async_trait]
-impl PipelineBase for DumpPipeline {
-    async fn add_connection(&self, _id: String) -> Result<(), Error> {
-        Ok(())
-    }
-
-    async fn remove_connection(&self, _id: String) -> Result<(), Error> {
-        Ok(())
-    }
-
-    async fn init(&mut self, _args: &Args) -> Result<(), Error> {
-        Ok(())
-    }
-
-    async fn run(&self) -> Result<(), Error> {
-        Ok(())
-    }
-
-    async fn ready(&self) -> Result<bool, Error> {
-        Ok(true)
-    }
-
-    async fn end(&self) -> Result<(), Error> {
-        Ok(())
-    }
-
-    async fn quit(&self) -> Result<(), Error> {
-        Ok(())
-    }
-
-    async fn clean_up(&self) -> Result<(), Error> {
-        Ok(())
-    }
-
-    async fn print(&self) -> Result<(), Error> {
-        Ok(())
-    }
-}
-
 /// Snapshot of everything a test pipeline has recorded.
 #[derive(Clone, Debug, Default)]
 pub struct TestPipelineState {

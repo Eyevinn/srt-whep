@@ -1,4 +1,4 @@
-use crate::domain::SharableAppState;
+use crate::signal::SignalHandle;
 use crate::stream::{Args, PipelineBase, SharablePipeline};
 use tokio_async_drop::tokio_async_drop;
 
@@ -6,15 +6,15 @@ use tokio_async_drop::tokio_async_drop;
 pub struct PipelineGuard {
     pipeline: SharablePipeline,
     args: Args,
-    state: SharableAppState,
+    signal: SignalHandle,
 }
 
 impl PipelineGuard {
-    pub fn new(pipeline: SharablePipeline, args: Args, state: SharableAppState) -> Self {
+    pub fn new(pipeline: SharablePipeline, args: Args, signal: SignalHandle) -> Self {
         Self {
             pipeline,
             args,
-            state,
+            signal,
         }
     }
 
@@ -33,8 +33,8 @@ impl PipelineGuard {
         // Clean up the pipeline when it finishes so it can be rerun
         self.pipeline.clean_up().await?;
 
-        // Reset app state
-        self.state.reset().await?;
+        // Fail all in-flight handshakes and drop signaling state.
+        self.signal.reset().await?;
 
         Ok(())
     }
