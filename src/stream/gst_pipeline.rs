@@ -65,7 +65,7 @@ impl BranchControl for SharablePipeline {
         })?;
         let pipeline = pipeline_state.pipeline.as_ref();
         if pipeline.is_none() {
-            tracing::error!("Pipeline is not missing");
+            tracing::error!("Pipeline is not initialized");
             return Ok(false);
         }
         let pipeline = pipeline.unwrap();

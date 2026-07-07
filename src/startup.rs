@@ -23,6 +23,7 @@ pub fn run(listener: TcpListener, signal: SignalHandle) -> Result<Server, std::i
             .route("/channel/{id}", web::patch().to(whep_patch_handler))
             .route("/channel/{id}", web::delete().to(remove_connection))
             .route("/whip_sink/{id}", web::post().to(whip_handler))
+            .route("/whip_sink/{id}", web::delete().to(remove_connection))
             .app_data(web::Data::new(signal.clone()))
     })
     // Shutdown is owned by Application::run_until_stopped (one Ctrl-C);

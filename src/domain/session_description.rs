@@ -32,10 +32,6 @@ impl SessionDescription {
     pub fn is_sendonly(&self) -> bool {
         self.0.contains("a=sendonly")
     }
-
-    pub fn is_empty(&self) -> bool {
-        self.0.trim().is_empty()
-    }
 }
 
 impl TryFrom<String> for SessionDescription {
