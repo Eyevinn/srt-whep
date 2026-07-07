@@ -146,3 +146,43 @@ findings parked for the final whole-branch review: reqwest test builds now
 native-tls only; apt list (inherited verbatim) lacks `-y`/`libssl-dev`
 (works on ubuntu-latest per publish.yml history); gitignore
 trailing-slash style.
+
+## 2026-07-07 — C3 complete (3a `c8be296`, 3b `5794880`, 3c `596b20a`)
+
+Plan: `docs/superpowers/plans/2026-07-07-c3-pipeline-deepening.md`
+(executed directly; e2e run in isolation after every stage).
+
+**3a — lock private.** `Deref`/`DerefMut` to the `Arc<Mutex<...>>`
+removed; `PipelineWrapper` module-private. The two await-under-guard
+holes closed: `remove_branch` snapshots the pipeline handle before the
+teardown awaits; `clean_up` takes the pipeline (and clears the stale
+main loop) under the lock, then NULLs it unlocked. Audit of remaining
+methods: guard held only across synchronous GStreamer calls.
+
+**3b — Branch module.** `src/stream/branch.rs` is the single owner of
+the per-connection element names, attach linking, pad-probe teardown
+(moved verbatim), and the WHIP route/URL template: `WHIP_SINK_ROUTE` is
+imported by `startup.rs`'s route table and instantiated by the WHIP
+Location header + whipclientsink endpoint via `whip_sink_path` /
+`whip_endpoint` — one template, grep-gated (no convention definition
+outside branch.rs). `link_media`'s h264/h265 arms collapsed over a
+parser table. New pure-fn unit test (suite now 31 unit).
+
+**3c — main loop off the executor.** `run()` no longer blocks a tokio
+worker in `glib::MainLoop::run()`: the loop runs on a named OS thread
+('gst-main-loop') with the bus watch installed there; `run()` awaits a
+oneshot completion signal. Removes the sync-in-async trap (the
+documented current_thread e2e hang cause).
+
+**3d:** not done, as planned (review: optional, revisit spec first).
+
+**Test results per stage:** 3a: 30+10 green, e2e pass (18s; one
+first-attempt environmental flake before the isolated pass, matching the
+known signature). 3b: 31+10 green, e2e pass first try (17s). 3c: 31+10
+green, e2e pass first try (18s) + one-Ctrl-C smoke re-verified (~1s exit)
+since shutdown now crosses the thread boundary.
+
+**Done-when check:** no `Deref` to the lock ✓ · one definition of branch
+names + whip route ✓ · `cargo test` green ✓ · e2e at least as good as
+baseline (passes in isolation, exits cleanly — baseline needed isolation
+too) ✓.
