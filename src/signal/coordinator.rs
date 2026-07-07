@@ -581,4 +581,144 @@ mod tests {
         assert!(r4.await.unwrap().is_ok());
         assert_eq!(1, pipeline.snapshot().added.len()); // no duplicate branch
     }
+
+    #[tokio::test(start_paused = true)]
+    async fn watchdog_trips_after_three_consecutive_failures() {
+        let pipeline = ready_pipeline();
+        let tx = spawn_actor(pipeline.clone(), test_config()); // threshold 3
+
+        for i in 0..3 {
+            let (whep_tx, whep_rx) = oneshot::channel();
+            tx.send(Command::CreateConnection {
+                id: format!("conn-{}", i),
+                reply: whep_tx,
+            })
+            .await
+            .unwrap();
+            // Each handshake times out via auto-advance.
+            assert!(matches!(
+                whep_rx.await.unwrap(),
+                Err(SignalError::Timeout(_))
+            ));
+        }
+
+        tokio::task::yield_now().await; // let the actor finish the trip handling
+        assert_eq!(1, pipeline.snapshot().quit_count);
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn success_between_failures_prevents_the_trip() {
+        let pipeline = ready_pipeline();
+        let tx = spawn_actor(pipeline.clone(), test_config());
+
+        // Two failures.
+        for i in 0..2 {
+            let (whep_tx, whep_rx) = oneshot::channel();
+            tx.send(Command::CreateConnection {
+                id: format!("fail-{}", i),
+                reply: whep_tx,
+            })
+            .await
+            .unwrap();
+            let _ = whep_rx.await.unwrap();
+        }
+
+        // One success resets the counter.
+        let (whep_tx, whep_rx) = oneshot::channel();
+        tx.send(Command::CreateConnection {
+            id: "ok".into(),
+            reply: whep_tx,
+        })
+        .await
+        .unwrap();
+        let (whip_tx, whip_rx) = oneshot::channel();
+        tx.send(Command::OfferReceived {
+            id: "ok".into(),
+            sdp: offer(),
+            reply: whip_tx,
+        })
+        .await
+        .unwrap();
+        assert!(whep_rx.await.unwrap().is_ok());
+        let (patch_tx, patch_rx) = oneshot::channel();
+        tx.send(Command::AnswerReceived {
+            id: "ok".into(),
+            sdp: answer(),
+            reply: patch_tx,
+        })
+        .await
+        .unwrap();
+        assert!(patch_rx.await.unwrap().is_ok());
+        assert!(whip_rx.await.unwrap().is_ok());
+
+        // Two more failures: still below threshold thanks to the reset.
+        for i in 2..4 {
+            let (whep_tx, whep_rx) = oneshot::channel();
+            tx.send(Command::CreateConnection {
+                id: format!("fail-{}", i),
+                reply: whep_tx,
+            })
+            .await
+            .unwrap();
+            let _ = whep_rx.await.unwrap();
+        }
+
+        tokio::task::yield_now().await;
+        assert_eq!(0, pipeline.snapshot().quit_count);
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn reset_fails_all_waiters_and_clears_state() {
+        let pipeline = ready_pipeline();
+        let tx = spawn_actor(pipeline.clone(), test_config());
+
+        let (whep_tx, whep_rx) = oneshot::channel();
+        tx.send(Command::CreateConnection {
+            id: "a".into(),
+            reply: whep_tx,
+        })
+        .await
+        .unwrap();
+
+        let (reset_tx, reset_rx) = oneshot::channel();
+        tx.send(Command::Reset { reply: reset_tx }).await.unwrap();
+        reset_rx.await.unwrap();
+
+        assert!(matches!(
+            whep_rx.await.unwrap(),
+            Err(SignalError::Unavailable)
+        ));
+
+        let (list_tx, list_rx) = oneshot::channel();
+        tx.send(Command::ListConnections { reply: list_tx })
+            .await
+            .unwrap();
+        assert!(list_rx.await.unwrap().is_empty());
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn list_reports_ids_and_state_names() {
+        let pipeline = ready_pipeline();
+        let tx = spawn_actor(pipeline.clone(), test_config());
+
+        let (whep_tx, whep_rx) = oneshot::channel();
+        tx.send(Command::CreateConnection {
+            id: "a".into(),
+            reply: whep_tx,
+        })
+        .await
+        .unwrap();
+        tokio::task::yield_now().await;
+
+        let (list_tx, list_rx) = oneshot::channel();
+        tx.send(Command::ListConnections { reply: list_tx })
+            .await
+            .unwrap();
+        let list = list_rx.await.unwrap();
+        assert_eq!(1, list.len());
+        assert_eq!("a", list[0].id);
+        assert_eq!("awaiting_offer", list[0].state);
+
+        drop(whep_rx); // silence unused warning; connection will be swept later
+    }
 }
