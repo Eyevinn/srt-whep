@@ -74,10 +74,23 @@ impl PipelineBase for SharablePipeline {
             .by_name("demux")
             .ok_or(MyError::MissingElement("demux".to_string()))?;
 
-        Ok(demux
-            .pads()
-            .into_iter()
-            .any(|pad| pad.name().starts_with("video") || pad.name().starts_with("audio")))
+        let pads = demux.pads();
+        let has_video = pads.iter().any(|pad| pad.name().starts_with("video"));
+        let has_audio = pads.iter().any(|pad| pad.name().starts_with("audio"));
+        if !has_video && !has_audio {
+            return Ok(false);
+        }
+
+        // The demux exposes its media pads (pad-added) before the output tees are
+        // built (no-more-pads -> link_media). add_connection links each new WHEP
+        // branch onto those tees, so the input is only truly ready to accept a
+        // connection once the matching tee exists. Reporting ready earlier lets a
+        // WHEP POST race pad creation and fail with a spurious 500 (and leak a
+        // half-added whipsink); gating on the tees turns that window into a
+        // retriable NotReady instead.
+        let video_ready = !has_video || pipeline.by_name("output_tee_video").is_some();
+        let audio_ready = !has_audio || pipeline.by_name("output_tee_audio").is_some();
+        Ok(video_ready && audio_ready)
     }
 
     /// Add connection to pipeline
@@ -525,13 +538,41 @@ impl PipelineBase for SharablePipeline {
                     main_loop.quit();
                 }
                 MessageView::Error(err) => {
-                    tracing::error!(
-                        "{:?} runs into error : {} ({:?})",
-                        err.src().map(|s| s.path_string()),
-                        err.error(),
-                        err.debug()
-                    );
-                    main_loop.quit();
+                    // An error from a WHEP output branch (a `whip-sink-*` element or
+                    // anything nested inside it — e.g. its signaller timing out or its
+                    // peer going away) must not be fatal. That branch is torn down on
+                    // its own by the coordinator when the handshake times out; quitting
+                    // the main loop here would drop the SRT ingest and every other
+                    // viewer, and the ensuing supervisor restart would reset all
+                    // in-flight handshakes — the "wedge" a single bad peer must never
+                    // be able to cause.
+                    let src = err.src();
+                    let mut from_output_branch = false;
+                    let mut cursor = src.cloned();
+                    while let Some(obj) = cursor {
+                        if obj.name().starts_with("whip-sink-") {
+                            from_output_branch = true;
+                            break;
+                        }
+                        cursor = obj.parent();
+                    }
+
+                    if from_output_branch {
+                        tracing::warn!(
+                            "Output branch {:?} errored; leaving pipeline running: {} ({:?})",
+                            src.as_ref().map(|s| s.path_string()),
+                            err.error(),
+                            err.debug()
+                        );
+                    } else {
+                        tracing::error!(
+                            "{:?} runs into error : {} ({:?})",
+                            src.as_ref().map(|s| s.path_string()),
+                            err.error(),
+                            err.debug()
+                        );
+                        main_loop.quit();
+                    }
                 }
                 _ => (),
             };
