@@ -20,7 +20,7 @@ use gst::prelude::*;
 use gstreamer as gst;
 use srt_whep::signal::{spawn_coordinator, CoordinatorConfig};
 use srt_whep::startup::run;
-use srt_whep::stream::{Args, PipelineBase, SRTMode, SharablePipeline};
+use srt_whep::stream::{Args, BranchControl, PipelineLifecycle, SRTMode, SharablePipeline};
 use srt_whep::utils::PipelineGuard;
 use std::net::TcpListener;
 use std::time::Duration;
@@ -76,15 +76,10 @@ async fn pipeline_survives_repeated_handshake_failures() {
 
     // Supervise the pipeline exactly like main.rs does.
     let pipeline_clone = pipeline.clone();
-    let args_clone = args.clone();
     let signal_clone = signal.clone();
     let supervisor = tokio::spawn(async move {
         loop {
-            let mut guard = PipelineGuard::new(
-                pipeline_clone.clone(),
-                args_clone.clone(),
-                signal_clone.clone(),
-            );
+            let guard = PipelineGuard::new(pipeline_clone.clone(), signal_clone.clone());
             if let Err(e) = guard.run().await {
                 eprintln!("pipeline error: {}", e);
             }

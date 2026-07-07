@@ -10,14 +10,14 @@ use std::time::Duration;
 use timed_locks::Mutex;
 
 use crate::domain::MyError;
-use crate::stream::pipeline::{Args, PipelineBase, SRTMode};
+use crate::stream::pipeline::{Args, BranchControl, PipelineLifecycle, SRTMode};
 use crate::stream::utils::run_discoverer;
 
 #[derive(Clone)]
 pub struct PipelineWrapper {
     pipeline: Option<Pipeline>,
     main_loop: Option<glib::MainLoop>,
-    port: u32,
+    args: Args,
 }
 
 impl PipelineWrapper {
@@ -25,7 +25,7 @@ impl PipelineWrapper {
         Self {
             pipeline: None,
             main_loop: None,
-            port: args.port,
+            args,
         }
     }
 }
@@ -57,7 +57,7 @@ impl DerefMut for SharablePipeline {
 }
 
 #[async_trait]
-impl PipelineBase for SharablePipeline {
+impl BranchControl for SharablePipeline {
     /// Check if SRT input stream is available
     async fn ready(&self) -> Result<bool, Error> {
         let pipeline_state = self.lock_err().await.inspect_err(|e| {
@@ -93,14 +93,14 @@ impl PipelineBase for SharablePipeline {
         Ok(video_ready && audio_ready)
     }
 
-    /// Add connection to pipeline
+    /// Add a viewer's branch to the pipeline
     /// # Arguments
     /// * `id` - Connection id
     ///
     /// Based on the stream type (audio or video) of the connection, the corresponding branch is created
     /// For whipsink to work, the branch must be linked to the output tee element and synced in state
     /// Return NoSRTStream error if no input stream is available
-    async fn add_connection(&self, id: String) -> Result<(), Error> {
+    async fn add_branch(&self, id: String) -> Result<(), Error> {
         let ready = self.ready().await?;
         if !ready {
             tracing::error!("Demux has no pad available. No connection can be added.");
@@ -130,7 +130,10 @@ impl PipelineBase for SharablePipeline {
             let signaller = whipsink.property::<Signallable>("signaller");
             signaller.set_property_from_str(
                 "whip-endpoint",
-                &format!("http://localhost:{}/whip_sink/{}", pipeline_state.port, id),
+                &format!(
+                    "http://localhost:{}/whip_sink/{}",
+                    pipeline_state.args.port, id
+                ),
             );
         }
 
@@ -184,7 +187,7 @@ impl PipelineBase for SharablePipeline {
         Ok(())
     }
 
-    /// Remove connection from pipeline
+    /// Remove a viewer's branch from the pipeline
     /// # Arguments
     /// * `id` - Connection id (must exist in the pipeline)
     ///
@@ -193,7 +196,7 @@ impl PipelineBase for SharablePipeline {
     /// If the branch is linked, we block the tee's source pad with a pad probe and remove the branch in the callback
     /// If the branch is not linked, we remove the branch directly
     /// After removing the branch, we remove the whip sink from the pipeline
-    async fn remove_connection(&self, id: String) -> Result<(), Error> {
+    async fn remove_branch(&self, id: String) -> Result<(), Error> {
         let pipeline_state = self.lock_err().await?;
         let pipeline = pipeline_state
             .pipeline
@@ -222,18 +225,34 @@ impl PipelineBase for SharablePipeline {
         Ok(())
     }
 
+    /// Quit pipeline by sending a quit message to the main loop
+    /// This function is used to restart the pipeline in case of
+    /// unrecoverable errors
+    async fn quit(&self) -> Result<(), Error> {
+        let pipeline_state = self.lock_err().await?;
+        if let Some(main_loop) = pipeline_state.main_loop.as_ref() {
+            tracing::debug!("Force-quit pipeline");
+            main_loop.quit();
+        }
+
+        Ok(())
+    }
+}
+
+#[async_trait]
+impl PipelineLifecycle for SharablePipeline {
     /// Setup pipeline
-    /// # Arguments
-    /// * `args` - Pipeline arguments
     ///
     /// Create a pipeline with the all needed elements and register callbacks for dynamic pads
     /// Link them together when the demux element generates all dynamic pads and start playing
-    async fn init(&mut self, args: &Args) -> Result<(), Error> {
+    async fn init(&self) -> Result<(), Error> {
         // Initialize GStreamer (only once)
         gst::init()?;
         // Load webrtcsink plugin
         gstrswebrtc::plugin_register_static()?;
         tracing::debug!("Setting up pipeline");
+
+        let args = self.lock_err().await?.args.clone();
 
         // Create a pipeline
         let pipeline = gst::Pipeline::default();
@@ -604,19 +623,6 @@ impl PipelineBase for SharablePipeline {
         Ok(())
     }
 
-    /// Quit pipeline by sending a quit message to the main loop
-    /// This function is used to restart the pipeline in case of
-    /// unrecoverable errors
-    async fn quit(&self) -> Result<(), Error> {
-        let pipeline_state = self.lock_err().await?;
-        if let Some(main_loop) = pipeline_state.main_loop.as_ref() {
-            tracing::debug!("Force-quit pipeline");
-            main_loop.quit();
-        }
-
-        Ok(())
-    }
-
     /// Clean up all elements in the pipeline and reset state
     async fn clean_up(&self) -> Result<(), Error> {
         let mut pipeline_state = self.lock_err().await?;
@@ -633,11 +639,14 @@ impl PipelineBase for SharablePipeline {
 
         Ok(())
     }
+}
 
+// Helper functions
+impl SharablePipeline {
     /// Helper function for debugging
     /// Print pipeline to dot file
     /// Warning: this function should not be called when the pipeline is in locked state
-    async fn print(&self) -> Result<(), Error> {
+    pub async fn print(&self) -> Result<(), Error> {
         let pipeline_state = self.lock_err().await?;
         if let Some(pipeline) = pipeline_state.pipeline.as_ref() {
             pipeline.debug_to_dot_file(DebugGraphDetails::all(), "pipeline");
@@ -647,10 +656,7 @@ impl PipelineBase for SharablePipeline {
 
         Ok(())
     }
-}
 
-// Helper functions
-impl SharablePipeline {
     /// Create a queue element with given name and properties
     /// To check if the queue is blocking, we connect to the overrun and underrun signals
     fn create_custom_queue(

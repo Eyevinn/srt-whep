@@ -2,7 +2,7 @@ use super::errors::SignalError;
 use super::messages::{Command, ConnectionId, ConnectionInfo, SdpReply, UnitReply};
 use super::watchdog::Watchdog;
 use crate::domain::SessionDescription;
-use crate::stream::PipelineBase;
+use crate::stream::BranchControl;
 use std::collections::HashMap;
 use std::time::Duration;
 use tokio::sync::mpsc;
@@ -53,7 +53,7 @@ impl ConnectionState {
 
 /// The signaling actor: sole owner of connection state and of pipeline
 /// branch add/remove calls. Runs until every SignalHandle is dropped.
-pub struct Coordinator<P: PipelineBase> {
+pub struct Coordinator<P: BranchControl> {
     pipeline: P,
     config: CoordinatorConfig,
     connections: HashMap<ConnectionId, ConnectionState>,
@@ -61,7 +61,7 @@ pub struct Coordinator<P: PipelineBase> {
     rx: mpsc::Receiver<Command>,
 }
 
-impl<P: PipelineBase> Coordinator<P> {
+impl<P: BranchControl> Coordinator<P> {
     pub fn new(pipeline: P, config: CoordinatorConfig, rx: mpsc::Receiver<Command>) -> Self {
         let watchdog = Watchdog::new(config.watchdog_threshold);
         Self {
@@ -132,7 +132,7 @@ impl<P: PipelineBase> Coordinator<P> {
                 return;
             }
         }
-        if let Err(e) = self.pipeline.add_connection(id.clone()).await {
+        if let Err(e) = self.pipeline.add_branch(id.clone()).await {
             let _ = reply.send(Err(SignalError::Pipeline(e.to_string())));
             return;
         }
@@ -230,7 +230,7 @@ impl<P: PipelineBase> Coordinator<P> {
                 }
                 let result = self
                     .pipeline
-                    .remove_connection(id)
+                    .remove_branch(id)
                     .await
                     .map_err(|e| SignalError::Pipeline(e.to_string()));
                 let _ = reply.send(result);
@@ -272,7 +272,7 @@ impl<P: PipelineBase> Coordinator<P> {
     /// Clean up a failed handshake: remove its pipeline branch, record the
     /// failure, and restart the pipeline when the watchdog trips.
     async fn fail_connection(&mut self, id: ConnectionId) {
-        if let Err(e) = self.pipeline.remove_connection(id.clone()).await {
+        if let Err(e) = self.pipeline.remove_branch(id.clone()).await {
             tracing::error!("Failed to remove branch for {}: {}", id, e);
         }
         if self.watchdog.record_failure() {

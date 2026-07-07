@@ -1,7 +1,7 @@
 use clap::Parser;
 use srt_whep::signal::{spawn_coordinator, CoordinatorConfig};
 use srt_whep::startup::run;
-use srt_whep::stream::{Args, PipelineBase, SharablePipeline};
+use srt_whep::stream::{Args, PipelineLifecycle, SharablePipeline};
 use srt_whep::telemetry::{get_subscriber, init_subscriber};
 use srt_whep::utils::PipelineGuard;
 use std::error::Error;
@@ -36,8 +36,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
             tracing::debug!("Looping pipeline: {}", loops);
             loops += 1;
 
-            let mut pipeline_guard =
-                PipelineGuard::new(pipeline_clone.clone(), args.clone(), signal_clone.clone());
+            let pipeline_guard = PipelineGuard::new(pipeline_clone.clone(), signal_clone.clone());
 
             if let Err(err) = pipeline_guard.run().await {
                 tracing::error!("Pipeline runs into error: {}", err);

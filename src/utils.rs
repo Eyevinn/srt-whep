@@ -1,26 +1,21 @@
 use crate::signal::SignalHandle;
-use crate::stream::{Args, PipelineBase, SharablePipeline};
+use crate::stream::{PipelineLifecycle, SharablePipeline};
 use tokio_async_drop::tokio_async_drop;
 
 // Run the pipe and clean up when it finishes
 pub struct PipelineGuard {
     pipeline: SharablePipeline,
-    args: Args,
     signal: SignalHandle,
 }
 
 impl PipelineGuard {
-    pub fn new(pipeline: SharablePipeline, args: Args, signal: SignalHandle) -> Self {
-        Self {
-            pipeline,
-            args,
-            signal,
-        }
+    pub fn new(pipeline: SharablePipeline, signal: SignalHandle) -> Self {
+        Self { pipeline, signal }
     }
 
     /// Run a pipeline until it encounters EOS or an error. Clean up the pipeline after it finishes.
-    pub async fn run(&mut self) -> Result<(), anyhow::Error> {
-        self.pipeline.init(&self.args).await?;
+    pub async fn run(&self) -> Result<(), anyhow::Error> {
+        self.pipeline.init().await?;
 
         // Block until EOS or error message pops up
         self.pipeline.run().await?;

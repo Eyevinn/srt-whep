@@ -66,19 +66,32 @@ impl SRTMode {
     }
 }
 
+/// The coordinator's view of the pipeline: per-viewer branch control.
+///
+/// `ready` gates branch creation: `add_branch` may only succeed once the
+/// input stream is demuxed and the output tees exist. `add_branch` /
+/// `remove_branch` attach and detach one viewer's WHEP output branch.
+/// `quit` force-restarts the whole pipeline; the coordinator's watchdog
+/// calls it when consecutive handshake failures suggest a wedge.
 #[async_trait]
-pub trait PipelineBase: Clone + Send + Sync {
-    async fn add_connection(&self, id: String) -> Result<(), Error>;
-    async fn remove_connection(&self, id: String) -> Result<(), Error>;
-
-    async fn init(&mut self, args: &Args) -> Result<(), Error>;
-    async fn run(&self) -> Result<(), Error>;
+pub trait BranchControl: Clone + Send + Sync {
     async fn ready(&self) -> Result<bool, Error>;
-    async fn end(&self) -> Result<(), Error>;
+    async fn add_branch(&self, id: String) -> Result<(), Error>;
+    async fn remove_branch(&self, id: String) -> Result<(), Error>;
     async fn quit(&self) -> Result<(), Error>;
-    async fn clean_up(&self) -> Result<(), Error>;
+}
 
-    async fn print(&self) -> Result<(), Error>;
+/// The supervisor's view of the pipeline: whole-pipeline lifecycle.
+///
+/// Call order: `init` → `run` (resolves only at EOS or a fatal error) →
+/// `clean_up`, after which `init` may be called again. `end` requests EOS
+/// from outside that loop for a graceful shutdown.
+#[async_trait]
+pub trait PipelineLifecycle: Clone + Send + Sync {
+    async fn init(&self) -> Result<(), Error>;
+    async fn run(&self) -> Result<(), Error>;
+    async fn end(&self) -> Result<(), Error>;
+    async fn clean_up(&self) -> Result<(), Error>;
 }
 
 /// Snapshot of everything a test pipeline has recorded.
@@ -106,30 +119,18 @@ impl TestPipeline {
 }
 
 #[async_trait]
-impl PipelineBase for TestPipeline {
-    async fn add_connection(&self, id: String) -> Result<(), Error> {
-        self.0.lock().unwrap().added.push(id);
-        Ok(())
-    }
-
-    async fn remove_connection(&self, id: String) -> Result<(), Error> {
-        self.0.lock().unwrap().removed.push(id);
-        Ok(())
-    }
-
-    async fn init(&mut self, _args: &Args) -> Result<(), Error> {
-        Ok(())
-    }
-
-    async fn run(&self) -> Result<(), Error> {
-        Ok(())
-    }
-
+impl BranchControl for TestPipeline {
     async fn ready(&self) -> Result<bool, Error> {
         Ok(self.0.lock().unwrap().ready)
     }
 
-    async fn end(&self) -> Result<(), Error> {
+    async fn add_branch(&self, id: String) -> Result<(), Error> {
+        self.0.lock().unwrap().added.push(id);
+        Ok(())
+    }
+
+    async fn remove_branch(&self, id: String) -> Result<(), Error> {
+        self.0.lock().unwrap().removed.push(id);
         Ok(())
     }
 
@@ -137,19 +138,30 @@ impl PipelineBase for TestPipeline {
         self.0.lock().unwrap().quit_count += 1;
         Ok(())
     }
+}
 
-    async fn clean_up(&self) -> Result<(), Error> {
+#[async_trait]
+impl PipelineLifecycle for TestPipeline {
+    async fn init(&self) -> Result<(), Error> {
         Ok(())
     }
 
-    async fn print(&self) -> Result<(), Error> {
+    async fn run(&self) -> Result<(), Error> {
+        Ok(())
+    }
+
+    async fn end(&self) -> Result<(), Error> {
+        Ok(())
+    }
+
+    async fn clean_up(&self) -> Result<(), Error> {
         Ok(())
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{PipelineBase, TestPipeline};
+    use super::{BranchControl, TestPipeline};
 
     #[tokio::test]
     async fn test_pipeline_records_calls() {
@@ -159,8 +171,8 @@ mod tests {
         pipeline.set_ready(true);
         assert!(pipeline.ready().await.unwrap());
 
-        pipeline.add_connection("a".to_string()).await.unwrap();
-        pipeline.remove_connection("a".to_string()).await.unwrap();
+        pipeline.add_branch("a".to_string()).await.unwrap();
+        pipeline.remove_branch("a".to_string()).await.unwrap();
         pipeline.quit().await.unwrap();
 
         let snap = pipeline.snapshot();
