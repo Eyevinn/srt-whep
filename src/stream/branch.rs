@@ -12,7 +12,7 @@ use gstreamer as gst;
 use gstrswebrtc::signaller::Signallable;
 use gstrswebrtc::webrtcsink::WhipWebRTCSink;
 
-use crate::domain::MyError;
+use crate::stream::errors::StreamError;
 
 /// The actix route template for the loopback WHIP endpoint — the single
 /// definition shared by the HTTP route table, the WHIP Location header,
@@ -69,7 +69,7 @@ impl Branch {
     pub(crate) fn attach(&self, pipeline: &gst::Pipeline, port: u32) -> Result<(), Error> {
         let demux = pipeline
             .by_name("demux")
-            .ok_or(MyError::MissingElement("demux".to_string()))?;
+            .ok_or(StreamError::MissingElement("demux".to_string()))?;
         // WhipWebRTCSink is renamed as 'whipclientsink' since gst-plugin-webrtc version 0.13.0
         let whipsink = gst::ElementFactory::make("whipclientsink")
             .name(self.whip_sink_name())
@@ -87,7 +87,7 @@ impl Branch {
         {
             let output_tee_video = pipeline
                 .by_name("output_tee_video")
-                .ok_or(MyError::MissingElement("output_tee_video".to_string()))?;
+                .ok_or(StreamError::MissingElement("output_tee_video".to_string()))?;
             let queue_video: gst::Element = gst::ElementFactory::make("queue")
                 .name(self.video_queue_name())
                 .build()?;
@@ -109,7 +109,7 @@ impl Branch {
         {
             let output_tee_audio = pipeline
                 .by_name("output_tee_audio")
-                .ok_or(MyError::MissingElement("output_tee_audio".to_string()))?;
+                .ok_or(StreamError::MissingElement("output_tee_audio".to_string()))?;
             let queue_audio: gst::Element = gst::ElementFactory::make("queue")
                 .name(self.audio_queue_name())
                 .build()?;
@@ -209,22 +209,23 @@ impl Branch {
         }
 
         let queue = queue.unwrap();
-        let queue_sink_pad = queue
-            .static_pad("sink")
-            .ok_or(MyError::MissingElement(format!(
-                "{}'s sink pad",
-                queue_name
-            )))?;
+        let queue_sink_pad =
+            queue
+                .static_pad("sink")
+                .ok_or(StreamError::MissingElement(format!(
+                    "{}'s sink pad",
+                    queue_name
+                )))?;
 
         // Remove src pad from tee if queue is linked
         let name = queue_name.to_string();
         if queue_sink_pad.is_linked() {
             let tee_src_pad = queue_sink_pad
                 .peer()
-                .ok_or(MyError::MissingElement("tee's src pad".to_string()))?;
+                .ok_or(StreamError::MissingElement("tee's src pad".to_string()))?;
             let tee = tee_src_pad
                 .parent_element()
-                .ok_or(MyError::MissingElement("output_tee".to_string()))?;
+                .ok_or(StreamError::MissingElement("output_tee".to_string()))?;
 
             // Pause tee before removing pad and resume afterward
             tee.call_async_future(move |tee| {
@@ -244,7 +245,7 @@ impl Branch {
 
             Self::remove_element_from_pipeline(pipeline, &queue).await?;
         } else {
-            return Err(MyError::FailedOperation(format!(
+            return Err(StreamError::FailedOperation(format!(
                 "Queue {} is not linked and can not be removed.",
                 name
             ))

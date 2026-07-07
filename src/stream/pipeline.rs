@@ -1,4 +1,5 @@
-use anyhow::{Error, Ok};
+use crate::stream::errors::PipelineError;
+use anyhow::Error;
 use async_trait::async_trait;
 use clap::{Parser, ValueEnum};
 use std::sync::Arc;
@@ -73,12 +74,16 @@ impl SRTMode {
 /// `remove_branch` attach and detach one viewer's WHEP output branch.
 /// `quit` force-restarts the whole pipeline; the coordinator's watchdog
 /// calls it when consecutive handshake failures suggest a wedge.
+///
+/// Errors are typed for policy: [`PipelineError::NotReady`] and
+/// [`PipelineError::Transient`] are worth a retry, [`PipelineError::Fatal`]
+/// is not.
 #[async_trait]
 pub trait BranchControl: Clone + Send + Sync {
-    async fn ready(&self) -> Result<bool, Error>;
-    async fn add_branch(&self, id: String) -> Result<(), Error>;
-    async fn remove_branch(&self, id: String) -> Result<(), Error>;
-    async fn quit(&self) -> Result<(), Error>;
+    async fn ready(&self) -> Result<bool, PipelineError>;
+    async fn add_branch(&self, id: String) -> Result<(), PipelineError>;
+    async fn remove_branch(&self, id: String) -> Result<(), PipelineError>;
+    async fn quit(&self) -> Result<(), PipelineError>;
 }
 
 /// The supervisor's view of the pipeline: whole-pipeline lifecycle.
@@ -116,6 +121,7 @@ pub struct TestPipelineState {
 pub struct TestPipeline {
     state: Arc<std::sync::Mutex<TestPipelineState>>,
     run_gate: Arc<tokio::sync::Notify>,
+    add_branch_error: Arc<std::sync::Mutex<Option<PipelineError>>>,
 }
 
 impl TestPipeline {
@@ -125,6 +131,11 @@ impl TestPipeline {
 
     pub fn snapshot(&self) -> TestPipelineState {
         self.state.lock().unwrap().clone()
+    }
+
+    /// Make the next `add_branch` call fail with the given error.
+    pub fn fail_next_add_branch(&self, err: PipelineError) {
+        *self.add_branch_error.lock().unwrap() = Some(err);
     }
 
     /// Release a parked `run()` as a clean EOS.
@@ -141,21 +152,24 @@ impl TestPipeline {
 
 #[async_trait]
 impl BranchControl for TestPipeline {
-    async fn ready(&self) -> Result<bool, Error> {
+    async fn ready(&self) -> Result<bool, PipelineError> {
         Ok(self.state.lock().unwrap().ready)
     }
 
-    async fn add_branch(&self, id: String) -> Result<(), Error> {
+    async fn add_branch(&self, id: String) -> Result<(), PipelineError> {
+        if let Some(err) = self.add_branch_error.lock().unwrap().take() {
+            return Err(err);
+        }
         self.state.lock().unwrap().added.push(id);
         Ok(())
     }
 
-    async fn remove_branch(&self, id: String) -> Result<(), Error> {
+    async fn remove_branch(&self, id: String) -> Result<(), PipelineError> {
         self.state.lock().unwrap().removed.push(id);
         Ok(())
     }
 
-    async fn quit(&self) -> Result<(), Error> {
+    async fn quit(&self) -> Result<(), PipelineError> {
         self.state.lock().unwrap().quit_count += 1;
         self.run_gate.notify_one();
         Ok(())

@@ -1,3 +1,5 @@
+use crate::domain::SdpError;
+use crate::stream::PipelineError;
 use actix_web::http::StatusCode;
 use actix_web::{HttpResponse, ResponseError};
 use thiserror::Error;
@@ -14,6 +16,8 @@ pub enum SignalError {
     Timeout(&'static str),
     #[error("Input stream is not ready")]
     NotReady,
+    #[error("Pipeline is busy: {0}")]
+    PipelineBusy(String),
     #[error("Signaling coordinator is unavailable")]
     Unavailable,
     #[error("Pipeline operation failed: {0}")]
@@ -26,7 +30,9 @@ impl ResponseError for SignalError {
             SignalError::InvalidSdp(_) => StatusCode::BAD_REQUEST,
             SignalError::NotFound(_) => StatusCode::NOT_FOUND,
             SignalError::WrongState(_) => StatusCode::CONFLICT,
-            SignalError::Timeout(_) | SignalError::NotReady => StatusCode::SERVICE_UNAVAILABLE,
+            SignalError::Timeout(_) | SignalError::NotReady | SignalError::PipelineBusy(_) => {
+                StatusCode::SERVICE_UNAVAILABLE
+            }
             SignalError::Unavailable | SignalError::Pipeline(_) => {
                 StatusCode::INTERNAL_SERVER_ERROR
             }
@@ -35,10 +41,35 @@ impl ResponseError for SignalError {
 
     fn error_response(&self) -> HttpResponse {
         let mut builder = HttpResponse::build(self.status_code());
-        if matches!(self, SignalError::Timeout(_) | SignalError::NotReady) {
+        if matches!(
+            self,
+            SignalError::Timeout(_) | SignalError::NotReady | SignalError::PipelineBusy(_)
+        ) {
             builder.append_header(("Retry-After", "3"));
         }
         builder.body(self.to_string())
+    }
+}
+
+/// The stream→signal seam: retry policy survives the crossing instead of
+/// flattening into an opaque 500.
+impl From<PipelineError> for SignalError {
+    fn from(e: PipelineError) -> Self {
+        match e {
+            PipelineError::NotReady => SignalError::NotReady,
+            PipelineError::Transient(msg) => SignalError::PipelineBusy(msg),
+            PipelineError::Fatal(msg) => SignalError::Pipeline(msg),
+        }
+    }
+}
+
+impl From<SdpError> for SignalError {
+    fn from(e: SdpError) -> Self {
+        match e {
+            // Unwrap the message so the HTTP body doesn't stutter
+            // ("Invalid SDP: Invalid SDP: ...").
+            SdpError::InvalidSdp(msg) => SignalError::InvalidSdp(msg),
+        }
     }
 }
 
@@ -90,5 +121,53 @@ mod tests {
 
         let resp = SignalError::NotFound("x".into()).error_response();
         assert!(resp.headers().get("Retry-After").is_none());
+    }
+
+    #[test]
+    fn pipeline_errors_map_to_retryable_or_fatal_statuses() {
+        use crate::stream::PipelineError;
+
+        let not_ready = SignalError::from(PipelineError::NotReady);
+        assert_eq!(StatusCode::SERVICE_UNAVAILABLE, not_ready.status_code());
+        assert_eq!(
+            "3",
+            not_ready
+                .error_response()
+                .headers()
+                .get("Retry-After")
+                .unwrap()
+        );
+
+        // Retryable failures keep their retry semantics end-to-end instead
+        // of collapsing into an opaque 500 — and keep their detail.
+        let transient = SignalError::from(PipelineError::Transient("lock timed out".into()));
+        assert_eq!(StatusCode::SERVICE_UNAVAILABLE, transient.status_code());
+        assert_eq!(
+            "3",
+            transient
+                .error_response()
+                .headers()
+                .get("Retry-After")
+                .unwrap()
+        );
+        assert!(transient.to_string().contains("lock timed out"));
+
+        let fatal = SignalError::from(PipelineError::Fatal("demux vanished".into()));
+        assert_eq!(StatusCode::INTERNAL_SERVER_ERROR, fatal.status_code());
+        assert!(fatal
+            .error_response()
+            .headers()
+            .get("Retry-After")
+            .is_none());
+        assert!(fatal.to_string().contains("demux vanished"));
+    }
+
+    #[test]
+    fn sdp_parse_errors_map_without_double_prefix() {
+        use crate::domain::SdpError;
+
+        let err = SignalError::from(SdpError::InvalidSdp("v=1 unsupported".into()));
+        assert_eq!(StatusCode::BAD_REQUEST, err.status_code());
+        assert_eq!("Invalid SDP: v=1 unsupported", err.to_string());
     }
 }

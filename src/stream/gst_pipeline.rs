@@ -1,4 +1,4 @@
-use anyhow::{Error, Ok, Result};
+use anyhow::{Error, Result};
 use async_trait::async_trait;
 use gst::{prelude::*, DebugGraphDetails, Pipeline};
 use gstreamer as gst;
@@ -6,8 +6,8 @@ use std::sync::Arc;
 use std::time::Duration;
 use timed_locks::Mutex;
 
-use crate::domain::MyError;
 use crate::stream::branch::{is_whip_sink_name, Branch};
+use crate::stream::errors::{PipelineError, StreamError};
 use crate::stream::pipeline::{Args, BranchControl, PipelineLifecycle, SRTMode};
 use crate::stream::utils::run_discoverer;
 
@@ -43,7 +43,7 @@ impl SharablePipeline {
 #[async_trait]
 impl BranchControl for SharablePipeline {
     /// Check if SRT input stream is available
-    async fn ready(&self) -> Result<bool, Error> {
+    async fn ready(&self) -> Result<bool, PipelineError> {
         let pipeline_state = self.0.lock_err().await.inspect_err(|e| {
             tracing::error!("Failed to lock pipeline: {}", e);
         })?;
@@ -56,7 +56,7 @@ impl BranchControl for SharablePipeline {
 
         let demux = pipeline
             .by_name("demux")
-            .ok_or(MyError::MissingElement("demux".to_string()))?;
+            .ok_or_else(|| PipelineError::Fatal("Failed to find element: demux".to_string()))?;
 
         let pads = demux.pads();
         let has_video = pads.iter().any(|pad| pad.name().starts_with("video"));
@@ -84,25 +84,24 @@ impl BranchControl for SharablePipeline {
     /// Based on the stream type (audio or video) of the connection, the corresponding branch is created
     /// For whipsink to work, the branch must be linked to the output tee element and synced in state
     /// Return NoSRTStream error if no input stream is available
-    async fn add_branch(&self, id: String) -> Result<(), Error> {
+    async fn add_branch(&self, id: String) -> Result<(), PipelineError> {
         let ready = self.ready().await?;
         if !ready {
             tracing::error!("Demux has no pad available. No connection can be added.");
-            return Err(
-                MyError::FailedOperation("Pipeline not ready for connection".to_string()).into(),
-            );
+            return Err(PipelineError::NotReady);
         }
 
         let pipeline_state = self.0.lock_err().await?;
+        // No pipeline means we are between supervisor restarts: retryable.
         let pipeline = pipeline_state
             .pipeline
             .as_ref()
-            .ok_or(MyError::FailedOperation(
-                "Pipeline is not initialized".to_string(),
-            ))?;
+            .ok_or(PipelineError::NotReady)?;
         tracing::debug!("Add connection {} to pipeline", id);
 
-        Branch::for_id(&id).attach(pipeline, pipeline_state.args.port)
+        Branch::for_id(&id)
+            .attach(pipeline, pipeline_state.args.port)
+            .map_err(|e| PipelineError::Fatal(e.to_string()))
     }
 
     /// Remove a viewer's branch from the pipeline
@@ -114,7 +113,7 @@ impl BranchControl for SharablePipeline {
     /// If the branch is linked, we block the tee's source pad with a pad probe and remove the branch in the callback
     /// If the branch is not linked, we remove the branch directly
     /// After removing the branch, we remove the whip sink from the pipeline
-    async fn remove_branch(&self, id: String) -> Result<(), Error> {
+    async fn remove_branch(&self, id: String) -> Result<(), PipelineError> {
         // Snapshot the pipeline handle (a cheap GObject ref) and release the
         // state lock: the teardown below awaits GStreamer state changes, and
         // holding the 1s timed lock across those awaits surfaces a slow
@@ -124,20 +123,23 @@ impl BranchControl for SharablePipeline {
             pipeline_state
                 .pipeline
                 .as_ref()
-                .ok_or(MyError::FailedOperation(
-                    "Pipeline is not initialized".to_string(),
-                ))?
+                // Between supervisor restarts the branch is already gone;
+                // a retry will resolve to NotFound at the coordinator.
+                .ok_or_else(|| PipelineError::Transient("Pipeline is not initialized".to_string()))?
                 .clone()
         };
         tracing::debug!("Remove connection {} from pipeline", id);
 
-        Branch::for_id(&id).detach(&pipeline).await
+        Branch::for_id(&id)
+            .detach(&pipeline)
+            .await
+            .map_err(|e| PipelineError::Fatal(e.to_string()))
     }
 
     /// Quit pipeline by sending a quit message to the main loop
     /// This function is used to restart the pipeline in case of
     /// unrecoverable errors
-    async fn quit(&self) -> Result<(), Error> {
+    async fn quit(&self) -> Result<(), PipelineError> {
         let pipeline_state = self.0.lock_err().await?;
         if let Some(main_loop) = pipeline_state.main_loop.as_ref() {
             tracing::debug!("Force-quit pipeline");
@@ -321,10 +323,11 @@ impl PipelineLifecycle for SharablePipeline {
 
                         Ok(())
                     } else {
-                        Err(
-                            MyError::FailedOperation(format!("Unknown media type {}", media_type))
-                                .into(),
-                        )
+                        Err(StreamError::FailedOperation(format!(
+                            "Unknown media type {}",
+                            media_type
+                        ))
+                        .into())
                     }
                 };
 
@@ -381,11 +384,11 @@ impl PipelineLifecycle for SharablePipeline {
                     // src pad for the audio stream to it.
                     let audio_queue = pipeline
                         .by_name("audio-queue")
-                        .ok_or(MyError::MissingElement("audio-queue".to_string()))?;
+                        .ok_or(StreamError::MissingElement("audio-queue".to_string()))?;
                     let sink_pad =
                         audio_queue
                             .static_pad("sink")
-                            .ok_or(MyError::MissingElement(
+                            .ok_or(StreamError::MissingElement(
                                 "audio-queue's sink pad".to_string(),
                             ))?;
                     src_pad.link(&sink_pad)?;
@@ -397,11 +400,11 @@ impl PipelineLifecycle for SharablePipeline {
                     // src pad for the video stream to it.
                     let video_queue = pipeline
                         .by_name("video-queue")
-                        .ok_or(MyError::MissingElement("video-queue".to_string()))?;
+                        .ok_or(StreamError::MissingElement("video-queue".to_string()))?;
                     let sink_pad =
                         video_queue
                             .static_pad("sink")
-                            .ok_or(MyError::MissingElement(
+                            .ok_or(StreamError::MissingElement(
                                 "video-queue's sink pad".to_string(),
                             ))?;
                     src_pad.link(&sink_pad)?;
@@ -433,7 +436,7 @@ impl PipelineLifecycle for SharablePipeline {
             let pipeline = pipeline_state
                 .pipeline
                 .as_ref()
-                .ok_or(MyError::FailedOperation(
+                .ok_or(StreamError::FailedOperation(
                     "Pipeline called before initialization".to_string(),
                 ))?;
             let bus = pipeline.bus().unwrap();
@@ -519,7 +522,7 @@ impl PipelineLifecycle for SharablePipeline {
             })?;
 
         done_rx.await.map_err(|_| {
-            MyError::FailedOperation("GLib main loop thread died unexpectedly".to_string())
+            StreamError::FailedOperation("GLib main loop thread died unexpectedly".to_string())
         })??;
 
         Ok(())

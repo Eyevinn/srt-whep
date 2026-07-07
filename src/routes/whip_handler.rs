@@ -10,8 +10,7 @@ pub async fn whip_handler(
     signal: web::Data<SignalHandle>,
 ) -> Result<HttpResponse, SignalError> {
     let conn_id = path.into_inner();
-    let sdp =
-        SessionDescription::parse(form).map_err(|e| SignalError::InvalidSdp(e.to_string()))?;
+    let sdp = SessionDescription::parse(form).map_err(SignalError::from)?;
     if !sdp.is_sendonly() {
         return Err(SignalError::InvalidSdp(
             "Received a recv-only SDP from whipsink; expected sendonly.".to_string(),

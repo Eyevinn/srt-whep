@@ -32,8 +32,7 @@ pub async fn whep_patch_handler(
     signal: web::Data<SignalHandle>,
 ) -> Result<HttpResponse, SignalError> {
     let id = path.into_inner();
-    let sdp =
-        SessionDescription::parse(form).map_err(|e| SignalError::InvalidSdp(e.to_string()))?;
+    let sdp = SessionDescription::parse(form).map_err(SignalError::from)?;
     if sdp.is_sendonly() {
         return Err(SignalError::InvalidSdp(
             "Received a send-only SDP from client; expected recvonly.".to_string(),

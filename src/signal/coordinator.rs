@@ -128,12 +128,12 @@ impl<P: BranchControl> Coordinator<P> {
                 return;
             }
             Err(e) => {
-                let _ = reply.send(Err(SignalError::Pipeline(e.to_string())));
+                let _ = reply.send(Err(e.into()));
                 return;
             }
         }
         if let Err(e) = self.pipeline.add_branch(id.clone()).await {
-            let _ = reply.send(Err(SignalError::Pipeline(e.to_string())));
+            let _ = reply.send(Err(e.into()));
             return;
         }
         let deadline = Instant::now() + self.config.offer_timeout;
@@ -232,7 +232,7 @@ impl<P: BranchControl> Coordinator<P> {
                     .pipeline
                     .remove_branch(id)
                     .await
-                    .map_err(|e| SignalError::Pipeline(e.to_string()));
+                    .map_err(SignalError::from);
                 let _ = reply.send(result);
             }
         }
@@ -463,6 +463,29 @@ mod tests {
         let snap = pipeline.snapshot();
         assert_eq!(vec!["a".to_string()], snap.added);
         assert_eq!(vec!["a".to_string()], snap.removed);
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn transient_pipeline_failure_stays_retryable() {
+        use crate::stream::PipelineError;
+        use actix_web::ResponseError;
+
+        let pipeline = ready_pipeline();
+        pipeline.fail_next_add_branch(PipelineError::Transient("state lock timed out".into()));
+        let tx = spawn_actor(pipeline.clone(), test_config());
+
+        let (whep_tx, whep_rx) = oneshot::channel();
+        tx.send(Command::CreateConnection {
+            id: "a".into(),
+            reply: whep_tx,
+        })
+        .await
+        .unwrap();
+
+        let err = whep_rx.await.unwrap().unwrap_err();
+        // Retryable at the seam stays retryable on the wire: 503 + Retry-After.
+        assert_eq!(503, err.status_code().as_u16());
+        assert!(err.error_response().headers().get("Retry-After").is_some());
     }
 
     #[tokio::test(start_paused = true)]
