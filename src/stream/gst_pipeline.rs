@@ -2,13 +2,12 @@ use anyhow::{Error, Ok, Result};
 use async_trait::async_trait;
 use gst::{prelude::*, DebugGraphDetails, Pipeline};
 use gstreamer as gst;
-use gstrswebrtc::signaller::Signallable;
-use gstrswebrtc::webrtcsink::WhipWebRTCSink;
 use std::sync::Arc;
 use std::time::Duration;
 use timed_locks::Mutex;
 
 use crate::domain::MyError;
+use crate::stream::branch::{is_whip_sink_name, Branch};
 use crate::stream::pipeline::{Args, BranchControl, PipelineLifecycle, SRTMode};
 use crate::stream::utils::run_discoverer;
 
@@ -103,73 +102,7 @@ impl BranchControl for SharablePipeline {
             ))?;
         tracing::debug!("Add connection {} to pipeline", id);
 
-        let demux = pipeline
-            .by_name("demux")
-            .ok_or(MyError::MissingElement("demux".to_string()))?;
-        // WhipWebRTCSink is renamed as 'whipclientsink' since gst-plugin-webrtc version 0.13.0
-        let whipsink = gst::ElementFactory::make("whipclientsink")
-            .name("whip-sink-".to_string() + &id)
-            .build()?;
-        pipeline.add_many([&whipsink])?;
-        if let Some(whipsink) = whipsink.dynamic_cast_ref::<WhipWebRTCSink>() {
-            let signaller = whipsink.property::<Signallable>("signaller");
-            signaller.set_property_from_str(
-                "whip-endpoint",
-                &format!(
-                    "http://localhost:{}/whip_sink/{}",
-                    pipeline_state.args.port, id
-                ),
-            );
-        }
-
-        if demux
-            .pads()
-            .into_iter()
-            .any(|pad| pad.name().starts_with("video"))
-        {
-            let output_tee_video = pipeline
-                .by_name("output_tee_video")
-                .ok_or(MyError::MissingElement("output_tee_video".to_string()))?;
-            let queue_video: gst::Element = gst::ElementFactory::make("queue")
-                .name("video-queue-".to_string() + &id)
-                .build()?;
-            pipeline.add_many([&queue_video])?;
-            gst::Element::link_many([&output_tee_video, &queue_video, &whipsink])?;
-
-            let video_elements = &[&output_tee_video, &queue_video];
-            for e in video_elements {
-                e.sync_state_with_parent()?;
-            }
-
-            tracing::debug!("Successfully linked video to whip sink");
-        }
-
-        if demux
-            .pads()
-            .into_iter()
-            .any(|pad| pad.name().starts_with("audio"))
-        {
-            let output_tee_audio = pipeline
-                .by_name("output_tee_audio")
-                .ok_or(MyError::MissingElement("output_tee_audio".to_string()))?;
-            let queue_audio: gst::Element = gst::ElementFactory::make("queue")
-                .name("audio-queue-".to_string() + &id)
-                .build()?;
-            pipeline.add_many([&queue_audio])?;
-            gst::Element::link_many([&output_tee_audio, &queue_audio, &whipsink])?;
-
-            let audio_elements = &[&output_tee_audio, &queue_audio];
-            for e in audio_elements {
-                e.sync_state_with_parent()?;
-            }
-
-            tracing::debug!("Successfully linked audio to whip sink");
-        }
-
-        whipsink.sync_state_with_parent()?;
-        demux.sync_state_with_parent()?;
-
-        Ok(())
+        Branch::for_id(&id).attach(pipeline, pipeline_state.args.port)
     }
 
     /// Remove a viewer's branch from the pipeline
@@ -196,26 +129,9 @@ impl BranchControl for SharablePipeline {
                 ))?
                 .clone()
         };
-        let pipeline = &pipeline;
         tracing::debug!("Remove connection {} from pipeline", id);
 
-        let video_queue_name = "video-queue-".to_string() + &id;
-        let audio_queue_name = "audio-queue-".to_string() + &id;
-        let whip_sink_name = "whip-sink-".to_string() + &id;
-
-        // Remove video/audio branch from pipeline
-        Self::remove_branch_from_pipeline(pipeline, &video_queue_name).await?;
-        Self::remove_branch_from_pipeline(pipeline, &audio_queue_name).await?;
-
-        // Remove whip sink from pipeline
-        // If whip sink fails to send offer, it is removed from
-        // pipeline automatically (so no need to remove it again)
-        if let Some(whip_sink) = pipeline.by_name(&whip_sink_name) {
-            tracing::debug!("Removing {} from pipeline", whip_sink_name);
-            Self::remove_element_from_pipeline(pipeline, &whip_sink).await?;
-        }
-
-        Ok(())
+        Branch::for_id(&id).detach(&pipeline).await
     }
 
     /// Quit pipeline by sending a quit message to the main loop
@@ -337,9 +253,21 @@ impl PipelineLifecycle for SharablePipeline {
                 tracing::debug!("linking to media {:?}", media_type);
 
                 let link_media = |pipeline: &Pipeline, media_type: &str| -> Result<(), Error> {
-                    if media_type.starts_with("video/x-h264") {
-                        // Create h264 video elements
-                        let h264parse = gst::ElementFactory::make("h264parse").build()?;
+                    // Codec table: the video arms differ only in which
+                    // parser element sits between the queue and the tee.
+                    let video_parser = if media_type.starts_with("video/x-h264") {
+                        Some("h264parse")
+                    } else if media_type.starts_with("video/x-h265") {
+                        tracing::warn!(
+                            "H.265(HEVC) streams can be linked but are not fully supported yet"
+                        );
+                        Some("h265parse")
+                    } else {
+                        None
+                    };
+
+                    if let Some(parser) = video_parser {
+                        let parse = gst::ElementFactory::make(parser).build()?;
                         let output_tee_video = gst::ElementFactory::make("tee")
                             .name("output_tee_video")
                             .build()?;
@@ -349,37 +277,13 @@ impl PipelineLifecycle for SharablePipeline {
                             .property("can-activate-pull", true)
                             .build()?;
 
-                        let video_elements =
-                            &[&video_queue, &h264parse, &output_tee_video, &fakesink];
+                        let video_elements = &[&video_queue, &parse, &output_tee_video, &fakesink];
                         // 'video_queue' has been added to the pipeline already, so we don't add it again.
                         pipeline.add_many(&video_elements[1..])?;
                         gst::Element::link_many(&video_elements[..])?;
                         // This is quite important and people forget it often. Without making sure that
                         // the new elements have the same state as the pipeline, things will fail later.
                         // They would still be in Null state and can't process data.
-                        for e in video_elements {
-                            e.sync_state_with_parent()?;
-                        }
-
-                        Ok(())
-                    } else if media_type.starts_with("video/x-h265") {
-                        tracing::warn!(
-                            "H.265(HEVC) streams can be linked but are not fully supported yet"
-                        );
-                        // Create h265 video elements
-                        let h265parse = gst::ElementFactory::make("h265parse").build()?;
-                        let output_tee_video = gst::ElementFactory::make("tee")
-                            .name("output_tee_video")
-                            .build()?;
-                        let fakesink = gst::ElementFactory::make("fakesink")
-                            .property("can-activate-pull", true)
-                            .build()?;
-
-                        let video_elements =
-                            &[&video_queue, &h265parse, &output_tee_video, &fakesink];
-                        // 'video_queue' has been added to the pipeline already, so we don't add it again.
-                        pipeline.add_many(&video_elements[1..])?;
-                        gst::Element::link_many(&video_elements[..])?;
                         for e in video_elements {
                             e.sync_state_with_parent()?;
                         }
@@ -562,7 +466,7 @@ impl PipelineLifecycle for SharablePipeline {
                     let mut from_output_branch = false;
                     let mut cursor = src.cloned();
                     while let Some(obj) = cursor {
-                        if obj.name().starts_with("whip-sink-") {
+                        if is_whip_sink_name(&obj.name()) {
                             from_output_branch = true;
                             break;
                         }
@@ -679,107 +583,5 @@ impl SharablePipeline {
         });
 
         Ok(queue)
-    }
-
-    /// Remove element from a locked pipeline
-    /// # Arguments
-    /// * `pipeline` - Locked pipeline
-    /// * `element` - Element to be removed
-    ///
-    /// To remove an element from a pipeline, one has to set the state of the element to NULL
-    /// and remove it from the pipeline. This function MUST be called when the pipeline is in locked state
-    async fn remove_element_from_pipeline(
-        pipeline: &Pipeline,
-        element: &gst::Element,
-    ) -> Result<(), Error> {
-        let pipeline_weak = pipeline.downgrade();
-        // To set state to NULL from an async tokio context, one has to make use of gst::Element::call_async
-        // and set the state to NULL from there, without blocking the runtime
-        element
-            .call_async_future(move |element| {
-                // Here we temporarily retrieve a strong reference on the pipeline from the weak one
-                // we moved into this callback.
-                let pipeline = match pipeline_weak.upgrade() {
-                    Some(pipeline) => pipeline,
-                    None => return,
-                };
-                let _ = element.set_state(gst::State::Null).inspect_err(|e| {
-                    tracing::error!("Failed to set {} to NULL: {}", element.name(), e)
-                });
-
-                if pipeline.remove(element).is_ok() {
-                    tracing::debug!("{} is removed from pipeline", element.name());
-                } else {
-                    tracing::error!("Failed to remove {} from pipeline", element.name());
-                }
-            })
-            .await;
-
-        Ok(())
-    }
-
-    /// Remove branch from a locked pipeline
-    /// # Arguments
-    /// * `pipeline` - Locked pipeline
-    /// * `queue_name` - Name of the queue element to be removed
-    ///
-    /// To remove a branch from a pipeline, one has to remove the src pad from the tee element
-    /// and remove the queue element from the pipeline. This function MUST be called when the pipeline is in locked state
-    async fn remove_branch_from_pipeline(
-        pipeline: &Pipeline,
-        queue_name: &str,
-    ) -> Result<(), Error> {
-        tracing::debug!("Removing {} from pipeline", queue_name);
-        // Check if queue exists
-        let queue = pipeline.by_name(queue_name);
-        if queue.is_none() {
-            tracing::warn!("{} does not exist", queue_name);
-            return Ok(());
-        }
-
-        let queue = queue.unwrap();
-        let queue_sink_pad = queue
-            .static_pad("sink")
-            .ok_or(MyError::MissingElement(format!(
-                "{}'s sink pad",
-                queue_name
-            )))?;
-
-        // Remove src pad from tee if queue is linked
-        let name = queue_name.to_string();
-        if queue_sink_pad.is_linked() {
-            let tee_src_pad = queue_sink_pad
-                .peer()
-                .ok_or(MyError::MissingElement("tee's src pad".to_string()))?;
-            let tee = tee_src_pad
-                .parent_element()
-                .ok_or(MyError::MissingElement("output_tee".to_string()))?;
-
-            // Pause tee before removing pad and resume afterward
-            tee.call_async_future(move |tee| {
-                let _ = tee.set_state(gst::State::Paused).inspect_err(|e| {
-                    tracing::error!("Failed to pause tee: {}", e);
-                });
-                if tee.remove_pad(&tee_src_pad).is_ok() {
-                    tracing::debug!("Pad is removed from tee");
-                } else {
-                    tracing::error!("Failed to remove Pad from tee");
-                }
-                let _ = tee.set_state(gst::State::Playing).inspect_err(|e| {
-                    tracing::error!("Failed to resume tee: {}", e);
-                });
-            })
-            .await;
-
-            Self::remove_element_from_pipeline(pipeline, &queue).await?;
-        } else {
-            return Err(MyError::FailedOperation(format!(
-                "Queue {} is not linked and can not be removed.",
-                name
-            ))
-            .into());
-        }
-
-        Ok(())
     }
 }

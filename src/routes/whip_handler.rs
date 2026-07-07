@@ -1,5 +1,6 @@
 use crate::domain::SessionDescription;
 use crate::signal::{SignalError, SignalHandle};
+use crate::stream::whip_sink_path;
 use actix_web::{web, HttpResponse};
 
 #[tracing::instrument(name = "WHIP SINK", skip(form, signal))]
@@ -21,7 +22,7 @@ pub async fn whip_handler(
     let answer = signal.offer_received(conn_id.clone(), sdp).await?;
 
     Ok(HttpResponse::Created()
-        .append_header(("Location", format!("/whip_sink/{}", conn_id)))
+        .append_header(("Location", whip_sink_path(&conn_id)))
         .content_type("application/sdp")
         .body(answer.as_ref().to_string()))
 }

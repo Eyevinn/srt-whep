@@ -1,6 +1,6 @@
 use crate::routes::*;
 use crate::signal::{spawn_coordinator, CoordinatorConfig, SignalHandle};
-use crate::stream::{BranchControl, PipelineLifecycle};
+use crate::stream::{BranchControl, PipelineLifecycle, WHIP_SINK_ROUTE};
 use crate::supervisor::Supervisor;
 use actix_cors::Cors;
 use actix_web::dev::Server;
@@ -22,8 +22,8 @@ pub fn run(listener: TcpListener, signal: SignalHandle) -> Result<Server, std::i
             .route("/channel", web::route().guard(guard::Options()).to(options))
             .route("/channel/{id}", web::patch().to(whep_patch_handler))
             .route("/channel/{id}", web::delete().to(remove_connection))
-            .route("/whip_sink/{id}", web::post().to(whip_handler))
-            .route("/whip_sink/{id}", web::delete().to(remove_connection))
+            .route(WHIP_SINK_ROUTE, web::post().to(whip_handler))
+            .route(WHIP_SINK_ROUTE, web::delete().to(remove_connection))
             .app_data(web::Data::new(signal.clone()))
     })
     // Shutdown is owned by Application::run_until_stopped (one Ctrl-C);
