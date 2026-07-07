@@ -100,3 +100,49 @@ address; HTTP `/list` returned 200; **one** SIGINT → process exited in
 **Done-when check:** `utils.rs` deleted ✓ · e2e uses production supervisor
 ✓ · one Ctrl-C exits cleanly (smoke-verified) ✓ · supervisor unit tests
 exist ✓ · suite green ✓.
+
+## 2026-07-07 — C5 complete (`d4b7a9c`, `e340c0d`, `9779f2f`, `8bf844f`, `69d8e51`)
+
+Executed via subagent-driven development (plan:
+`docs/superpowers/plans/2026-07-07-c5-hygiene.md`, 7 review items grouped
+into 4 tasks; every task implementer-built and independently
+review-approved; ledger in `.superpowers/sdd/progress.md`).
+
+**What changed**
+
+1. Dead deps removed (`d4b7a9c`): `derive_more`, `config`, `chrono`,
+   `serde-aux`, `unicode-segmentation`, `validator`, `secrecy`, `toml`
+   gone; `reqwest` no longer in `[dependencies]` (stays in dev-deps).
+   Reviewer independently re-verified all were caller-less.
+2. CI (`e340c0d`): `pull-request.yml` gains a `test` job — GStreamer apt
+   list copied verbatim from `publish.yml` (untouched), rust-cache,
+   `cargo test --all-targets` + `fmt --check` + `clippy -D warnings`;
+   trigger widened from `types: [opened]` to the defaults (decision
+   logged: old trigger never re-ran on pushed commits).
+3. Fixes (`9779f2f`, test-first): WHIP `Location` is now the routable
+   `/whip_sink/{id}` and `DELETE` on it removes the connection (new
+   integration test — suite is now 30 unit + **10** integration);
+   `SessionDescription::is_empty` deleted (verified caller-less);
+   `/pipe/ /source/ /srt/` + `.DS_Store` gitignored, `.dot` debris
+   deleted; "Pipeline is not missing" log now "Pipeline is not
+   initialized". Note: the plan's test snippet had a bug (missing second
+   PATCH leg); implementer corrected it — both hard assertions kept.
+4. Docs (`8bf844f` + fix `69d8e51`): `CONTEXT.md` (glossary,
+   channel/connection/branch terminology map, module map, decided
+   constraints, env note) and `docs/adr/0001-signaling-plane-rebuild.md`
+   (promoted decision table). One Important review finding (unsupported
+   "not observed to matter in practice" claim) fixed with verifiable
+   wording.
+
+**Deviation from review doc:** item 5 offered "register a handler OR
+return a reachable location" — did both halves coherently: Location
+dropped the meaningless UUID segment AND a DELETE route was registered at
+exactly that URL (rejected alternative: keeping the
+`/whip_sink/{id}/{resource_id}` shape with a resource handler — the
+resource id was random and stored nowhere, so it guarded nothing).
+
+**Test results:** 30 unit + 10 integration green, 1 ignored e2e. Minor
+findings parked for the final whole-branch review: reqwest test builds now
+native-tls only; apt list (inherited verbatim) lacks `-y`/`libssl-dev`
+(works on ubuntu-latest per publish.yml history); gitignore
+trailing-slash style.
