@@ -303,9 +303,6 @@ mod tests {
     use super::{Coordinator, CoordinatorConfig};
     use crate::domain::{SessionDescription, VALID_WHEP_ANSWER, VALID_WHIP_OFFER};
     use crate::signal::messages::Command;
-    // Unused by this task's happy-path test; a later task adds error-path
-    // tests that reference `SignalError` directly.
-    #[allow(unused_imports)]
     use crate::signal::SignalError;
     use crate::stream::TestPipeline;
     use std::time::Duration;
@@ -388,5 +385,82 @@ mod tests {
         let snap = pipeline.snapshot();
         assert!(snap.removed.is_empty());
         assert_eq!(0, snap.quit_count);
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn offer_timeout_fails_only_that_connection() {
+        let pipeline = ready_pipeline();
+        let tx = spawn_actor(pipeline.clone(), test_config());
+
+        let (whep_tx, whep_rx) = oneshot::channel();
+        tx.send(Command::CreateConnection {
+            id: "a".into(),
+            reply: whep_tx,
+        })
+        .await
+        .unwrap();
+
+        // Awaiting the reply parks every task on timers; the paused clock
+        // auto-advances through sweep ticks until the deadline fires.
+        let result = whep_rx.await.unwrap();
+        assert!(matches!(result, Err(SignalError::Timeout("SDP offer"))));
+        tokio::task::yield_now().await; // let the actor finish branch cleanup
+
+        let snap = pipeline.snapshot();
+        assert_eq!(vec!["a".to_string()], snap.removed);
+        assert_eq!(0, snap.quit_count); // one failure: watchdog not tripped
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn answer_timeout_fails_the_whip_waiter() {
+        let pipeline = ready_pipeline();
+        let tx = spawn_actor(pipeline.clone(), test_config());
+
+        let (whep_tx, whep_rx) = oneshot::channel();
+        tx.send(Command::CreateConnection {
+            id: "a".into(),
+            reply: whep_tx,
+        })
+        .await
+        .unwrap();
+
+        let (whip_tx, whip_rx) = oneshot::channel();
+        tx.send(Command::OfferReceived {
+            id: "a".into(),
+            sdp: offer(),
+            reply: whip_tx,
+        })
+        .await
+        .unwrap();
+        assert!(whep_rx.await.unwrap().is_ok()); // offer delivered
+
+        // No PATCH arrives; the answer deadline fires.
+        let result = whip_rx.await.unwrap();
+        assert!(matches!(result, Err(SignalError::Timeout("SDP answer"))));
+        tokio::task::yield_now().await; // let the actor finish branch cleanup
+        assert_eq!(vec!["a".to_string()], pipeline.snapshot().removed);
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn abandoned_whep_client_is_reaped_by_the_sweep() {
+        let pipeline = ready_pipeline();
+        let tx = spawn_actor(pipeline.clone(), test_config());
+
+        let (whep_tx, whep_rx) = oneshot::channel();
+        tx.send(Command::CreateConnection {
+            id: "a".into(),
+            reply: whep_tx,
+        })
+        .await
+        .unwrap();
+        tokio::task::yield_now().await; // let the actor register the connection
+        drop(whep_rx); // browser disconnected; actix dropped the handler future
+
+        tokio::time::advance(Duration::from_secs(6)).await; // past offer_timeout (5s)
+        tokio::task::yield_now().await; // let the sweep run
+
+        let snap = pipeline.snapshot();
+        assert_eq!(vec!["a".to_string()], snap.added);
+        assert_eq!(vec!["a".to_string()], snap.removed);
     }
 }
