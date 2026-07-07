@@ -4,7 +4,6 @@ use gst::{prelude::*, DebugGraphDetails, Pipeline};
 use gstreamer as gst;
 use gstrswebrtc::signaller::Signallable;
 use gstrswebrtc::webrtcsink::WhipWebRTCSink;
-use std::ops::{Deref, DerefMut};
 use std::sync::Arc;
 use std::time::Duration;
 use timed_locks::Mutex;
@@ -14,7 +13,7 @@ use crate::stream::pipeline::{Args, BranchControl, PipelineLifecycle, SRTMode};
 use crate::stream::utils::run_discoverer;
 
 #[derive(Clone)]
-pub struct PipelineWrapper {
+struct PipelineWrapper {
     pipeline: Option<Pipeline>,
     main_loop: Option<glib::MainLoop>,
     args: Args,
@@ -42,25 +41,11 @@ impl SharablePipeline {
     }
 }
 
-impl Deref for SharablePipeline {
-    type Target = Arc<Mutex<PipelineWrapper>>;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-impl DerefMut for SharablePipeline {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.0
-    }
-}
-
 #[async_trait]
 impl BranchControl for SharablePipeline {
     /// Check if SRT input stream is available
     async fn ready(&self) -> Result<bool, Error> {
-        let pipeline_state = self.lock_err().await.inspect_err(|e| {
+        let pipeline_state = self.0.lock_err().await.inspect_err(|e| {
             tracing::error!("Failed to lock pipeline: {}", e);
         })?;
         let pipeline = pipeline_state.pipeline.as_ref();
@@ -109,7 +94,7 @@ impl BranchControl for SharablePipeline {
             );
         }
 
-        let pipeline_state = self.lock_err().await?;
+        let pipeline_state = self.0.lock_err().await?;
         let pipeline = pipeline_state
             .pipeline
             .as_ref()
@@ -197,13 +182,21 @@ impl BranchControl for SharablePipeline {
     /// If the branch is not linked, we remove the branch directly
     /// After removing the branch, we remove the whip sink from the pipeline
     async fn remove_branch(&self, id: String) -> Result<(), Error> {
-        let pipeline_state = self.lock_err().await?;
-        let pipeline = pipeline_state
-            .pipeline
-            .as_ref()
-            .ok_or(MyError::FailedOperation(
-                "Pipeline is not initialized".to_string(),
-            ))?;
+        // Snapshot the pipeline handle (a cheap GObject ref) and release the
+        // state lock: the teardown below awaits GStreamer state changes, and
+        // holding the 1s timed lock across those awaits surfaces a slow
+        // teardown as spurious LockTimeout errors to every other caller.
+        let pipeline = {
+            let pipeline_state = self.0.lock_err().await?;
+            pipeline_state
+                .pipeline
+                .as_ref()
+                .ok_or(MyError::FailedOperation(
+                    "Pipeline is not initialized".to_string(),
+                ))?
+                .clone()
+        };
+        let pipeline = &pipeline;
         tracing::debug!("Remove connection {} from pipeline", id);
 
         let video_queue_name = "video-queue-".to_string() + &id;
@@ -229,7 +222,7 @@ impl BranchControl for SharablePipeline {
     /// This function is used to restart the pipeline in case of
     /// unrecoverable errors
     async fn quit(&self) -> Result<(), Error> {
-        let pipeline_state = self.lock_err().await?;
+        let pipeline_state = self.0.lock_err().await?;
         if let Some(main_loop) = pipeline_state.main_loop.as_ref() {
             tracing::debug!("Force-quit pipeline");
             main_loop.quit();
@@ -252,7 +245,7 @@ impl PipelineLifecycle for SharablePipeline {
         gstrswebrtc::plugin_register_static()?;
         tracing::debug!("Setting up pipeline");
 
-        let args = self.lock_err().await?.args.clone();
+        let args = self.0.lock_err().await?.args.clone();
 
         // Create a pipeline
         let pipeline = gst::Pipeline::default();
@@ -523,7 +516,7 @@ impl PipelineLifecycle for SharablePipeline {
         // Set to playing
         pipeline.set_state(gst::State::Playing)?;
         {
-            self.lock_err().await?.pipeline = Some(pipeline);
+            self.0.lock_err().await?.pipeline = Some(pipeline);
         }
 
         Ok(())
@@ -531,7 +524,7 @@ impl PipelineLifecycle for SharablePipeline {
 
     /// Run pipeline and wait until the message bus receives an EOS or error message
     async fn run(&self) -> Result<(), Error> {
-        let mut pipeline_state = self.lock_err().await?;
+        let mut pipeline_state = self.0.lock_err().await?;
         let pipeline = pipeline_state
             .pipeline
             .as_ref()
@@ -609,7 +602,7 @@ impl PipelineLifecycle for SharablePipeline {
 
     /// Close pipeline by sending EOS message
     async fn end(&self) -> Result<(), Error> {
-        let pipeline_state = self.lock_err().await?;
+        let pipeline_state = self.0.lock_err().await?;
         if let Some(pipeline) = pipeline_state.pipeline.as_ref() {
             tracing::debug!("Stopping pipeline");
             let result = pipeline.send_event(gst::event::Eos::new());
@@ -625,8 +618,14 @@ impl PipelineLifecycle for SharablePipeline {
 
     /// Clean up all elements in the pipeline and reset state
     async fn clean_up(&self) -> Result<(), Error> {
-        let mut pipeline_state = self.lock_err().await?;
-        if let Some(pipeline) = pipeline_state.pipeline.as_ref() {
+        // Take the pipeline out under the lock, then do the async NULL
+        // transition without holding it.
+        let pipeline = {
+            let mut pipeline_state = self.0.lock_err().await?;
+            pipeline_state.main_loop = None;
+            pipeline_state.pipeline.take()
+        };
+        if let Some(pipeline) = pipeline {
             pipeline
                 .call_async_future(move |pipeline| {
                     let _ = pipeline.set_state(gst::State::Null).inspect_err(|e| {
@@ -634,7 +633,6 @@ impl PipelineLifecycle for SharablePipeline {
                     });
                 })
                 .await;
-            pipeline_state.pipeline = None;
         }
 
         Ok(())
@@ -647,7 +645,7 @@ impl SharablePipeline {
     /// Print pipeline to dot file
     /// Warning: this function should not be called when the pipeline is in locked state
     pub async fn print(&self) -> Result<(), Error> {
-        let pipeline_state = self.lock_err().await?;
+        let pipeline_state = self.0.lock_err().await?;
         if let Some(pipeline) = pipeline_state.pipeline.as_ref() {
             pipeline.debug_to_dot_file(DebugGraphDetails::all(), "pipeline");
         } else {
