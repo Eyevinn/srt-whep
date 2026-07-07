@@ -510,13 +510,13 @@ impl PipelineLifecycle for SharablePipeline {
         std::thread::Builder::new()
             .name("gst-main-loop".to_string())
             .spawn(move || match bus.add_watch(bus_watch) {
-                std::result::Result::Ok(_watch_guard) => {
+                Ok(_watch_guard) => {
                     // Blocks until EOS/fatal error/quit; the watch guard
                     // must live exactly as long as the loop runs.
                     main_loop.run();
                     let _ = done_tx.send(Ok(()));
                 }
-                std::result::Result::Err(e) => {
+                Err(e) => {
                     let _ = done_tx.send(Err(e.into()));
                 }
             })?;

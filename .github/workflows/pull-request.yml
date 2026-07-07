@@ -42,7 +42,7 @@ jobs:
       - name: Install gstreamer deps
         run: |
           sudo apt-get update
-          sudo apt-get install libunwind-dev \
+          sudo apt-get install -y libunwind-dev \
             libgstreamer1.0-dev \
             libgstreamer-plugins-base1.0-dev \
             libgstreamer-plugins-bad1.0-dev \

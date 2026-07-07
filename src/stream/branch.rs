@@ -6,7 +6,7 @@
 //! `startup.rs` imports [`WHIP_SINK_ROUTE`] and the WHIP handler imports
 //! [`whip_sink_path`], so the HTTP contract and the whipclientsink's
 //! endpoint can never drift apart.
-use anyhow::{Error, Ok, Result};
+use anyhow::{Error, Result};
 use gst::prelude::*;
 use gstreamer as gst;
 use gstrswebrtc::signaller::Signallable;
