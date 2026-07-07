@@ -186,3 +186,49 @@ since shutdown now crosses the thread boundary.
 names + whip route ✓ · `cargo test` green ✓ · e2e at least as good as
 baseline (passes in isolation, exits cleanly — baseline needed isolation
 too) ✓.
+
+## 2026-07-07 — C4 complete (`947a46c`)
+
+Developed test-first (RED: mapping tests + a coordinator test with an
+injected Transient failure; then GREEN).
+
+**What changed**
+
+- `BranchControl` speaks `PipelineError { NotReady, Transient(String),
+  Fatal(String) }` (`src/stream/errors.rs`) — the anticipated default,
+  exactly three variants. The 1s state-lock timeout converts to
+  `Transient` via `From<timed_locks::Error>`; `Branch` attach/detach
+  failures map to `Fatal` at the seam impl.
+- Coordinator maps with `From<PipelineError> for SignalError`:
+  `NotReady → NotReady` (503 + Retry-After), `Transient → PipelineBusy`
+  (new variant, 503 + Retry-After), `Fatal → Pipeline` (500). No
+  `SignalError::Pipeline` is built from `to_string()` flattening
+  anywhere (grep-verified); retry semantics survive end-to-end.
+- `MyError` deleted. SDP validation lives in `domain::SdpError`;
+  GStreamer plumbing detail in `stream::StreamError`. Bonus:
+  `From<SdpError> for SignalError` unwraps the message, fixing the
+  doubled "Invalid SDP: Invalid SDP:" body prefix (a residual noted at
+  the end of the signaling-rebuild run).
+- Error-contract tests extended in `signal/errors.rs` (mapping + status +
+  Retry-After + no-double-prefix); coordinator test pins 503+Retry-After
+  for an injected transient add_branch failure.
+
+**Decisions**
+
+- `PipelineLifecycle` stays on `anyhow::Error`: its only consumer is the
+  supervisor, which logs and restarts regardless of variant. Rejected
+  alternative: typing the lifecycle too — no caller would branch on it.
+- "Pipeline is not initialized" maps to `NotReady` in `add_branch`
+  (between restarts = retryable) and `Transient` in `remove_branch`.
+
+**C6 decision: not done.** The review says do it only if C4 makes typed
+Offer/Answer fall out naturally. It did not: the domain split produced
+`SdpError`, but direction policy remains two small, tested handler
+checks; direction-typed newtypes would be new design work, not fallout.
+
+**Test results:** 34 unit + 10 integration green (3 new unit tests);
+`--ignored` e2e passes at final HEAD in isolation (18s, clean exit).
+
+**Done-when check:** no `SignalError::Pipeline(String)` from
+`to_string()` flattening ✓ · error-contract tests extended for the new
+mapping ✓.
