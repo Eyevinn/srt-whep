@@ -27,6 +27,8 @@ fn spawn_app() -> String {
             srt_mode: SRTMode::Caller,
             run_discoverer: true,
             discoverer_timeout_sec: 5,
+            srt_latency: 100,
+            tsdemux_latency: 100,
         }
     };
     let dump_pipeline = DumpPipeline::new(args);

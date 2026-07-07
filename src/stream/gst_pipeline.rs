@@ -233,7 +233,7 @@ impl PipelineBase for SharablePipeline {
         let src = gst::ElementFactory::make("srtsrc")
             .name("srt_source")
             .property("uri", uri)
-            .property("latency", 0)
+            .property("latency", args.srt_latency as i32)
             .build()?;
         let input_tee = gst::ElementFactory::make("tee").name("input_tee").build()?;
 
@@ -243,7 +243,7 @@ impl PipelineBase for SharablePipeline {
             .build()?;
         let tsdemux = gst::ElementFactory::make("tsdemux")
             .name("demux")
-            .property("latency", 0)
+            .property("latency", args.tsdemux_latency as i32)
             .build()?;
 
         let video_queue = Self::create_custom_queue("video-queue", "0", "0", "no")?;

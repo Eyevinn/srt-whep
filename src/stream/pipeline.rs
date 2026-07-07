@@ -15,6 +15,17 @@ pub struct Args {
     #[clap(short, long, value_enum, verbatim_doc_comment, default_value_t = SRTMode::Caller)]
     pub srt_mode: SRTMode,
 
+    /// SRT stream latency in milliseconds
+    /// As the stream receiver, increasing this value will smooth out possible network jitters
+    /// but will also add latency to the preview.
+    #[clap(long, default_value_t = 0)]
+    pub srt_latency: u32,
+
+    /// TSDemux latency in milliseconds
+    /// Latency to add for smooth demuxing MPEG2 transport streams
+    #[clap(long, default_value_t = 0)]
+    pub tsdemux_latency: u32,
+
     /// Run discoverer before connecting to the SRT stream
     #[clap(short, long, default_value_t = false)]
     pub run_discoverer: bool,
