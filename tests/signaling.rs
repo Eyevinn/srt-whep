@@ -1,4 +1,5 @@
 use once_cell::sync::Lazy;
+use reqwest::StatusCode;
 use srt_whep::domain::{VALID_WHEP_ANSWER, VALID_WHIP_OFFER};
 use srt_whep::signal::{spawn_coordinator, CoordinatorConfig};
 use srt_whep::startup::run;
@@ -24,7 +25,6 @@ fn functional_config() -> CoordinatorConfig {
 }
 
 /// Short timeouts for tests that deliberately let handshakes expire.
-#[allow(dead_code)]
 fn expiring_config(watchdog_threshold: u32) -> CoordinatorConfig {
     CoordinatorConfig {
         offer_timeout: Duration::from_millis(300),
@@ -228,4 +228,87 @@ async fn options_reports_cors_and_accept_post() {
         "application/sdp",
         response.headers()["ACCEPT-POST"].to_str().unwrap()
     );
+}
+
+#[tokio::test]
+async fn failed_handshake_does_not_affect_the_next_one() {
+    let (address, pipeline) = spawn_app(expiring_config(3));
+
+    // First viewer: nothing ever answers the whipsink leg -> offer times out.
+    let response = reqwest::Client::new()
+        .post(format!("{}/channel", address))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(StatusCode::SERVICE_UNAVAILABLE, response.status());
+
+    let first_id = wait_for_added_connection(&pipeline, 0).await;
+    let snap = pipeline.snapshot();
+    assert!(snap.removed.contains(&first_id), "branch not cleaned up");
+    assert_eq!(
+        0, snap.quit_count,
+        "single failure must not restart pipeline"
+    );
+
+    // Second viewer: full exchange succeeds on the same server.
+    complete_exchange(&address, &pipeline, 1).await;
+    assert_eq!(0, pipeline.snapshot().quit_count);
+}
+
+#[tokio::test]
+async fn watchdog_restarts_pipeline_after_consecutive_failures() {
+    let (address, pipeline) = spawn_app(expiring_config(2));
+    let client = reqwest::Client::new();
+
+    for _ in 0..2 {
+        let response = client
+            .post(format!("{}/channel", address))
+            .send()
+            .await
+            .unwrap();
+        assert_eq!(StatusCode::SERVICE_UNAVAILABLE, response.status());
+    }
+
+    // Threshold 2: the second consecutive failure quits the pipeline.
+    assert_eq!(1, pipeline.snapshot().quit_count);
+}
+
+#[tokio::test]
+async fn list_and_delete_manage_the_connection_lifecycle() {
+    let (address, pipeline) = spawn_app(functional_config());
+    let client = reqwest::Client::new();
+
+    let id = complete_exchange(&address, &pipeline, 0).await;
+
+    // Established connection is listed with its state.
+    let list: Vec<serde_json::Value> = client
+        .get(format!("{}/list", address))
+        .send()
+        .await
+        .unwrap()
+        .json()
+        .await
+        .unwrap();
+    assert_eq!(1, list.len());
+    assert_eq!(id, list[0]["id"]);
+    assert_eq!("established", list[0]["state"]);
+
+    // DELETE removes it from the pipeline and the list.
+    let response = client
+        .delete(format!("{}/channel/{}", address, id))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(StatusCode::OK, response.status());
+    assert!(pipeline.snapshot().removed.contains(&id));
+
+    let list: Vec<serde_json::Value> = client
+        .get(format!("{}/list", address))
+        .send()
+        .await
+        .unwrap()
+        .json()
+        .await
+        .unwrap();
+    assert!(list.is_empty());
 }
