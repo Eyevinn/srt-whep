@@ -232,3 +232,37 @@ checks; direction-typed newtypes would be new design work, not fallout.
 **Done-when check:** no `SignalError::Pipeline(String)` from
 `to_string()` flattening ✓ · error-contract tests extended for the new
 mapping ✓.
+
+## 2026-07-07 — Final whole-branch review + close-out (`3bd0a04`, `f4f7cff`)
+
+Independent whole-branch review (9cc8f48..71e1337): verdict **"merge with
+fixes"**. It confirmed all binding constraints hold (branch calls still
+serialized in the coordinator; loopback WHIP intact; watchdog semantics
+unchanged), nothing on the do-not-regress list regressed, and the probed
+concurrency surfaces (supervisor shutdown/select, watch-channel edges,
+narrowed lock scopes vs. clean_up races) are sound.
+
+**Critical finding, fixed:** `src/stream/errors.rs` was never committed —
+the C4 commit staged with `git add -u`, which skips new files, so
+`947a46c` and `71e1337` do not build from a clean checkout. Fixed as a
+follow-up commit `3bd0a04` (no content changes). Note for the merge
+decision: those two mid-branch commits remain non-building; squashing or
+rebasing them away would need a history rewrite, which is the user's
+call, not taken here. `f4f7cff` applies the review's two recommended
+one-liners (drop `anyhow::Ok` import; `apt-get -y` in CI).
+
+**Parked Minor findings, triaged by the reviewer — all "leave":** reqwest
+dev-builds native-tls-only (tests are plain http); CI apt list quirks
+(now with `-y`); gitignore trailing-slash style; ADR/CONTEXT restating
+the serialized-branch trade-off (CONTEXT defers to the ADR).
+
+**Final state:** 34 unit + 10 integration green, 1 ignored e2e (passes in
+isolation at HEAD, 18s, clean exit); one-Ctrl-C smoke verified; clean
+worktree == HEAD.
+
+**Deferred items:** C3d lifecycle typestate (review: revisit spec first) ·
+C6 direction-typed SDP (did not fall out of C4) · bounded timeout around
+the supervisor's cleanup on the main shutdown path · `remove_branch`
+detach failures map to `Fatal` unconditionally (rare; 500 where 503 would
+be kinder when racing a restart) · optional `default-features = false`
+for dev-deps reqwest.
