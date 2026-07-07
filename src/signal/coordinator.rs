@@ -463,4 +463,122 @@ mod tests {
         assert_eq!(vec!["a".to_string()], snap.added);
         assert_eq!(vec!["a".to_string()], snap.removed);
     }
+
+    #[tokio::test(start_paused = true)]
+    async fn not_ready_pipeline_rejects_creation() {
+        let pipeline = TestPipeline::default(); // ready = false
+        let tx = spawn_actor(pipeline.clone(), test_config());
+
+        let (whep_tx, whep_rx) = oneshot::channel();
+        tx.send(Command::CreateConnection {
+            id: "a".into(),
+            reply: whep_tx,
+        })
+        .await
+        .unwrap();
+
+        assert!(matches!(whep_rx.await.unwrap(), Err(SignalError::NotReady)));
+        assert!(pipeline.snapshot().added.is_empty());
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn unknown_id_is_not_found_for_every_command() {
+        let pipeline = ready_pipeline();
+        let tx = spawn_actor(pipeline.clone(), test_config());
+
+        let (whip_tx, whip_rx) = oneshot::channel();
+        tx.send(Command::OfferReceived {
+            id: "ghost".into(),
+            sdp: offer(),
+            reply: whip_tx,
+        })
+        .await
+        .unwrap();
+        assert!(matches!(
+            whip_rx.await.unwrap(),
+            Err(SignalError::NotFound(_))
+        ));
+
+        let (patch_tx, patch_rx) = oneshot::channel();
+        tx.send(Command::AnswerReceived {
+            id: "ghost".into(),
+            sdp: answer(),
+            reply: patch_tx,
+        })
+        .await
+        .unwrap();
+        assert!(matches!(
+            patch_rx.await.unwrap(),
+            Err(SignalError::NotFound(_))
+        ));
+
+        let (rm_tx, rm_rx) = oneshot::channel();
+        tx.send(Command::RemoveConnection {
+            id: "ghost".into(),
+            reply: rm_tx,
+        })
+        .await
+        .unwrap();
+        assert!(matches!(
+            rm_rx.await.unwrap(),
+            Err(SignalError::NotFound(_))
+        ));
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn wrong_state_commands_are_rejected_without_corruption() {
+        let pipeline = ready_pipeline();
+        let tx = spawn_actor(pipeline.clone(), test_config());
+
+        // Duplicate create.
+        let (t1, r1) = oneshot::channel();
+        tx.send(Command::CreateConnection {
+            id: "a".into(),
+            reply: t1,
+        })
+        .await
+        .unwrap();
+        let (t2, r2) = oneshot::channel();
+        tx.send(Command::CreateConnection {
+            id: "a".into(),
+            reply: t2,
+        })
+        .await
+        .unwrap();
+        assert!(matches!(r2.await.unwrap(), Err(SignalError::WrongState(_))));
+
+        // PATCH before the offer exists is a wrong-state command.
+        let (t3, r3) = oneshot::channel();
+        tx.send(Command::AnswerReceived {
+            id: "a".into(),
+            sdp: answer(),
+            reply: t3,
+        })
+        .await
+        .unwrap();
+        assert!(matches!(r3.await.unwrap(), Err(SignalError::WrongState(_))));
+
+        // The original handshake still works after both rejections.
+        let (t4, r4) = oneshot::channel();
+        tx.send(Command::OfferReceived {
+            id: "a".into(),
+            sdp: offer(),
+            reply: t4,
+        })
+        .await
+        .unwrap();
+        assert!(r1.await.unwrap().is_ok());
+
+        let (t5, r5) = oneshot::channel();
+        tx.send(Command::AnswerReceived {
+            id: "a".into(),
+            sdp: answer(),
+            reply: t5,
+        })
+        .await
+        .unwrap();
+        assert!(r5.await.unwrap().is_ok());
+        assert!(r4.await.unwrap().is_ok());
+        assert_eq!(1, pipeline.snapshot().added.len()); // no duplicate branch
+    }
 }
