@@ -11,7 +11,12 @@ export DYLD_LIBRARY_PATH=$DYLD_LIBRARY_PATH:$GST_PLUGIN_PATH
 Example command for starting a srt stream with screen captured video and a constant tone as audio.
 ```
 gst-launch-1.0 -v \
-    videotestsrc ! clockoverlay ! video/x-raw, height=360, width=640 ! videoconvert ! x264enc tune=zerolatency ! video/x-h264, profile=constrained-baseline ! mux. \
+    videotestsrc ! clockoverlay ! video/x-raw, height=360, width=640 ! videoconvert ! x264enc tune=zerolatency key-int-max=30 ! video/x-h264, profile=constrained-baseline ! mux. \
     audiotestsrc ! audio/x-raw, format=S16LE, channels=2, rate=44100 ! audioconvert ! voaacenc ! aacparse ! mux. \
     mpegtsmux name=mux ! queue ! srtsink uri="srt://127.0.0.1:1234?mode=listener" wait-for-connection=false
 ```
+
+`key-int-max=30` gives a ~1s keyframe interval so a WebRTC viewer that joins this
+stream mid-flight gets video quickly — its branch is hot-plugged into the running
+pipeline and cannot render until the next IDR keyframe arrives. See the "Keyframe
+Interval (GOP)" tip in the [README](../README.md).

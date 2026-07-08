@@ -48,18 +48,21 @@ COPY . .
 # Build our application
 RUN cargo build --release
 
-FROM lukemathwalker/cargo-chef:latest-rust-slim-bookworm AS runtime
-ENV DEBIAN_FRONTEND=noninteractive
-RUN apt update
-RUN apt-get install -y libgstreamer1.0-0 \
-    gstreamer1.0-plugins-base \
-    gstreamer1.0-plugins-good \
-    gstreamer1.0-plugins-bad \
-    gstreamer1.0-plugins-ugly \
-    gstreamer1.0-libav \
-    gstreamer1.0-tools \
-    gstreamer1.0-nice
-
+# Runtime image.
+#
+# srt-whep no longer compiles in its own WebRTC sink; it loads `whipclientsink`
+# from whichever `rswebrtc` plugin the GStreamer installation provides (see
+# docs/adr/0003 and docs/adr/0004). No Debian/Ubuntu apt package ships that
+# plugin, so the plain gstreamer1.0-plugins-* set used before this base leaves
+# `whipclientsink` missing and every viewer branch fails. livekit/gstreamer's
+# `-prod-rs` image bundles gst-plugins-rs (libgstrswebrtc.so) in the default
+# plugin path, alongside the SRT, tsdemux and RTP elements the pipeline needs.
+#
+# The builder above compiles against GStreamer 1.22 (bookworm); GStreamer keeps
+# a stable ABI across the 1.x series, so that binary runs on this newer 1.26
+# runtime. The binary itself is version-agnostic about rswebrtc — it resolves
+# the element by name at runtime — so only the core GStreamer/glib ABI matters.
+FROM livekit/gstreamer:1.26.7-prod-rs AS runtime
 WORKDIR /app
 COPY --from=builder /app/target/release/srt-whep ./srt-whep
 
