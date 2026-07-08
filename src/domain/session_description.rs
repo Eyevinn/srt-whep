@@ -7,7 +7,11 @@ use super::SdpError;
 pub struct SessionDescription(String);
 
 impl SessionDescription {
-    /// Returns an instance of `SessionDescription` if the input satisfies all our validation constraints.
+    /// Validate a raw SDP string.
+    ///
+    /// Returns `Ok(SessionDescription)` if the input satisfies all our
+    /// validation constraints (non-empty, starts with `v=0`, and contains
+    /// `a=sendonly` or `a=recvonly`), or `Err(SdpError::InvalidSdp)` otherwise.
     pub fn parse(s: String) -> Result<SessionDescription, SdpError> {
         // `.trim()` returns a view over the input `s` without trailing
         // whitespace-like characters.
@@ -29,6 +33,8 @@ impl SessionDescription {
         }
     }
 
+    /// Returns `true` if this description advertises `a=sendonly` (the WHIP
+    /// offer direction), `false` otherwise (e.g. a `recvonly` WHEP answer).
     pub fn is_sendonly(&self) -> bool {
         self.0.contains("a=sendonly")
     }

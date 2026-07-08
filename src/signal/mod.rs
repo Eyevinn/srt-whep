@@ -41,11 +41,17 @@ impl SignalHandle {
         reply_rx.await.map_err(|_| SignalError::Unavailable)?
     }
 
+    /// Register a new connection (WHEP POST). Sends `CreateConnection` and
+    /// awaits the coordinator's reply, which resolves to the SDP offer once
+    /// the whipsink delivers it, or an error on timeout/failure.
     pub async fn create_connection(&self, id: String) -> Result<SessionDescription, SignalError> {
         self.request(|reply| Command::CreateConnection { id, reply })
             .await
     }
 
+    /// Hand the whipsink's SDP offer to the coordinator (loopback WHIP POST).
+    /// Sends `OfferReceived` and awaits the reply, which resolves to the SDP
+    /// answer once the browser PATCHes it, or an error on timeout/failure.
     pub async fn offer_received(
         &self,
         id: String,
@@ -55,6 +61,9 @@ impl SignalHandle {
             .await
     }
 
+    /// Hand the browser's SDP answer to the coordinator (WHEP PATCH). Sends
+    /// `AnswerReceived`; the reply is `Ok(())` once the answer is accepted,
+    /// or an error if the connection is unknown or the coordinator is gone.
     pub async fn answer_received(
         &self,
         id: String,
@@ -64,11 +73,17 @@ impl SignalHandle {
             .await
     }
 
+    /// Tear down a connection (WHEP/WHIP DELETE or internal cleanup). Sends
+    /// `RemoveConnection`; the reply is `Ok(())` once it is removed, or an
+    /// error if the coordinator is unavailable.
     pub async fn remove_connection(&self, id: String) -> Result<(), SignalError> {
         self.request(|reply| Command::RemoveConnection { id, reply })
             .await
     }
 
+    /// List the current connections and their states (GET /list). Sends
+    /// `ListConnections` and awaits the reply carrying the snapshot; errors
+    /// only if the coordinator is unavailable.
     pub async fn list_connections(&self) -> Result<Vec<ConnectionInfo>, SignalError> {
         let (reply_tx, reply_rx) = oneshot::channel();
         self.tx
@@ -78,6 +93,10 @@ impl SignalHandle {
         reply_rx.await.map_err(|_| SignalError::Unavailable)
     }
 
+    /// Reset the coordinator after a pipeline restart (supervisor only).
+    /// Sends `Reset`, which fails all in-flight waiters and clears the
+    /// connection map; the reply is `Ok(())` once done, or an error if the
+    /// coordinator is unavailable.
     pub async fn reset(&self) -> Result<(), SignalError> {
         let (reply_tx, reply_rx) = oneshot::channel();
         self.tx

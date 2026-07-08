@@ -3,5 +3,5 @@ pub mod routes;
 pub mod signal;
 pub mod startup;
 pub mod stream;
-pub mod supervisor;
+pub(crate) mod supervisor;
 pub mod telemetry;
