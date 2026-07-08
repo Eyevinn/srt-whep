@@ -23,6 +23,16 @@ Run this service in the cloud with a single click.
 
 ![screenshot](docs/screenshot.png)
 
+## Architecture
+
+Internally the flow is: SRT ingest → a signaling coordinator (a single actor
+that owns all connection state) → one hot-plugged GStreamer branch per viewer
+→ WebRTC/WHEP out. Each viewer's branch reaches the signaling plane through an
+in-process loopback WHIP bridge, so the pipeline never imports signaling code.
+
+For the module map and domain glossary see [`CONTEXT.md`](./CONTEXT.md); the
+design decisions behind this shape are recorded in [`docs/adr/`](./docs/adr/).
+
 ## Design Principles
 When conceiving this project, we made deliberate design choices to shape its functionality and behavior in alignment with our vision:
 
@@ -93,7 +103,7 @@ Note that the container needs to run in host-mode (supported only on Linux).
 
 Requirements:
 - XCode command line tools installed
-- GStreamer [binaries](https://gstreamer.freedesktop.org/data/pkg/osx/) from GStreamer's website installed
+- GStreamer [binaries](https://gstreamer.freedesktop.org/data/pkg/osx/) from GStreamer's website installed — a recent version that **bundles the `rswebrtc` plugin** (it provides `whipclientsink`; verify with `gst-inspect-1.0 whipclientsink`). srt-whep uses whichever `rswebrtc` the installation provides rather than compiling its own copy in (see [`docs/adr/0003`](./docs/adr/0003-webrtc-plugin-from-installation.md)).
 - Rust and cargo installed
 
 Make sure you have the following env variables defined:
@@ -104,6 +114,12 @@ export PKG_CONFIG_PATH=/Library/Frameworks/GStreamer.framework/Versions/Current/
 export GST_PLUGIN_PATH=/Library/Frameworks/GStreamer.framework/Versions/Current/lib
 export DYLD_FALLBACK_LIBRARY_PATH=$GST_PLUGIN_PATH
 ```
+
+> Keep `GST_PLUGIN_PATH` pointed at the GStreamer installation only. Do **not**
+> prepend a separately-built `gst-plugins-rs`: if it ships a higher-versioned
+> `rswebrtc` it wins the plugin registry and replaces the installation's
+> matched one, which can break the WebRTC media path (see
+> [`docs/adr/0003`](./docs/adr/0003-webrtc-plugin-from-installation.md)).
 
 Build with Cargo
 
@@ -160,6 +176,16 @@ apt-get -y install build-essential \
   gstreamer1.0-nice
 ```
 
+> **WebRTC output needs the `rswebrtc` plugin, which the packages above do
+> not include.** srt-whep loads `whipclientsink` from the installed
+> `rswebrtc`/`gst-plugins-rs` plugin rather than compiling its own copy (see
+> [`docs/adr/0003`](./docs/adr/0003-webrtc-plugin-from-installation.md)), and
+> no Debian/Ubuntu apt package ships it. Without it the app ingests SRT but
+> every WHEP viewer fails. Build [`gst-plugins-rs`](https://gitlab.freedesktop.org/gstreamer/gst-plugins-rs)
+> and put `libgstrswebrtc.so` on `GST_PLUGIN_PATH`, or just use the Docker
+> image, whose base already bundles it (see [`docs/adr/0004`](./docs/adr/0004-docker-runtime-base-with-rswebrtc.md)).
+> Verify with `gst-inspect-1.0 whipclientsink`.
+
 Build with Cargo
 
 ```
@@ -177,6 +203,12 @@ Build container (uses multi-stage builds):
 ```
 docker build -t srt-whep:dev .
 ```
+
+The runtime image is based on [`livekit/gstreamer`](https://hub.docker.com/r/livekit/gstreamer)'s
+`-prod-rs` tag because it bundles the `rswebrtc` plugin that provides
+`whipclientsink` (the WebRTC output element). No Debian/Ubuntu apt package ships
+that plugin, so a stock `gstreamer1.0-plugins-*` install alone is not enough —
+see [`docs/adr/0004`](./docs/adr/0004-docker-runtime-base-with-rswebrtc.md).
 
 Container must be running in host-mode (only works on Linux hosts, and is not supported on Docker Desktop for Mac, Docker Desktop for Windows)
 
@@ -235,6 +267,10 @@ When working with SRT streams, there are several important considerations that c
 5. **SRT Stream Latency:**
 - SRT streams can be configured to have different latencies. For example, if you're using GStreamer to generate SRT streams, you can set the latency parameter of `srtsink` or `srtsrc` to fit your need. For example, `latency=200` sets the latency to 200ms, which is appropriate for most use cases.
 - Our tool adds a minimun latency to the stream by default. If you want to measure the end-to-end latency, you can try to generate a stream using OBS with a clock overlay (which adds a very low latency). Then you can compare the clock in the stream with the built-in clock from our WHEP player. The end-to-end latency should be around 300~500 ms.
+
+6. **Keyframe Interval (GOP) for Late-Joining Viewers:**
+- A WebRTC viewer's branch is hot-plugged into the running pipeline, so it starts receiving mid-stream. A decoder needs an IDR keyframe (with its SPS/PPS) before it can render video, and srt-whep does not transcode, so it cannot force the source to emit one — it can only forward the next keyframe the source sends.
+- Configure the source with a short keyframe interval so viewers get video quickly. In `x264enc` set `key-int-max=30` (≈1s at 30fps); in FFmpeg use `-g 30`. With a long/infinite GOP, audio (Opus) plays immediately while video stays black until the next keyframe arrives.
 
 ## Discussion and Issues
 All relevant discussions are tracked in [issues](https://github.com/Eyevinn/srt-whep/issues/). Please feel free to open a new issue if you have any questions.

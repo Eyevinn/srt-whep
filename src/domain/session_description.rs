@@ -1,14 +1,18 @@
 use std::convert::TryFrom;
 use std::fmt::{Debug, Display};
 
-use super::MyError;
+use super::SdpError;
 
 #[derive(Debug, Clone)]
 pub struct SessionDescription(String);
 
 impl SessionDescription {
-    /// Returns an instance of `SessionDescription` if the input satisfies all our validation constraints.
-    pub fn parse(s: String) -> Result<SessionDescription, MyError> {
+    /// Validate a raw SDP string.
+    ///
+    /// Returns `Ok(SessionDescription)` if the input satisfies all our
+    /// validation constraints (non-empty, starts with `v=0`, and contains
+    /// `a=sendonly` or `a=recvonly`), or `Err(SdpError::InvalidSdp)` otherwise.
+    pub fn parse(s: String) -> Result<SessionDescription, SdpError> {
         // `.trim()` returns a view over the input `s` without trailing
         // whitespace-like characters.
         // `.is_empty` checks if the view contains any character.
@@ -21,31 +25,23 @@ impl SessionDescription {
         let sendonly_or_recvonly = s.contains("a=sendonly") || s.contains("a=recvonly");
 
         if is_empty_or_whitespace || !starts_with_v0 || !sendonly_or_recvonly {
-            Err(MyError::InvalidSDP(s))
+            Err(SdpError::InvalidSdp(
+                "SDP must start with v=0 and contain a=sendonly or a=recvonly".to_string(),
+            ))
         } else {
             Ok(Self(s))
         }
     }
 
+    /// Returns `true` if this description advertises `a=sendonly` (the WHIP
+    /// offer direction), `false` otherwise (e.g. a `recvonly` WHEP answer).
     pub fn is_sendonly(&self) -> bool {
         self.0.contains("a=sendonly")
-    }
-
-    pub fn is_empty(&self) -> bool {
-        self.0.trim().is_empty()
-    }
-
-    pub fn set_as_active(&mut self) {
-        self.0 = self.0.replace("a=setup:actpass", "a=setup:active");
-    }
-
-    pub fn set_as_passive(&mut self) {
-        self.0 = self.0.replace("a=setup:actpass", "a=setup:passive");
     }
 }
 
 impl TryFrom<String> for SessionDescription {
-    type Error = MyError;
+    type Error = SdpError;
 
     fn try_from(value: String) -> Result<Self, Self::Error> {
         let sdp = SessionDescription::parse(value)?;
@@ -60,6 +56,75 @@ impl AsRef<str> for SessionDescription {
 }
 
 impl Display for SessionDescription {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
+/// A WHIP/WHEP **offer**: an SDP proven to advertise `a=sendonly`. Distinct
+/// from [`SdpAnswer`] so an offer and an answer can never be swapped by type.
+#[derive(Debug, Clone)]
+pub struct SdpOffer(SessionDescription);
+
+impl SdpOffer {
+    /// Validate `s` as an SDP and require the sendonly (offer) direction.
+    pub fn parse(s: String) -> Result<SdpOffer, SdpError> {
+        let sdp = SessionDescription::parse(s)?;
+        if !sdp.is_sendonly() {
+            return Err(SdpError::InvalidSdp(
+                "expected a sendonly offer, got a recvonly SDP".to_string(),
+            ));
+        }
+        Ok(SdpOffer(sdp))
+    }
+
+    /// Always `true` — an offer is sendonly by construction.
+    pub fn is_sendonly(&self) -> bool {
+        self.0.is_sendonly()
+    }
+}
+
+impl AsRef<str> for SdpOffer {
+    fn as_ref(&self) -> &str {
+        self.0.as_ref()
+    }
+}
+
+impl Display for SdpOffer {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
+/// A WHEP **answer**: an SDP proven to advertise the recvonly direction.
+#[derive(Debug, Clone)]
+pub struct SdpAnswer(SessionDescription);
+
+impl SdpAnswer {
+    /// Validate `s` as an SDP and require the recvonly (answer) direction.
+    pub fn parse(s: String) -> Result<SdpAnswer, SdpError> {
+        let sdp = SessionDescription::parse(s)?;
+        if sdp.is_sendonly() {
+            return Err(SdpError::InvalidSdp(
+                "expected a recvonly answer, got a sendonly SDP".to_string(),
+            ));
+        }
+        Ok(SdpAnswer(sdp))
+    }
+
+    /// Always `false` — an answer is recvonly by construction.
+    pub fn is_sendonly(&self) -> bool {
+        self.0.is_sendonly()
+    }
+}
+
+impl AsRef<str> for SdpAnswer {
+    fn as_ref(&self) -> &str {
+        self.0.as_ref()
+    }
+}
+
+impl Display for SdpAnswer {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.0)
     }
@@ -127,7 +192,7 @@ pub const VALID_WHEP_ANSWER: &str = "v=0
 
 #[cfg(test)]
 mod tests {
-    use super::{SessionDescription, VALID_WHEP_ANSWER, VALID_WHIP_OFFER};
+    use super::{SdpAnswer, SdpOffer, SessionDescription, VALID_WHEP_ANSWER, VALID_WHIP_OFFER};
     use claims::{assert_err, assert_ok};
 
     #[test]
@@ -161,5 +226,25 @@ mod tests {
 
         let whep_sdp = VALID_WHEP_ANSWER.to_string();
         assert_ok!(SessionDescription::parse(whep_sdp));
+    }
+
+    #[test]
+    fn offer_requires_sendonly() {
+        assert_ok!(SdpOffer::parse(VALID_WHIP_OFFER.to_string()));
+        // A recvonly answer is not a valid offer.
+        assert_err!(SdpOffer::parse(VALID_WHEP_ANSWER.to_string()));
+    }
+
+    #[test]
+    fn answer_requires_recvonly() {
+        assert_ok!(SdpAnswer::parse(VALID_WHEP_ANSWER.to_string()));
+        // A sendonly offer is not a valid answer.
+        assert_err!(SdpAnswer::parse(VALID_WHIP_OFFER.to_string()));
+    }
+
+    #[test]
+    fn direction_newtypes_reject_malformed_sdp() {
+        assert_err!(SdpOffer::parse("v=1".to_string()));
+        assert_err!(SdpAnswer::parse("".to_string()));
     }
 }

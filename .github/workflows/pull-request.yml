@@ -2,7 +2,6 @@ name: Test building Docker image on PR
 
 on:
   pull_request:
-    types: [opened]
 
 jobs:
   build:
@@ -11,18 +10,73 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Set up QEMU
-        uses: docker/setup-qemu-action@v2
+        uses: docker/setup-qemu-action@v3
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v2
+        uses: docker/setup-buildx-action@v3
 
-      - name: Only build Docker image
-        uses: docker/build-push-action@v3
+      - name: Build Docker image (load for smoke test)
+        uses: docker/build-push-action@v6
         with:
           context: .
           platforms: linux/amd64
           push: false
+          load: true
           tags: srt-whep:build
+
+      # The image builds fine even when the WebRTC output element is missing;
+      # the failure only shows at runtime. Run the image so a missing
+      # whipclientsink (see docs/adr/0004) fails the PR instead of shipping.
+      - name: Smoke test — WebRTC element present & binary runs
+        run: |
+          docker run --rm --entrypoint gst-inspect-1.0 srt-whep:build whipclientsink
+          docker run --rm srt-whep:build --help
+
+  test:
+    name: Run test suite, fmt and clippy
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install stable toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Install gstreamer deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libunwind-dev \
+            libgstreamer1.0-dev \
+            libgstreamer-plugins-base1.0-dev \
+            libgstreamer-plugins-bad1.0-dev \
+            gstreamer1.0-plugins-base \
+            gstreamer1.0-plugins-good \
+            gstreamer1.0-plugins-bad \
+            gstreamer1.0-plugins-ugly \
+            gstreamer1.0-libav \
+            gstreamer1.0-tools \
+            gstreamer1.0-x \
+            gstreamer1.0-alsa \
+            gstreamer1.0-gl \
+            gstreamer1.0-gtk3 \
+            gstreamer1.0-qt5 \
+            gstreamer1.0-pulseaudio \
+            gstreamer1.0-nice
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+
+      - name: Run test suite
+        run: cargo test --all-targets
+
+      - name: Check formatting
+        run: cargo fmt --check
+
+      - name: Run clippy
+        run: cargo clippy -- -D warnings
