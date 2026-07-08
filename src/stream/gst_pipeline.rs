@@ -173,8 +173,11 @@ impl PipelineLifecycle for SharablePipeline {
     async fn init(&self) -> Result<(), Error> {
         // Initialize GStreamer (only once)
         gst::init()?;
-        // Load webrtcsink plugin
-        gstrswebrtc::plugin_register_static()?;
+        // The WHIP sink (whipclientsink) comes from the rswebrtc plugin that the
+        // GStreamer installation provides, discovered on the plugin path. We do
+        // NOT statically register a crate-pinned copy here: that copy is built
+        // against a fixed (older) GStreamer and would shadow the installed
+        // plugin, breaking the WebRTC RTP path against a newer runtime.
         tracing::debug!("Setting up pipeline");
 
         let args = self.state.lock_err().await?.args.clone();
