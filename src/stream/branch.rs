@@ -9,8 +9,6 @@
 use anyhow::{Error, Result};
 use gst::prelude::*;
 use gstreamer as gst;
-use gstrswebrtc::signaller::Signallable;
-use gstrswebrtc::webrtcsink::WhipWebRTCSink;
 
 use crate::stream::errors::StreamError;
 
@@ -86,8 +84,16 @@ impl Branch {
             .name(self.whip_sink_name())
             .build()?;
         pipeline.add_many([&whipsink])?;
-        if let Some(whipsink) = whipsink.dynamic_cast_ref::<WhipWebRTCSink>() {
-            let signaller = whipsink.property::<Signallable>("signaller");
+        // Point this connection's WHIP signaller at the in-process loopback
+        // endpoint. We reach it as a plain GObject property rather than through
+        // the webrtcsink crate's Rust types: those types are version-locked to a
+        // specific GStreamer release, and binding them into this binary let a
+        // stale statically-registered copy shadow the installed rswebrtc plugin.
+        // The "signaller" object and its "whip-endpoint" property are part of the
+        // element's stable API, so this works against whichever plugin version
+        // the GStreamer installation provides.
+        if whipsink.find_property("signaller").is_some() {
+            let signaller = whipsink.property::<gst::glib::Object>("signaller");
             signaller.set_property_from_str("whip-endpoint", &whip_endpoint(port, &self.id));
         }
 
