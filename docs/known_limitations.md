@@ -26,3 +26,11 @@ While using the program, you might encounter some issues. We have documented the
 5. **Chrome WebRTC Connection Retry:**
 - Problem: Chrome will automatically retry a broken WebRTC connection, which could lead to complications when the SRT client (caller) disconnects and then reconnects.
 - Solution: To mitigate potential issues, it's recommended to reload the page when the SRT input stream is changed.
+
+6. **`tsdemux` split `no-more-pads` on mid-stream join:**
+- Problem: When srt-whep connects to an already-running SRT source, `tsdemux` can expose one media pad (e.g. audio) and fire `no-more-pads` before the other pad (video) appears, then fire `no-more-pads` a second time. The pipeline links the first `no-more-pads` and the second one collides with the already-built elements (`Pad was already linked` / `Failed to add elements` in the logs). A link failure posts no error to the bus, so the supervisor does not restart, and the pipeline stays half-linked — `POST /channel` then returns 503. This is intermittent and timing-dependent.
+- Solution: Start (or restart) srt-whep so it connects at/near the start of the stream, where the PAT/PMT and both elementary streams appear together. Restarting the source right before srt-whep also resolves it.
+
+7. **GStreamer version / `rswebrtc` plugin:**
+- Problem: srt-whep uses the `whipclientsink` from whichever `rswebrtc` plugin the GStreamer installation provides (it no longer compiles its own copy — see [ADR 0003](adr/0003-webrtc-plugin-from-installation.md)). If the installation lacks `rswebrtc`, or a second, mismatched `rswebrtc` is placed earlier on `GST_PLUGIN_PATH`, WHEP can connect but deliver no media.
+- Solution: Use a GStreamer build that bundles `rswebrtc` (`gst-inspect-1.0 whipclientsink` should succeed) and keep `GST_PLUGIN_PATH` pointed at that installation only — do not prepend a separately-built `gst-plugins-rs`.

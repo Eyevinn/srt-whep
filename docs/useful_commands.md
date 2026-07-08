@@ -11,10 +11,11 @@ ffmpeg -f lavfi -re -i testsrc=size=1280x720:rate=30 -f lavfi -re \
 - GStreamer
 ```
 gst-launch-1.0 -v \
-    videotestsrc ! clockoverlay ! video/x-raw, height=360, width=640 ! videoconvert ! x264enc tune=zerolatency ! video/x-h264, profile=constrained-baseline ! mux. \
+    videotestsrc ! clockoverlay ! video/x-raw, height=360, width=640 ! videoconvert ! x264enc tune=zerolatency key-int-max=30 ! video/x-h264, profile=constrained-baseline ! mux. \
     audiotestsrc ! audio/x-raw, format=S16LE, channels=2, rate=44100 ! audioconvert ! voaacenc ! aacparse ! mux. \
     mpegtsmux name=mux ! queue ! srtsink uri="srt://127.0.0.1:1234?mode=caller" wait-for-connection=false latency=0
 ```
+`key-int-max=30` sets a ~1s keyframe interval (matching the FFmpeg example's `-g 30`). Without it, `x264enc` uses a long default GOP, so a WebRTC viewer that joins mid-stream waits a long time for the first keyframe — video stays black while audio plays. See the "Keyframe Interval" tip in the README.
 - Our docker image (running in `listener` mode)
 ```
 docker run --rm -p 1234:1234/udp eyevinntechnology/testsrc

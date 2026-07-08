@@ -92,7 +92,7 @@ Note that the container needs to run in host-mode (supported only on Linux).
 
 Requirements:
 - XCode command line tools installed
-- GStreamer [binaries](https://gstreamer.freedesktop.org/data/pkg/osx/) from GStreamer's website installed
+- GStreamer [binaries](https://gstreamer.freedesktop.org/data/pkg/osx/) from GStreamer's website installed — a recent version that **bundles the `rswebrtc` plugin** (it provides `whipclientsink`; verify with `gst-inspect-1.0 whipclientsink`). srt-whep uses whichever `rswebrtc` the installation provides rather than compiling its own copy in (see [`docs/adr/0003`](./docs/adr/0003-webrtc-plugin-from-installation.md)).
 - Rust and cargo installed
 
 Make sure you have the following env variables defined:
@@ -103,6 +103,12 @@ export PKG_CONFIG_PATH=/Library/Frameworks/GStreamer.framework/Versions/Current/
 export GST_PLUGIN_PATH=/Library/Frameworks/GStreamer.framework/Versions/Current/lib
 export DYLD_FALLBACK_LIBRARY_PATH=$GST_PLUGIN_PATH
 ```
+
+> Keep `GST_PLUGIN_PATH` pointed at the GStreamer installation only. Do **not**
+> prepend a separately-built `gst-plugins-rs`: if it ships a higher-versioned
+> `rswebrtc` it wins the plugin registry and replaces the installation's
+> matched one, which can break the WebRTC media path (see
+> [`docs/adr/0003`](./docs/adr/0003-webrtc-plugin-from-installation.md)).
 
 Build with Cargo
 
@@ -221,6 +227,10 @@ When working with SRT streams, there are several important considerations that c
 5. **SRT Stream Latency:**
 - SRT streams can be configured to have different latencies. For example, if you're using GStreamer to generate SRT streams, you can set the latency parameter of `srtsink` or `srtsrc` to fit your need. For example, `latency=200` sets the latency to 200ms, which is appropriate for most use cases.
 - Our tool adds a minimun latency to the stream by default. If you want to measure the end-to-end latency, you can try to generate a stream using OBS with a clock overlay (which adds a very low latency). Then you can compare the clock in the stream with the built-in clock from our WHEP player. The end-to-end latency should be around 300~500 ms.
+
+6. **Keyframe Interval (GOP) for Late-Joining Viewers:**
+- A WebRTC viewer's branch is hot-plugged into the running pipeline, so it starts receiving mid-stream. A decoder needs an IDR keyframe (with its SPS/PPS) before it can render video, and srt-whep does not transcode, so it cannot force the source to emit one — it can only forward the next keyframe the source sends.
+- Configure the source with a short keyframe interval so viewers get video quickly. In `x264enc` set `key-int-max=30` (≈1s at 30fps); in FFmpeg use `-g 30`. With a long/infinite GOP, audio (Opus) plays immediately while video stays black until the next keyframe arrives.
 
 ## Discussion and Issues
 All relevant discussions are tracked in [issues](https://github.com/Eyevinn/srt-whep/issues/). Please feel free to open a new issue if you have any questions.
