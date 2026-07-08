@@ -10,21 +10,30 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Set up QEMU
-        uses: docker/setup-qemu-action@v2
+        uses: docker/setup-qemu-action@v3
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v2
+        uses: docker/setup-buildx-action@v3
 
-      - name: Only build Docker image
-        uses: docker/build-push-action@v3
+      - name: Build Docker image (load for smoke test)
+        uses: docker/build-push-action@v6
         with:
           context: .
           platforms: linux/amd64
           push: false
+          load: true
           tags: srt-whep:build
+
+      # The image builds fine even when the WebRTC output element is missing;
+      # the failure only shows at runtime. Run the image so a missing
+      # whipclientsink (see docs/adr/0004) fails the PR instead of shipping.
+      - name: Smoke test — WebRTC element present & binary runs
+        run: |
+          docker run --rm --entrypoint gst-inspect-1.0 srt-whep:build whipclientsink
+          docker run --rm srt-whep:build --help
 
   test:
     name: Run test suite, fmt and clippy
@@ -32,7 +41,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Install stable toolchain
         uses: dtolnay/rust-toolchain@stable
