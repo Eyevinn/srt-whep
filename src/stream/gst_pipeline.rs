@@ -48,22 +48,11 @@ impl SharablePipeline {
             branch_failures: Arc::new(std::sync::Mutex::new(None)),
         }
     }
-}
 
-#[async_trait]
-impl BranchControl for SharablePipeline {
-    /// Check if SRT input stream is available
-    async fn ready(&self) -> Result<bool, PipelineError> {
-        let pipeline_state = self.state.lock_err().await.inspect_err(|e| {
-            tracing::error!("Failed to lock pipeline: {}", e);
-        })?;
-        let pipeline = pipeline_state.pipeline.as_ref();
-        if pipeline.is_none() {
-            tracing::error!("Pipeline is not initialized");
-            return Ok(false);
-        }
-        let pipeline = pipeline.unwrap();
-
+    /// Whether the input is demuxed and the matching output tees exist, so a
+    /// branch can be linked. Pure check over an already-locked pipeline; the
+    /// single source of truth for both `ready()` and `add_branch()`.
+    fn input_ready(pipeline: &Pipeline) -> Result<bool, PipelineError> {
         let demux = pipeline
             .by_name("demux")
             .ok_or_else(|| PipelineError::Fatal("Failed to find element: demux".to_string()))?;
@@ -75,16 +64,27 @@ impl BranchControl for SharablePipeline {
             return Ok(false);
         }
 
-        // The demux exposes its media pads (pad-added) before the output tees are
-        // built (no-more-pads -> link_media). add_connection links each new WHEP
-        // branch onto those tees, so the input is only truly ready to accept a
-        // connection once the matching tee exists. Reporting ready earlier lets a
-        // WHEP POST race pad creation and fail with a spurious 500 (and leak a
-        // half-added whipsink); gating on the tees turns that window into a
-        // retriable NotReady instead.
+        // The demux exposes its media pads (pad-added) before the output tees
+        // are built (no-more-pads -> link_media). A branch links onto those
+        // tees, so the input is only truly ready once the matching tee exists.
         let video_ready = !has_video || pipeline.by_name("output_tee_video").is_some();
         let audio_ready = !has_audio || pipeline.by_name("output_tee_audio").is_some();
         Ok(video_ready && audio_ready)
+    }
+}
+
+#[async_trait]
+impl BranchControl for SharablePipeline {
+    /// Check if SRT input stream is available
+    async fn ready(&self) -> Result<bool, PipelineError> {
+        let pipeline_state = self.state.lock_err().await.inspect_err(|e| {
+            tracing::error!("Failed to lock pipeline: {}", e);
+        })?;
+        let Some(pipeline) = pipeline_state.pipeline.as_ref() else {
+            tracing::error!("Pipeline is not initialized");
+            return Ok(false);
+        };
+        Self::input_ready(pipeline)
     }
 
     /// Add a viewer's branch to the pipeline
@@ -95,20 +95,22 @@ impl BranchControl for SharablePipeline {
     /// For whipsink to work, the branch must be linked to the output tee element and synced in state
     /// Return NoSRTStream error if no input stream is available
     async fn add_branch(&self, id: String) -> Result<(), PipelineError> {
-        let ready = self.ready().await?;
-        if !ready {
-            tracing::error!("Demux has no pad available. No connection can be added.");
-            return Err(PipelineError::NotReady);
-        }
-
+        // One lock acquisition: check readiness and attach under the same guard,
+        // so a supervisor restart cannot slip between a separate ready() check
+        // and the attach.
         let pipeline_state = self.state.lock_err().await?;
         // No pipeline means we are between supervisor restarts: retryable.
         let pipeline = pipeline_state
             .pipeline
             .as_ref()
             .ok_or(PipelineError::NotReady)?;
-        tracing::debug!("Add connection {} to pipeline", id);
 
+        if !Self::input_ready(pipeline)? {
+            tracing::error!("Demux has no pad available. No connection can be added.");
+            return Err(PipelineError::NotReady);
+        }
+
+        tracing::debug!("Add connection {} to pipeline", id);
         Branch::for_id(&id)
             .attach(pipeline, pipeline_state.args.port)
             .map_err(|e| PipelineError::Fatal(e.to_string()))
