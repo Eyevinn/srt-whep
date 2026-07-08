@@ -15,6 +15,10 @@ the prior behavior, so no configuration migration is required.
 
 ### Added
 
+- `-D`/`--decode-video` flag: insert an `avdec_h264` before `whipclientsink` so
+  webrtcsink receives raw video and re-encodes it, working around a
+  caps-negotiation bug in webrtcsink 0.15.x on macOS where H264 passthrough
+  fails with not-negotiated on `GstAppSrc:video_0`. Off by default.
 - CLI flags for coordinator tunables (handshake timeouts, watchdog threshold);
   defaults unchanged.
 - Startup assertion that the HTTP listener port matches the pipeline's loopback
