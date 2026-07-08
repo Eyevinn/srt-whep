@@ -65,7 +65,14 @@ emulates. Adopting it could delete the loopback hop, the `/whip_sink/{id}`
 route, and much of the per-branch signaller wiring, collapsing the internal
 network round-trip per connection.
 
-This stays deferred, not decided. A design pass would need to check:
+This stays deferred, not decided.
+
+- **Deletion boundary:** the loopback-WHIP bridge is confined to
+  `src/stream/branch.rs` (route template, endpoint URL, whipclientsink
+  attach) plus the `expected_whip_port` check in
+  `startup::Application::assemble`. The migration removes these together.
+
+A design pass would need to check:
 
 - Whether `whepserversink`'s fan-out model fits this app's per-viewer
   **branch** model (one sink hot-plugged per connection) or expects to own

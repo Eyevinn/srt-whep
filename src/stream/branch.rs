@@ -1,11 +1,21 @@
-//! One viewer's per-connection pipeline elements — "the Branch".
+//! One viewer's per-connection pipeline elements — "the Branch" — AND the
+//! entire loopback-WHIP bridge.
 //!
-//! This module is the only place that knows the per-connection element
-//! name conventions, the loopback WHIP URL/route template, how a branch
-//! is linked onto the output tees, and the pad-probe teardown dance.
+//! Everything here exists only because egress uses a WHIP *client*
+//! (`whipclientsink`): the loopback route template ([`WHIP_SINK_ROUTE`] /
+//! [`whip_sink_path`]), the endpoint URL the sink POSTs its offer to
+//! (`whip_endpoint`), and the attach/detach of that sink. The listener↔pipeline
+//! port coupling asserted in `startup::Application::assemble` exists for the
+//! same reason.
+//!
+//! This module is the deletion boundary for the `whepserversink` migration
+//! (ADR 0001, Future Work): moving egress to the native server-initiated
+//! `whepserversink` removes this bridge wholesale. Keep loopback-specific
+//! surface confined here so that migration stays a clean deletion.
+//!
 //! `startup.rs` imports [`WHIP_SINK_ROUTE`] and the WHIP handler imports
-//! [`whip_sink_path`], so the HTTP contract and the whipclientsink's
-//! endpoint can never drift apart.
+//! [`whip_sink_path`], so the HTTP contract and the whipclientsink's endpoint
+//! can never drift apart.
 use anyhow::{Error, Result};
 use gst::prelude::*;
 use gstreamer as gst;
