@@ -60,6 +60,22 @@ impl ConnectionState {
             ConnectionState::Established { .. } => "established",
         }
     }
+
+    /// Fail whichever reply waiter is parked on this connection, if any.
+    /// Shared by the DELETE, reap, and reset paths: the connection is going
+    /// away, so a client still awaiting a reply must learn it now. An
+    /// `Established` connection has no parked waiter, so this is a no-op.
+    fn fail_waiter(self, err: SignalError) {
+        match self {
+            ConnectionState::AwaitingOffer { whep_reply, .. } => {
+                let _ = whep_reply.send(Err(err));
+            }
+            ConnectionState::AwaitingAnswer { whip_reply, .. } => {
+                let _ = whip_reply.send(Err(err));
+            }
+            ConnectionState::Established { .. } => {}
+        }
+    }
 }
 
 /// The signaling actor: sole owner of connection state and of pipeline
@@ -255,15 +271,7 @@ impl<P: BranchControl> Coordinator<P> {
         match self.remove_branch_bounded(id.clone()).await {
             Ok(()) => {
                 // The connection is really gone now; let any pending waiter learn it.
-                match state {
-                    ConnectionState::AwaitingOffer { whep_reply, .. } => {
-                        let _ = whep_reply.send(Err(SignalError::NotFound(id.clone())));
-                    }
-                    ConnectionState::AwaitingAnswer { whip_reply, .. } => {
-                        let _ = whip_reply.send(Err(SignalError::NotFound(id.clone())));
-                    }
-                    ConnectionState::Established { .. } => {}
-                }
+                state.fail_waiter(SignalError::NotFound(id.clone()));
                 let _ = reply.send(Ok(()));
             }
             Err(e) => {
@@ -327,15 +335,7 @@ impl<P: BranchControl> Coordinator<P> {
             return; // already gone: raced a DELETE or an expiry sweep
         };
         tracing::warn!("Reaping branch for {} after a runtime failure", id);
-        match state {
-            ConnectionState::AwaitingOffer { whep_reply, .. } => {
-                let _ = whep_reply.send(Err(SignalError::NotFound(id.clone())));
-            }
-            ConnectionState::AwaitingAnswer { whip_reply, .. } => {
-                let _ = whip_reply.send(Err(SignalError::NotFound(id.clone())));
-            }
-            ConnectionState::Established { .. } => {}
-        }
+        state.fail_waiter(SignalError::NotFound(id.clone()));
         if let Err(e) = self.remove_branch_bounded(id.clone()).await {
             tracing::error!("Failed to remove branch for {}: {}", id, e);
         }
@@ -377,15 +377,7 @@ impl<P: BranchControl> Coordinator<P> {
 
     fn reset_all(&mut self) {
         for (_, state) in self.connections.drain() {
-            match state {
-                ConnectionState::AwaitingOffer { whep_reply, .. } => {
-                    let _ = whep_reply.send(Err(SignalError::Unavailable));
-                }
-                ConnectionState::AwaitingAnswer { whip_reply, .. } => {
-                    let _ = whip_reply.send(Err(SignalError::Unavailable));
-                }
-                ConnectionState::Established { .. } => {}
-            }
+            state.fail_waiter(SignalError::Unavailable);
         }
     }
 }
@@ -399,6 +391,9 @@ mod tests {
     use crate::stream::TestPipeline;
     use std::time::Duration;
     use tokio::sync::{mpsc, oneshot};
+
+    use super::ConnectionState;
+    use tokio::time::Instant;
 
     pub(super) fn offer() -> SessionDescription {
         SessionDescription::parse(VALID_WHIP_OFFER.to_string()).unwrap()
@@ -1022,5 +1017,27 @@ mod tests {
 
         // The actor is still responsive, and the connection stayed retryable.
         assert_eq!(vec!["a".to_string()], list_ids(&tx).await);
+    }
+
+    #[tokio::test]
+    async fn fail_waiter_notifies_the_awaiting_offer_waiter() {
+        let (tx, rx) = oneshot::channel();
+        let state = ConnectionState::AwaitingOffer {
+            whep_reply: tx,
+            deadline: Instant::now(),
+        };
+        state.fail_waiter(SignalError::Unavailable);
+        assert!(matches!(rx.await.unwrap(), Err(SignalError::Unavailable)));
+    }
+
+    #[tokio::test]
+    async fn fail_waiter_notifies_the_awaiting_answer_waiter() {
+        let (tx, rx) = oneshot::channel();
+        let state = ConnectionState::AwaitingAnswer {
+            whip_reply: tx,
+            deadline: Instant::now(),
+        };
+        state.fail_waiter(SignalError::NotFound("a".into()));
+        assert!(matches!(rx.await.unwrap(), Err(SignalError::NotFound(_))));
     }
 }
