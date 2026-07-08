@@ -56,7 +56,7 @@ async fn pipeline_survives_repeated_handshake_failures() {
         tsdemux_latency: 100,
         run_discoverer: false,
         discoverer_timeout_sec: 5,
-        port: HTTP_PORT, // whipclientsink posts back to this port
+        port: HTTP_PORT,
     };
 
     let pipeline = SharablePipeline::new(args.clone());
@@ -72,7 +72,7 @@ async fn pipeline_survives_repeated_handshake_failures() {
     let listener =
         TcpListener::bind(format!("127.0.0.1:{}", HTTP_PORT)).expect("e2e HTTP port in use");
     // The production wiring: coordinator + supervisor + HTTP server.
-    let app = Application::assemble(listener, pipeline.clone(), config).unwrap();
+    let app = Application::assemble(listener, pipeline.clone(), config, Some(HTTP_PORT)).unwrap();
     let (stop_tx, stop_rx) = tokio::sync::oneshot::channel::<()>();
     let app_task = tokio::spawn(app.run_until_stopped(async move {
         let _ = stop_rx.await;

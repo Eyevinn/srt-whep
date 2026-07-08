@@ -55,8 +55,8 @@ fn spawn_app(config: CoordinatorConfig) -> (String, TestPipeline) {
     // The production wiring, supervisor included: TestPipeline::run parks
     // until end/quit, so the supervisor sits idle unless the watchdog
     // trips — exactly like the real pipeline between restarts.
-    let app =
-        Application::assemble(listener, pipeline.clone(), config).expect("Failed to assemble app");
+    let app = Application::assemble(listener, pipeline.clone(), config, None)
+        .expect("Failed to assemble app");
     let address = format!("http://127.0.0.1:{}", app.port());
     tokio::spawn(app.run_until_stopped(std::future::pending()));
     (address, pipeline)
@@ -448,4 +448,16 @@ async fn a_branch_runtime_failure_reaps_the_established_connection() {
 
     // A dead peer is not a pipeline-health signal: the pipeline stays up.
     assert_eq!(0, pipeline.snapshot().quit_count);
+}
+
+#[tokio::test]
+async fn assemble_rejects_a_mismatched_whip_port() {
+    Lazy::force(&TRACING);
+    let listener = TcpListener::bind("127.0.0.1:0").expect("Failed to bind random port");
+    let bound = listener.local_addr().unwrap().port();
+    let pipeline = TestPipeline::default();
+    // Deliberately claim a different callback port than the one bound.
+    let wrong = bound.checked_add(1).unwrap_or(bound - 1);
+    let result = Application::assemble(listener, pipeline, functional_config(), Some(wrong));
+    assert!(result.is_err(), "mismatched whip port must fail assembly");
 }

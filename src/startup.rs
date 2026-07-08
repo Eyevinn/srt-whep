@@ -51,11 +51,28 @@ impl Application {
         listener: TcpListener,
         pipeline: P,
         config: CoordinatorConfig,
+        expected_whip_port: Option<u16>,
     ) -> Result<Self, std::io::Error>
     where
         P: BranchControl + PipelineLifecycle + 'static,
     {
         let port = listener.local_addr()?.port();
+        // The pipeline's whipclientsink posts loopback WHIP offers to a fixed
+        // port; if the HTTP server is bound elsewhere those offers 404 silently.
+        // Fail loudly at wiring time instead. (This coupling exists only for the
+        // loopback WHIP bridge — see src/stream/branch.rs — and is deleted with
+        // the whepserversink migration, ADR 0001.)
+        if let Some(expected) = expected_whip_port {
+            if expected != port {
+                return Err(std::io::Error::new(
+                    std::io::ErrorKind::InvalidInput,
+                    format!(
+                        "HTTP listener bound to port {port} but the pipeline posts \
+                         loopback WHIP offers to port {expected}; they must match"
+                    ),
+                ));
+            }
+        }
         let signal = spawn_coordinator(pipeline.clone(), config);
         let (shutdown_tx, shutdown_rx) = watch::channel(false);
         let supervisor = Supervisor::spawn(pipeline, signal.clone(), shutdown_rx);

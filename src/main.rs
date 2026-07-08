@@ -16,7 +16,12 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let pipeline = SharablePipeline::new(args.clone());
     let listener =
         TcpListener::bind(format!("0.0.0.0:{}", args.port)).expect("WHEP port is already in use");
-    let app = Application::assemble(listener, pipeline, CoordinatorConfig::default())?;
+    let app = Application::assemble(
+        listener,
+        pipeline,
+        CoordinatorConfig::default(),
+        Some(args.port),
+    )?;
 
     // Any termination signal stops everything gracefully: the HTTP server
     // (drain), the supervisor (EOS → NULL-state cleanup → join), and with
