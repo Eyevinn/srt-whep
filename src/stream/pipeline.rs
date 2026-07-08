@@ -191,6 +191,10 @@ impl BranchControl for TestPipeline {
         if let Some(err) = self.add_branch_error.lock().unwrap().take() {
             return Err(err);
         }
+        // Mirror the real adapter: a branch cannot be added to a not-ready input.
+        if !self.state.lock().unwrap().ready {
+            return Err(PipelineError::NotReady);
+        }
         self.state.lock().unwrap().added.push(id);
         Ok(())
     }
@@ -250,6 +254,17 @@ impl PipelineLifecycle for TestPipeline {
 #[cfg(test)]
 mod tests {
     use super::{BranchControl, PipelineLifecycle, TestPipeline};
+    use crate::stream::errors::PipelineError;
+
+    #[tokio::test]
+    async fn add_branch_on_a_not_ready_fake_is_not_ready() {
+        let pipeline = TestPipeline::default(); // ready = false
+        assert!(matches!(
+            pipeline.add_branch("a".to_string()).await,
+            Err(PipelineError::NotReady)
+        ));
+        assert!(pipeline.snapshot().added.is_empty());
+    }
 
     #[tokio::test]
     async fn test_pipeline_records_calls() {
