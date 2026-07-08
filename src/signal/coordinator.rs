@@ -60,6 +60,14 @@ enum OfferDelivery {
     WaiterGone,
 }
 
+/// Outcome of delivering the browser's SDP answer to the parked WHIP waiter.
+enum AnswerDelivery {
+    /// The whipsink received the answer; the connection is established.
+    Established,
+    /// The whipsink's request had died; the handshake must be failed.
+    WaiterGone,
+}
+
 impl ConnectionState {
     fn name(&self) -> &'static str {
         match self {
@@ -96,6 +104,23 @@ impl ConnectionState {
                     Ok(OfferDelivery::WaiterGone)
                 } else {
                     Ok(OfferDelivery::Delivered)
+                }
+            }
+            other => Err(other),
+        }
+    }
+
+    /// Deliver the browser's SDP answer to the parked WHIP waiter.
+    /// `Ok(..)` means this was the legal `AwaitingAnswer` state; the variant
+    /// reports whether the waiter was still there. `Err(self)` returns the
+    /// unchanged state for the caller to restore and reject.
+    fn deliver_answer(self, sdp: SessionDescription) -> Result<AnswerDelivery, ConnectionState> {
+        match self {
+            ConnectionState::AwaitingAnswer { whip_reply, .. } => {
+                if whip_reply.send(Ok(sdp)).is_err() {
+                    Ok(AnswerDelivery::WaiterGone)
+                } else {
+                    Ok(AnswerDelivery::Established)
                 }
             }
             other => Err(other),
@@ -255,19 +280,12 @@ impl<P: BranchControl> Coordinator<P> {
         sdp: SessionDescription,
         reply: UnitReply,
     ) {
-        match self.connections.remove(&id) {
-            None => {
-                let _ = reply.send(Err(SignalError::NotFound(id)));
-            }
-            Some(ConnectionState::AwaitingAnswer { whip_reply, .. }) => {
-                if whip_reply.send(Ok(sdp)).is_err() {
-                    // The whipsink's HTTP request died; it can never receive
-                    // the answer, so the handshake is failed.
-                    tracing::warn!("WHIP waiter for {} is gone; failing handshake", id);
-                    let _ = reply.send(Err(SignalError::NotFound(id.clone())));
-                    self.fail_connection(id).await;
-                    return;
-                }
+        let Some(state) = self.connections.remove(&id) else {
+            let _ = reply.send(Err(SignalError::NotFound(id)));
+            return;
+        };
+        match state.deliver_answer(sdp) {
+            Ok(AnswerDelivery::Established) => {
                 self.watchdog.record_success();
                 self.connections.insert(
                     id,
@@ -277,7 +295,14 @@ impl<P: BranchControl> Coordinator<P> {
                 );
                 let _ = reply.send(Ok(()));
             }
-            Some(other) => {
+            Ok(AnswerDelivery::WaiterGone) => {
+                // The whipsink's HTTP request died; it can never receive the
+                // answer, so the handshake is failed.
+                tracing::warn!("WHIP waiter for {} is gone; failing handshake", id);
+                let _ = reply.send(Err(SignalError::NotFound(id.clone())));
+                self.fail_connection(id).await;
+            }
+            Err(other) => {
                 self.connections.insert(id.clone(), other);
                 let _ = reply.send(Err(SignalError::WrongState(id)));
             }
