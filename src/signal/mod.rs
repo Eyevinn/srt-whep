@@ -3,7 +3,7 @@ mod errors;
 mod messages;
 mod watchdog;
 
-pub use coordinator::{Coordinator, CoordinatorConfig};
+pub use coordinator::{Coordinator, CoordinatorArgs, CoordinatorConfig};
 pub use errors::SignalError;
 pub use messages::{Command, ConnectionId, ConnectionInfo};
 

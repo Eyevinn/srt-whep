@@ -1,26 +1,36 @@
 use clap::Parser;
-use srt_whep::signal::CoordinatorConfig;
+use srt_whep::signal::CoordinatorArgs;
 use srt_whep::startup::Application;
 use srt_whep::stream::{Args, SharablePipeline};
 use srt_whep::telemetry::{get_subscriber, init_subscriber};
 use std::error::Error;
 use std::net::TcpListener;
 
+/// srt-whep: SRT to WHEP (WebRTC) gateway.
+#[derive(Parser, Debug)]
+#[command(author, version, about, long_about = None)]
+struct Cli {
+    #[command(flatten)]
+    pipeline: Args,
+    #[command(flatten)]
+    coordinator: CoordinatorArgs,
+}
+
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
-    let args = Args::parse();
+    let cli = Cli::parse();
 
     let subscriber = get_subscriber("srt_whep".into(), "debug".into(), std::io::stdout);
     init_subscriber(subscriber);
 
-    let pipeline = SharablePipeline::new(args.clone());
-    let listener =
-        TcpListener::bind(format!("0.0.0.0:{}", args.port)).expect("WHEP port is already in use");
+    let pipeline = SharablePipeline::new(cli.pipeline.clone());
+    let listener = TcpListener::bind(format!("0.0.0.0:{}", cli.pipeline.port))
+        .expect("WHEP port is already in use");
     let app = Application::assemble(
         listener,
         pipeline,
-        CoordinatorConfig::default(),
-        Some(args.port),
+        cli.coordinator.to_config(),
+        Some(cli.pipeline.port),
     )?;
 
     // Any termination signal stops everything gracefully: the HTTP server

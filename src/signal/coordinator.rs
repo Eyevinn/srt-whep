@@ -38,6 +38,44 @@ impl Default for CoordinatorConfig {
     }
 }
 
+/// CLI surface for the coordinator's timing/watchdog knobs. Kept separate
+/// from `stream::Args` so `stream` never depends on `signal`; the crate-root
+/// binary flattens both into one parser.
+#[derive(clap::Args, Debug, Clone)]
+pub struct CoordinatorArgs {
+    /// Seconds a WHEP client waits for the whipsink's SDP offer.
+    #[clap(long, default_value_t = 10)]
+    pub offer_timeout_sec: u64,
+    /// Seconds the whipsink waits for the browser's SDP answer.
+    #[clap(long, default_value_t = 10)]
+    pub answer_timeout_sec: u64,
+    /// Consecutive handshake failures (within the window) that trip a restart.
+    #[clap(long, default_value_t = 3)]
+    pub watchdog_threshold: u32,
+    /// Seconds over which failures decay for the watchdog.
+    #[clap(long, default_value_t = 60)]
+    pub watchdog_window_sec: u64,
+    /// Expiry-sweep interval in milliseconds.
+    #[clap(long, default_value_t = 1000)]
+    pub sweep_interval_ms: u64,
+    /// Upper bound, in seconds, on a single branch teardown/quit.
+    #[clap(long, default_value_t = 5)]
+    pub teardown_timeout_sec: u64,
+}
+
+impl CoordinatorArgs {
+    pub fn to_config(&self) -> CoordinatorConfig {
+        CoordinatorConfig {
+            offer_timeout: Duration::from_secs(self.offer_timeout_sec),
+            answer_timeout: Duration::from_secs(self.answer_timeout_sec),
+            watchdog_threshold: self.watchdog_threshold,
+            watchdog_window: Duration::from_secs(self.watchdog_window_sec),
+            sweep_interval: Duration::from_millis(self.sweep_interval_ms),
+            teardown_timeout: Duration::from_secs(self.teardown_timeout_sec),
+        }
+    }
+}
+
 enum ConnectionState {
     AwaitingOffer {
         whep_reply: OfferReply,
@@ -1079,6 +1117,30 @@ mod tests {
         };
         state.fail_waiter(SignalError::NotFound("a".into()));
         assert!(matches!(rx.await.unwrap(), Err(SignalError::NotFound(_))));
+    }
+
+    #[test]
+    fn coordinator_args_default_to_the_hardcoded_config() {
+        use super::CoordinatorArgs;
+        use clap::Parser;
+
+        // A tiny throwaway parser so we can parse CoordinatorArgs with no flags.
+        #[derive(Parser)]
+        struct OnlyCoordinator {
+            #[command(flatten)]
+            coordinator: CoordinatorArgs,
+        }
+
+        let parsed = OnlyCoordinator::parse_from(["test"]);
+        let from_flags = parsed.coordinator.to_config();
+        let defaults = CoordinatorConfig::default();
+
+        assert_eq!(from_flags.offer_timeout, defaults.offer_timeout);
+        assert_eq!(from_flags.answer_timeout, defaults.answer_timeout);
+        assert_eq!(from_flags.watchdog_threshold, defaults.watchdog_threshold);
+        assert_eq!(from_flags.watchdog_window, defaults.watchdog_window);
+        assert_eq!(from_flags.sweep_interval, defaults.sweep_interval);
+        assert_eq!(from_flags.teardown_timeout, defaults.teardown_timeout);
     }
 
     #[tokio::test]

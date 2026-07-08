@@ -1,12 +1,11 @@
 use crate::stream::errors::PipelineError;
 use anyhow::Error;
 use async_trait::async_trait;
-use clap::{Parser, ValueEnum};
+use clap::ValueEnum;
 use std::sync::Arc;
 use tokio::sync::mpsc;
 
-#[derive(Parser, Debug, Clone)]
-#[command(author, version, about, long_about = None)]
+#[derive(clap::Args, Debug, Clone)]
 pub struct Args {
     /// SRT source stream address(ip:port)
     #[clap(short, long)]
