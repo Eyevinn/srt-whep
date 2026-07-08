@@ -57,6 +57,7 @@ async fn pipeline_survives_repeated_handshake_failures() {
         run_discoverer: false,
         discoverer_timeout_sec: 5,
         port: HTTP_PORT,
+        decode_video: false,
     };
 
     let pipeline = SharablePipeline::new(args.clone());

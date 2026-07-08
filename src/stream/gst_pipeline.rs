@@ -112,7 +112,11 @@ impl BranchControl for SharablePipeline {
 
         tracing::debug!("Add connection {} to pipeline", id);
         Branch::for_id(&id)
-            .attach(pipeline, pipeline_state.args.port)
+            .attach(
+                pipeline,
+                pipeline_state.args.port,
+                pipeline_state.args.decode_video,
+            )
             .map_err(|e| PipelineError::Fatal(e.to_string()))
     }
 

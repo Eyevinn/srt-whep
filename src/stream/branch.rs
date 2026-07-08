@@ -40,12 +40,15 @@ fn whip_endpoint(port: u16, id: &str) -> String {
 const WHIP_SINK_PREFIX: &str = "whip-sink-";
 const VIDEO_QUEUE_PREFIX: &str = "video-queue-";
 const AUDIO_QUEUE_PREFIX: &str = "audio-queue-";
+/// Optional per-viewer H264 decoder, present only under `--decode-video`.
+const VIDEO_DECODER_PREFIX: &str = "avdec-h264-";
 
 /// If `name` is a per-viewer branch element, return the connection id it
-/// belongs to. Recognizes the whip sink AND the per-media queues. The core
-/// demux→tee chain's queues are named exactly `video-queue`/`audio-queue`
-/// (no id suffix), so the trailing dash in the prefixes keeps their errors
-/// out — a core-queue error must stay fatal.
+/// belongs to. Recognizes the whip sink, the per-media queues, and the
+/// optional `--decode-video` H264 decoder. The core demux→tee chain's queues
+/// are named exactly `video-queue`/`audio-queue` (no id suffix), so the
+/// trailing dash in the prefixes keeps their errors out — a core-queue error
+/// must stay fatal.
 ///
 /// The bus watch uses this to contain a dying branch's errors to that branch
 /// (reaping just that connection) instead of quitting the whole pipeline,
@@ -54,6 +57,7 @@ pub(crate) fn branch_id_from_name(name: &str) -> Option<&str> {
     name.strip_prefix(WHIP_SINK_PREFIX)
         .or_else(|| name.strip_prefix(VIDEO_QUEUE_PREFIX))
         .or_else(|| name.strip_prefix(AUDIO_QUEUE_PREFIX))
+        .or_else(|| name.strip_prefix(VIDEO_DECODER_PREFIX))
 }
 
 /// Handle on one connection's branch, keyed by connection id. Cheap to
@@ -80,12 +84,27 @@ impl Branch {
         format!("{}{}", AUDIO_QUEUE_PREFIX, self.id)
     }
 
+    fn video_decoder_name(&self) -> String {
+        format!("{}{}", VIDEO_DECODER_PREFIX, self.id)
+    }
+
     /// Create this viewer's whipclientsink and per-media queues, link them
     /// onto the pipeline's output tees, and sync their states.
     ///
+    /// When `decode_video` is set, an `avdec_h264` is inserted between the
+    /// video queue and the whip sink so whipclientsink receives raw video and
+    /// re-encodes it internally. This works around a caps-negotiation bug in
+    /// webrtcsink 0.15.x on macOS, where H264 passthrough fails with
+    /// not-negotiated on `GstAppSrc:video_0` (see `--decode-video`).
+    ///
     /// Synchronous GStreamer calls only; the caller may hold the pipeline
     /// state lock.
-    pub(crate) fn attach(&self, pipeline: &gst::Pipeline, port: u16) -> Result<(), Error> {
+    pub(crate) fn attach(
+        &self,
+        pipeline: &gst::Pipeline,
+        port: u16,
+        decode_video: bool,
+    ) -> Result<(), Error> {
         let demux = pipeline
             .by_name("demux")
             .ok_or(StreamError::MissingElement("demux".to_string()))?;
@@ -119,11 +138,25 @@ impl Branch {
                 .name(self.video_queue_name())
                 .build()?;
             pipeline.add_many([&queue_video])?;
-            gst::Element::link_many([&output_tee_video, &queue_video, &whipsink])?;
 
-            let video_elements = &[&output_tee_video, &queue_video];
-            for e in video_elements {
-                e.sync_state_with_parent()?;
+            if decode_video {
+                let decoder = gst::ElementFactory::make("avdec_h264")
+                    .name(self.video_decoder_name())
+                    .build()?;
+                pipeline.add_many([&decoder])?;
+                gst::Element::link_many([&output_tee_video, &queue_video, &decoder, &whipsink])?;
+
+                let video_elements = &[&output_tee_video, &queue_video, &decoder];
+                for e in video_elements {
+                    e.sync_state_with_parent()?;
+                }
+            } else {
+                gst::Element::link_many([&output_tee_video, &queue_video, &whipsink])?;
+
+                let video_elements = &[&output_tee_video, &queue_video];
+                for e in video_elements {
+                    e.sync_state_with_parent()?;
+                }
             }
 
             tracing::debug!("Successfully linked video to whip sink");
@@ -166,6 +199,14 @@ impl Branch {
         // Remove video/audio branch from pipeline
         Self::remove_branch_from_pipeline(pipeline, &self.video_queue_name()).await?;
         Self::remove_branch_from_pipeline(pipeline, &self.audio_queue_name()).await?;
+
+        // Remove the optional H264 decoder if this branch was attached with
+        // --decode-video. Presence-by-name, so teardown needs no extra flag.
+        let decoder_name = self.video_decoder_name();
+        if let Some(decoder) = pipeline.by_name(&decoder_name) {
+            tracing::debug!("Removing {} from pipeline", decoder_name);
+            Self::remove_element_from_pipeline(pipeline, &decoder).await?;
+        }
 
         // Remove whip sink from pipeline
         // If whip sink fails to send offer, it is removed from
@@ -311,6 +352,7 @@ mod tests {
             branch.whip_sink_name(),
             branch.video_queue_name(),
             branch.audio_queue_name(),
+            branch.video_decoder_name(),
         ] {
             assert_eq!(
                 Some("abc"),

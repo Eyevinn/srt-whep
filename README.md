@@ -1,7 +1,5 @@
 # SRT to WHEP
 
-[![Badge OSC](https://img.shields.io/badge/Evaluate-24243B?style=for-the-badge&logo=data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGNpcmNsZSBjeD0iMTIiIGN5PSIxMiIgcj0iMTIiIGZpbGw9InVybCgjcGFpbnQwX2xpbmVhcl8yODIxXzMxNjcyKSIvPgo8Y2lyY2xlIGN4PSIxMiIgY3k9IjEyIiByPSI3IiBzdHJva2U9ImJsYWNrIiBzdHJva2Utd2lkdGg9IjIiLz4KPGRlZnM%2BCjxsaW5lYXJHcmFkaWVudCBpZD0icGFpbnQwX2xpbmVhcl8yODIxXzMxNjcyIiB4MT0iMTIiIHkxPSIwIiB4Mj0iMTIiIHkyPSIyNCIgZ3JhZGllbnRVbml0cz0idXNlclNwYWNlT25Vc2UiPgo8c3RvcCBzdG9wLWNvbG9yPSIjQzE4M0ZGIi8%2BCjxzdG9wIG9mZnNldD0iMSIgc3RvcC1jb2xvcj0iIzREQzlGRiIvPgo8L2xpbmVhckdyYWRpZW50Pgo8L2RlZnM%2BCjwvc3ZnPgo%3D)](https://app.osaas.io/browse/eyevinn-srt-whep)
-
 This application ingests one MPEG-TS over SRT stream and outputs to WebRTC recvonly clients using WHEP as signaling protocol. Example of use cases:
 
 - Browser based confidence monitor of an incoming stream
@@ -9,6 +7,19 @@ This application ingests one MPEG-TS over SRT stream and outputs to WebRTC recvo
 
 Supports SRT streams in caller and listener mode.
 Runs on MacOS and Ubuntu.
+
+---
+<div align="center">
+
+## Quick Demo: Open Source Cloud
+
+Run this service in the cloud with a single click.
+
+[![Badge OSC](https://img.shields.io/badge/Try%20it%20out!-1E3A8A?style=for-the-badge&logo=data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGNpcmNsZSBjeD0iMTIiIGN5PSIxMiIgcj0iMTIiIGZpbGw9InVybCgjcGFpbnQwX2xpbmVhcl8yODIxXzMxNjcyKSIvPgo8Y2lyY2xlIGN4PSIxMiIgY3k9IjEyIiByPSI3IiBzdHJva2U9ImJsYWNrIiBzdHJva2Utd2lkdGg9IjIiLz4KPGRlZnM+CjxsaW5lYXJHcmFkaWVudCBpZD0icGFpbnQwX2xpbmVhcl8yODIxXzMxNjcyIiB4MT0iMTIiIHkxPSIwIiB4Mj0iMTIiIHkyPSIyNCIgZ3JhZGllbnRVbml0cz0idXNlclNwYWNlT25Vc2UiPgo8c3RvcCBzdG9wLWNvbG9yPSIjQzE4M0ZGIi8+CjxzdG9wIG9mZnNldD0iMSIgc3RvcC1jb2xvcj0iIzREQzlGRiIvPgo8L2xpbmVhckdyYWRpZW50Pgo8L2RlZnM+Cjwvc3ZnPgo=)](https://app.osaas.io/browse/eyevinn-srt-whep?utm_source=github&utm_medium=readme&utm_campaign=srt-whep)
+
+</div>
+
+---
 
 ![screenshot](docs/screenshot.png)
 
@@ -119,6 +130,19 @@ cargo build --release
 ```
 
 The binary is then available at `./target/release/srt-whep`. See below for how to run it.
+
+### macOS Workaround: H264 Video Not Rendering in Browser
+
+Due to a caps negotiation bug in `webrtcsink` 0.15.0 on macOS, H264 passthrough fails with a `not-negotiated` error on `GstAppSrc:video_0` after a few seconds. The workaround is the `-D` / `--decode-video` flag, which inserts an `avdec_h264` decode step before `whipclientsink`. This causes webrtcsink to receive raw video and re-encode internally (typically as VP8), bypassing the passthrough bug.
+
+```
+export GST_PLUGIN_FEATURE_RANK="vtenc_h264:NONE,vtenc_h264_hw:NONE"
+./target/release/srt-whep -i 127.0.0.1:1234 -p 8000 -D
+```
+
+The `GST_PLUGIN_FEATURE_RANK` env var disables Apple's hardware H264 encoders (`vtenc_h264`, `vtenc_h264_hw`), which also fail with not-negotiated errors when webrtcsink attempts to use them for re-encoding.
+
+> Note: The `-D` flag introduces a decode+re-encode step and is not intended for production use. It is a local development workaround until the upstream webrtcsink bug is resolved.
 
 ### Debian (bullseye / bookworm)
 
