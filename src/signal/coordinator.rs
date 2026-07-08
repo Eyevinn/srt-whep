@@ -225,28 +225,19 @@ impl<P: BranchControl> Coordinator<P> {
             let _ = reply.send(Err(SignalError::WrongState(id)));
             return;
         }
-        match self.pipeline.ready().await {
-            Ok(true) => {}
-            Ok(false) => {
-                let _ = reply.send(Err(SignalError::NotReady));
-                return;
-            }
-            Err(e) => {
-                let _ = reply.send(Err(e.into()));
-                return;
-            }
-        }
         if let Err(add_err) = self.pipeline.add_branch(id.clone()).await {
-            // Attach failed partway through. The id was never inserted, so
-            // DELETE could never reach it — detach the half-attached branch
-            // now (detach tolerates a half-built branch) so we don't orphan a
-            // whipclientsink with no cleanup path.
-            if let Err(cleanup_err) = self.remove_branch_bounded(id.clone()).await {
-                tracing::error!(
-                    "Failed to detach half-attached branch for {}: {}",
-                    id,
-                    cleanup_err
-                );
+            // Only a Fatal error can leave a half-attached branch (attach ran and
+            // failed partway). NotReady/Transient fail before attaching, so there
+            // is nothing to detach — and detaching then would be a spurious
+            // teardown on a branch that was never added.
+            if matches!(add_err, crate::stream::PipelineError::Fatal(_)) {
+                if let Err(cleanup_err) = self.remove_branch_bounded(id.clone()).await {
+                    tracing::error!(
+                        "Failed to detach half-attached branch for {}: {}",
+                        id,
+                        cleanup_err
+                    );
+                }
             }
             let _ = reply.send(Err(add_err.into()));
             return;
