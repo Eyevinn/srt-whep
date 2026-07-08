@@ -52,6 +52,14 @@ enum ConnectionState {
     Established { since: Instant },
 }
 
+/// Outcome of delivering the whipsink's SDP offer to the parked WHEP waiter.
+enum OfferDelivery {
+    /// The WHEP client received the offer; advance to awaiting the answer.
+    Delivered,
+    /// The WHEP client had vanished; the handshake must be failed.
+    WaiterGone,
+}
+
 impl ConnectionState {
     fn name(&self) -> &'static str {
         match self {
@@ -74,6 +82,23 @@ impl ConnectionState {
                 let _ = whip_reply.send(Err(err));
             }
             ConnectionState::Established { .. } => {}
+        }
+    }
+
+    /// Deliver the whipsink's SDP offer to the parked WHEP waiter.
+    /// `Ok(..)` means this was the legal `AwaitingOffer` state; the variant
+    /// reports whether the waiter was still there. `Err(self)` means the offer
+    /// arrived in the wrong state — the caller restores the connection unchanged.
+    fn deliver_offer(self, sdp: SessionDescription) -> Result<OfferDelivery, ConnectionState> {
+        match self {
+            ConnectionState::AwaitingOffer { whep_reply, .. } => {
+                if whep_reply.send(Ok(sdp)).is_err() {
+                    Ok(OfferDelivery::WaiterGone)
+                } else {
+                    Ok(OfferDelivery::Delivered)
+                }
+            }
+            other => Err(other),
         }
     }
 }
@@ -194,19 +219,12 @@ impl<P: BranchControl> Coordinator<P> {
     }
 
     async fn offer_received(&mut self, id: ConnectionId, sdp: SessionDescription, reply: SdpReply) {
-        match self.connections.remove(&id) {
-            None => {
-                let _ = reply.send(Err(SignalError::NotFound(id)));
-            }
-            Some(ConnectionState::AwaitingOffer { whep_reply, .. }) => {
-                if whep_reply.send(Ok(sdp)).is_err() {
-                    // The WHEP client vanished while waiting (actix dropped
-                    // its handler future). Fail this handshake now.
-                    tracing::warn!("WHEP waiter for {} is gone; failing handshake", id);
-                    let _ = reply.send(Err(SignalError::NotFound(id.clone())));
-                    self.fail_connection(id).await;
-                    return;
-                }
+        let Some(state) = self.connections.remove(&id) else {
+            let _ = reply.send(Err(SignalError::NotFound(id)));
+            return;
+        };
+        match state.deliver_offer(sdp) {
+            Ok(OfferDelivery::Delivered) => {
                 let deadline = Instant::now() + self.config.answer_timeout;
                 self.connections.insert(
                     id,
@@ -216,7 +234,14 @@ impl<P: BranchControl> Coordinator<P> {
                     },
                 );
             }
-            Some(other) => {
+            Ok(OfferDelivery::WaiterGone) => {
+                // The WHEP client vanished while waiting (actix dropped its
+                // handler future). Fail this handshake now.
+                tracing::warn!("WHEP waiter for {} is gone; failing handshake", id);
+                let _ = reply.send(Err(SignalError::NotFound(id.clone())));
+                self.fail_connection(id).await;
+            }
+            Err(other) => {
                 // Wrong state: restore untouched, reject the command.
                 self.connections.insert(id.clone(), other);
                 let _ = reply.send(Err(SignalError::WrongState(id)));
