@@ -152,6 +152,16 @@ apt-get -y install build-essential \
   gstreamer1.0-nice
 ```
 
+> **WebRTC output needs the `rswebrtc` plugin, which the packages above do
+> not include.** srt-whep loads `whipclientsink` from the installed
+> `rswebrtc`/`gst-plugins-rs` plugin rather than compiling its own copy (see
+> [`docs/adr/0003`](./docs/adr/0003-webrtc-plugin-from-installation.md)), and
+> no Debian/Ubuntu apt package ships it. Without it the app ingests SRT but
+> every WHEP viewer fails. Build [`gst-plugins-rs`](https://gitlab.freedesktop.org/gstreamer/gst-plugins-rs)
+> and put `libgstrswebrtc.so` on `GST_PLUGIN_PATH`, or just use the Docker
+> image, whose base already bundles it (see [`docs/adr/0004`](./docs/adr/0004-docker-runtime-base-with-rswebrtc.md)).
+> Verify with `gst-inspect-1.0 whipclientsink`.
+
 Build with Cargo
 
 ```
@@ -169,6 +179,12 @@ Build container (uses multi-stage builds):
 ```
 docker build -t srt-whep:dev .
 ```
+
+The runtime image is based on [`livekit/gstreamer`](https://hub.docker.com/r/livekit/gstreamer)'s
+`-prod-rs` tag because it bundles the `rswebrtc` plugin that provides
+`whipclientsink` (the WebRTC output element). No Debian/Ubuntu apt package ships
+that plugin, so a stock `gstreamer1.0-plugins-*` install alone is not enough —
+see [`docs/adr/0004`](./docs/adr/0004-docker-runtime-base-with-rswebrtc.md).
 
 Container must be running in host-mode (only works on Linux hosts, and is not supported on Docker Desktop for Mac, Docker Desktop for Windows)
 
