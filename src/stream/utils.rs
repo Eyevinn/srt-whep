@@ -9,7 +9,7 @@ fn print_tags(info: &DiscovererInfo) {
     let tags = info.tags();
     match tags {
         Some(taglist) => {
-            tracing::info!("  {taglist}"); // FIXME use an iterator
+            tracing::info!("  {taglist}");
         }
         None => {
             tracing::info!("  no tags");
@@ -42,9 +42,7 @@ fn print_discoverer_info(info: &DiscovererInfo) -> Result<(), Error> {
     Ok(())
 }
 
-pub fn run_discoverer(uri: &str, timeout_sec: u64) -> Result<(), Error> {
-    // gst::init()?;
-
+pub(crate) fn run_discoverer(uri: &str, timeout_sec: u64) -> Result<(), Error> {
     let timeout: gst::ClockTime = gst::ClockTime::from_seconds(timeout_sec);
     let discoverer = gst_pbutils::Discoverer::new(timeout)?;
     let info = discoverer.discover_uri(uri)?;

@@ -12,6 +12,16 @@ Runs on MacOS and Ubuntu.
 
 ![screenshot](docs/screenshot.png)
 
+## Architecture
+
+Internally the flow is: SRT ingest → a signaling coordinator (a single actor
+that owns all connection state) → one hot-plugged GStreamer branch per viewer
+→ WebRTC/WHEP out. Each viewer's branch reaches the signaling plane through an
+in-process loopback WHIP bridge, so the pipeline never imports signaling code.
+
+For the module map and domain glossary see [`CONTEXT.md`](./CONTEXT.md); the
+design decisions behind this shape are recorded in [`docs/adr/`](./docs/adr/).
+
 ## Design Principles
 When conceiving this project, we made deliberate design choices to shape its functionality and behavior in alignment with our vision:
 
