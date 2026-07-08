@@ -8,6 +8,10 @@ use thiserror::Error;
 pub enum SignalError {
     #[error("Invalid SDP: {0}")]
     InvalidSdp(String),
+    // Parse failures from the domain carry the domain error as their source;
+    // its Display is already "Invalid SDP: …", so this does not double-prefix.
+    #[error(transparent)]
+    Sdp(#[from] SdpError),
     #[error("Connection {0} not found")]
     NotFound(String),
     #[error("Connection {0} is in the wrong state for this operation")]
@@ -27,7 +31,7 @@ pub enum SignalError {
 impl ResponseError for SignalError {
     fn status_code(&self) -> StatusCode {
         match self {
-            SignalError::InvalidSdp(_) => StatusCode::BAD_REQUEST,
+            SignalError::InvalidSdp(_) | SignalError::Sdp(_) => StatusCode::BAD_REQUEST,
             SignalError::NotFound(_) => StatusCode::NOT_FOUND,
             SignalError::WrongState(_) => StatusCode::CONFLICT,
             SignalError::Timeout(_) | SignalError::NotReady | SignalError::PipelineBusy(_) => {
@@ -59,16 +63,6 @@ impl From<PipelineError> for SignalError {
             PipelineError::NotReady => SignalError::NotReady,
             PipelineError::Transient(msg) => SignalError::PipelineBusy(msg),
             PipelineError::Fatal(msg) => SignalError::Pipeline(msg),
-        }
-    }
-}
-
-impl From<SdpError> for SignalError {
-    fn from(e: SdpError) -> Self {
-        match e {
-            // Unwrap the message so the HTTP body doesn't stutter
-            // ("Invalid SDP: Invalid SDP: ...").
-            SdpError::InvalidSdp(msg) => SignalError::InvalidSdp(msg),
         }
     }
 }
