@@ -1,4 +1,4 @@
-use crate::domain::SessionDescription;
+use crate::domain::SdpAnswer;
 use crate::signal::{SignalError, SignalHandle};
 use actix_web::{web, HttpResponse};
 use uuid::Uuid;
@@ -32,12 +32,7 @@ pub async fn whep_patch_handler(
     signal: web::Data<SignalHandle>,
 ) -> Result<HttpResponse, SignalError> {
     let id = path.into_inner();
-    let sdp = SessionDescription::parse(form).map_err(SignalError::from)?;
-    if sdp.is_sendonly() {
-        return Err(SignalError::InvalidSdp(
-            "Received a send-only SDP from client; expected recvonly.".to_string(),
-        ));
-    }
+    let sdp = SdpAnswer::parse(form).map_err(SignalError::from)?;
 
     signal.answer_received(id, sdp).await?;
 

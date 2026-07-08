@@ -7,7 +7,7 @@ pub use coordinator::{Coordinator, CoordinatorConfig};
 pub use errors::SignalError;
 pub use messages::{Command, ConnectionId, ConnectionInfo};
 
-use crate::domain::SessionDescription;
+use crate::domain::{SdpAnswer, SdpOffer};
 use crate::stream::BranchControl;
 use tokio::sync::{mpsc, oneshot};
 
@@ -44,7 +44,7 @@ impl SignalHandle {
     /// Register a new connection (WHEP POST). Sends `CreateConnection` and
     /// awaits the coordinator's reply, which resolves to the SDP offer once
     /// the whipsink delivers it, or an error on timeout/failure.
-    pub async fn create_connection(&self, id: String) -> Result<SessionDescription, SignalError> {
+    pub async fn create_connection(&self, id: String) -> Result<SdpOffer, SignalError> {
         self.request(|reply| Command::CreateConnection { id, reply })
             .await
     }
@@ -55,8 +55,8 @@ impl SignalHandle {
     pub async fn offer_received(
         &self,
         id: String,
-        sdp: SessionDescription,
-    ) -> Result<SessionDescription, SignalError> {
+        sdp: SdpOffer,
+    ) -> Result<SdpAnswer, SignalError> {
         self.request(|reply| Command::OfferReceived { id, sdp, reply })
             .await
     }
@@ -64,11 +64,7 @@ impl SignalHandle {
     /// Hand the browser's SDP answer to the coordinator (WHEP PATCH). Sends
     /// `AnswerReceived`; the reply is `Ok(())` once the answer is accepted,
     /// or an error if the connection is unknown or the coordinator is gone.
-    pub async fn answer_received(
-        &self,
-        id: String,
-        sdp: SessionDescription,
-    ) -> Result<(), SignalError> {
+    pub async fn answer_received(&self, id: String, sdp: SdpAnswer) -> Result<(), SignalError> {
         self.request(|reply| Command::AnswerReceived { id, sdp, reply })
             .await
     }
@@ -110,7 +106,7 @@ impl SignalHandle {
 #[cfg(test)]
 mod tests {
     use super::{spawn_coordinator, CoordinatorConfig};
-    use crate::domain::{SessionDescription, VALID_WHEP_ANSWER, VALID_WHIP_OFFER};
+    use crate::domain::{SdpAnswer, SdpOffer, VALID_WHEP_ANSWER, VALID_WHIP_OFFER};
     use crate::stream::TestPipeline;
 
     #[tokio::test(start_paused = true)]
@@ -128,12 +124,12 @@ mod tests {
 
         let whip = {
             let handle = handle.clone();
-            let offer = SessionDescription::parse(VALID_WHIP_OFFER.to_string()).unwrap();
+            let offer = SdpOffer::parse(VALID_WHIP_OFFER.to_string()).unwrap();
             tokio::spawn(async move { handle.offer_received("a".to_string(), offer).await })
         };
         tokio::task::yield_now().await; // offer delivered
 
-        let answer = SessionDescription::parse(VALID_WHEP_ANSWER.to_string()).unwrap();
+        let answer = SdpAnswer::parse(VALID_WHEP_ANSWER.to_string()).unwrap();
         handle
             .answer_received("a".to_string(), answer)
             .await

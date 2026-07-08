@@ -1,4 +1,4 @@
-use crate::domain::SessionDescription;
+use crate::domain::SdpOffer;
 use crate::signal::{SignalError, SignalHandle};
 use crate::stream::whip_sink_path;
 use actix_web::{web, HttpResponse};
@@ -10,12 +10,7 @@ pub async fn whip_handler(
     signal: web::Data<SignalHandle>,
 ) -> Result<HttpResponse, SignalError> {
     let conn_id = path.into_inner();
-    let sdp = SessionDescription::parse(form).map_err(SignalError::from)?;
-    if !sdp.is_sendonly() {
-        return Err(SignalError::InvalidSdp(
-            "Received a recv-only SDP from whipsink; expected sendonly.".to_string(),
-        ));
-    }
+    let sdp = SdpOffer::parse(form).map_err(SignalError::from)?;
 
     tracing::info!("Received SDP offer for connection {}", conn_id);
     let answer = signal.offer_received(conn_id.clone(), sdp).await?;

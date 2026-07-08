@@ -1,7 +1,7 @@
 use super::errors::SignalError;
-use super::messages::{Command, ConnectionId, ConnectionInfo, SdpReply, UnitReply};
+use super::messages::{AnswerReply, Command, ConnectionId, ConnectionInfo, OfferReply, UnitReply};
 use super::watchdog::Watchdog;
-use crate::domain::SessionDescription;
+use crate::domain::{SdpAnswer, SdpOffer};
 use crate::stream::BranchControl;
 use std::collections::HashMap;
 use std::time::Duration;
@@ -40,11 +40,11 @@ impl Default for CoordinatorConfig {
 
 enum ConnectionState {
     AwaitingOffer {
-        whep_reply: SdpReply,
+        whep_reply: OfferReply,
         deadline: Instant,
     },
     AwaitingAnswer {
-        whip_reply: SdpReply,
+        whip_reply: AnswerReply,
         deadline: Instant,
     },
     // `since` is not read yet; a later task surfaces connection age.
@@ -69,14 +69,14 @@ enum AnswerDelivery {
 }
 
 impl ConnectionState {
-    fn awaiting_offer(whep_reply: SdpReply, deadline: Instant) -> Self {
+    fn awaiting_offer(whep_reply: OfferReply, deadline: Instant) -> Self {
         ConnectionState::AwaitingOffer {
             whep_reply,
             deadline,
         }
     }
 
-    fn awaiting_answer(whip_reply: SdpReply, deadline: Instant) -> Self {
+    fn awaiting_answer(whip_reply: AnswerReply, deadline: Instant) -> Self {
         ConnectionState::AwaitingAnswer {
             whip_reply,
             deadline,
@@ -115,7 +115,7 @@ impl ConnectionState {
     /// `Ok(..)` means this was the legal `AwaitingOffer` state; the variant
     /// reports whether the waiter was still there. `Err(self)` means the offer
     /// arrived in the wrong state — the caller restores the connection unchanged.
-    fn deliver_offer(self, sdp: SessionDescription) -> Result<OfferDelivery, ConnectionState> {
+    fn deliver_offer(self, sdp: SdpOffer) -> Result<OfferDelivery, ConnectionState> {
         match self {
             ConnectionState::AwaitingOffer { whep_reply, .. } => {
                 if whep_reply.send(Ok(sdp)).is_err() {
@@ -132,7 +132,7 @@ impl ConnectionState {
     /// `Ok(..)` means this was the legal `AwaitingAnswer` state; the variant
     /// reports whether the waiter was still there. `Err(self)` returns the
     /// unchanged state for the caller to restore and reject.
-    fn deliver_answer(self, sdp: SessionDescription) -> Result<AnswerDelivery, ConnectionState> {
+    fn deliver_answer(self, sdp: SdpAnswer) -> Result<AnswerDelivery, ConnectionState> {
         match self {
             ConnectionState::AwaitingAnswer { whip_reply, .. } => {
                 if whip_reply.send(Ok(sdp)).is_err() {
@@ -220,7 +220,7 @@ impl<P: BranchControl> Coordinator<P> {
 
     // Entry API can't be held across the pipeline awaits below.
     #[allow(clippy::map_entry)]
-    async fn create_connection(&mut self, id: ConnectionId, reply: SdpReply) {
+    async fn create_connection(&mut self, id: ConnectionId, reply: OfferReply) {
         if self.connections.contains_key(&id) {
             let _ = reply.send(Err(SignalError::WrongState(id)));
             return;
@@ -256,7 +256,7 @@ impl<P: BranchControl> Coordinator<P> {
             .insert(id, ConnectionState::awaiting_offer(reply, deadline));
     }
 
-    async fn offer_received(&mut self, id: ConnectionId, sdp: SessionDescription, reply: SdpReply) {
+    async fn offer_received(&mut self, id: ConnectionId, sdp: SdpOffer, reply: AnswerReply) {
         let Some(state) = self.connections.remove(&id) else {
             let _ = reply.send(Err(SignalError::NotFound(id)));
             return;
@@ -282,12 +282,7 @@ impl<P: BranchControl> Coordinator<P> {
         }
     }
 
-    async fn answer_received(
-        &mut self,
-        id: ConnectionId,
-        sdp: SessionDescription,
-        reply: UnitReply,
-    ) {
+    async fn answer_received(&mut self, id: ConnectionId, sdp: SdpAnswer, reply: UnitReply) {
         let Some(state) = self.connections.remove(&id) else {
             let _ = reply.send(Err(SignalError::NotFound(id)));
             return;
@@ -439,7 +434,7 @@ impl<P: BranchControl> Coordinator<P> {
 #[cfg(test)]
 mod tests {
     use super::{Coordinator, CoordinatorConfig};
-    use crate::domain::{SessionDescription, VALID_WHEP_ANSWER, VALID_WHIP_OFFER};
+    use crate::domain::{SdpAnswer, SdpOffer, VALID_WHEP_ANSWER, VALID_WHIP_OFFER};
     use crate::signal::messages::Command;
     use crate::signal::SignalError;
     use crate::stream::TestPipeline;
@@ -449,12 +444,12 @@ mod tests {
     use super::ConnectionState;
     use tokio::time::Instant;
 
-    pub(super) fn offer() -> SessionDescription {
-        SessionDescription::parse(VALID_WHIP_OFFER.to_string()).unwrap()
+    pub(super) fn offer() -> SdpOffer {
+        SdpOffer::parse(VALID_WHIP_OFFER.to_string()).unwrap()
     }
 
-    pub(super) fn answer() -> SessionDescription {
-        SessionDescription::parse(VALID_WHEP_ANSWER.to_string()).unwrap()
+    pub(super) fn answer() -> SdpAnswer {
+        SdpAnswer::parse(VALID_WHEP_ANSWER.to_string()).unwrap()
     }
 
     pub(super) fn test_config() -> CoordinatorConfig {

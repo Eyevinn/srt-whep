@@ -1,10 +1,11 @@
 use super::errors::SignalError;
-use crate::domain::SessionDescription;
+use crate::domain::{SdpAnswer, SdpOffer};
 use serde::Serialize;
 use tokio::sync::oneshot;
 
 pub type ConnectionId = String;
-pub type SdpReply = oneshot::Sender<Result<SessionDescription, SignalError>>;
+pub type OfferReply = oneshot::Sender<Result<SdpOffer, SignalError>>;
+pub type AnswerReply = oneshot::Sender<Result<SdpAnswer, SignalError>>;
 pub type UnitReply = oneshot::Sender<Result<(), SignalError>>;
 
 /// One entry in GET /list output.
@@ -18,18 +19,18 @@ pub struct ConnectionInfo {
 pub enum Command {
     /// WHEP POST: create the connection; reply carries the SDP offer once the
     /// whipsink delivers it (or an error on timeout/failure).
-    CreateConnection { id: ConnectionId, reply: SdpReply },
+    CreateConnection { id: ConnectionId, reply: OfferReply },
     /// Loopback WHIP POST: the whipsink's offer; reply carries the SDP answer
     /// once the browser PATCHes it (or an error on timeout/failure).
     OfferReceived {
         id: ConnectionId,
-        sdp: SessionDescription,
-        reply: SdpReply,
+        sdp: SdpOffer,
+        reply: AnswerReply,
     },
     /// WHEP PATCH: the browser's answer; replied to immediately.
     AnswerReceived {
         id: ConnectionId,
-        sdp: SessionDescription,
+        sdp: SdpAnswer,
         reply: UnitReply,
     },
     /// WHEP DELETE (or internal cleanup).
