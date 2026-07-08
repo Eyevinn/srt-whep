@@ -1,4 +1,4 @@
-use crate::domain::error_chain_fmt;
+use crate::errors::error_chain_fmt;
 use std::fmt::Debug;
 use thiserror::Error;
 use timed_locks::Error as TimedLockError;

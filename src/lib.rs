@@ -1,4 +1,5 @@
 pub mod domain;
+pub(crate) mod errors;
 pub mod routes;
 pub mod signal;
 pub mod startup;
