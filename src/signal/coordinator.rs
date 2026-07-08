@@ -69,6 +69,24 @@ enum AnswerDelivery {
 }
 
 impl ConnectionState {
+    fn awaiting_offer(whep_reply: SdpReply, deadline: Instant) -> Self {
+        ConnectionState::AwaitingOffer {
+            whep_reply,
+            deadline,
+        }
+    }
+
+    fn awaiting_answer(whip_reply: SdpReply, deadline: Instant) -> Self {
+        ConnectionState::AwaitingAnswer {
+            whip_reply,
+            deadline,
+        }
+    }
+
+    fn established(since: Instant) -> Self {
+        ConnectionState::Established { since }
+    }
+
     fn name(&self) -> &'static str {
         match self {
             ConnectionState::AwaitingOffer { .. } => "awaiting_offer",
@@ -234,13 +252,8 @@ impl<P: BranchControl> Coordinator<P> {
             return;
         }
         let deadline = Instant::now() + self.config.offer_timeout;
-        self.connections.insert(
-            id,
-            ConnectionState::AwaitingOffer {
-                whep_reply: reply,
-                deadline,
-            },
-        );
+        self.connections
+            .insert(id, ConnectionState::awaiting_offer(reply, deadline));
     }
 
     async fn offer_received(&mut self, id: ConnectionId, sdp: SessionDescription, reply: SdpReply) {
@@ -251,13 +264,8 @@ impl<P: BranchControl> Coordinator<P> {
         match state.deliver_offer(sdp) {
             Ok(OfferDelivery::Delivered) => {
                 let deadline = Instant::now() + self.config.answer_timeout;
-                self.connections.insert(
-                    id,
-                    ConnectionState::AwaitingAnswer {
-                        whip_reply: reply,
-                        deadline,
-                    },
-                );
+                self.connections
+                    .insert(id, ConnectionState::awaiting_answer(reply, deadline));
             }
             Ok(OfferDelivery::WaiterGone) => {
                 // The WHEP client vanished while waiting (actix dropped its
@@ -287,12 +295,8 @@ impl<P: BranchControl> Coordinator<P> {
         match state.deliver_answer(sdp) {
             Ok(AnswerDelivery::Established) => {
                 self.watchdog.record_success();
-                self.connections.insert(
-                    id,
-                    ConnectionState::Established {
-                        since: Instant::now(),
-                    },
-                );
+                self.connections
+                    .insert(id, ConnectionState::established(Instant::now()));
                 let _ = reply.send(Ok(()));
             }
             Ok(AnswerDelivery::WaiterGone) => {
@@ -1089,5 +1093,52 @@ mod tests {
         };
         state.fail_waiter(SignalError::NotFound("a".into()));
         assert!(matches!(rx.await.unwrap(), Err(SignalError::NotFound(_))));
+    }
+
+    #[tokio::test]
+    async fn transition_table_accepts_only_legal_events() {
+        use super::{AnswerDelivery, OfferDelivery};
+
+        // AwaitingOffer: an offer is legal, an answer is not.
+        let (tx, _rx) = oneshot::channel();
+        let s = ConnectionState::awaiting_offer(tx, Instant::now());
+        assert!(matches!(
+            s.deliver_offer(offer()),
+            Ok(OfferDelivery::Delivered)
+        ));
+
+        let (tx, _rx) = oneshot::channel();
+        let s = ConnectionState::awaiting_offer(tx, Instant::now());
+        assert!(matches!(
+            s.deliver_answer(answer()),
+            Err(ConnectionState::AwaitingOffer { .. })
+        ));
+
+        // AwaitingAnswer: an answer is legal, an offer is not.
+        let (tx, _rx) = oneshot::channel();
+        let s = ConnectionState::awaiting_answer(tx, Instant::now());
+        assert!(matches!(
+            s.deliver_answer(answer()),
+            Ok(AnswerDelivery::Established)
+        ));
+
+        let (tx, _rx) = oneshot::channel();
+        let s = ConnectionState::awaiting_answer(tx, Instant::now());
+        assert!(matches!(
+            s.deliver_offer(offer()),
+            Err(ConnectionState::AwaitingAnswer { .. })
+        ));
+
+        // Established: neither is legal.
+        let s = ConnectionState::established(Instant::now());
+        assert!(matches!(
+            s.deliver_offer(offer()),
+            Err(ConnectionState::Established { .. })
+        ));
+        let s = ConnectionState::established(Instant::now());
+        assert!(matches!(
+            s.deliver_answer(answer()),
+            Err(ConnectionState::Established { .. })
+        ));
     }
 }
