@@ -99,3 +99,9 @@ On macOS, `cargo build`/`test`/`run` need the GStreamer dylib path exported
 first, or you get a linker/runtime error. See the OSX build section of
 `README.md` for the full env var list (`PATH`, `PKG_CONFIG_PATH`,
 `GST_PLUGIN_PATH`, `DYLD_FALLBACK_LIBRARY_PATH`).
+
+The `whipclientsink` is **not** compiled into this binary — it comes from the
+`rswebrtc` plugin the GStreamer installation provides, resolved via
+`GST_PLUGIN_PATH` at runtime. Keep that path pointed at one GStreamer install:
+a second, higher-versioned `rswebrtc` there wins the registry and can break the
+WebRTC media path. See [`docs/adr/0003`](docs/adr/0003-webrtc-plugin-from-installation.md).
