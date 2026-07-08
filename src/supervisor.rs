@@ -12,6 +12,7 @@ use tokio::task::JoinHandle;
 const BASE_RESTART_DELAY: Duration = Duration::from_secs(1);
 const MAX_RESTART_DELAY: Duration = Duration::from_secs(30);
 const SHUTDOWN_JOIN_TIMEOUT: Duration = Duration::from_secs(5);
+const RESET_TIMEOUT: Duration = Duration::from_secs(5);
 
 pub struct Supervisor<P: PipelineLifecycle> {
     pipeline: P,
@@ -113,8 +114,13 @@ impl<P: PipelineLifecycle + 'static> Supervisor<P> {
         if let Err(e) = self.pipeline.clean_up().await {
             tracing::error!("Failed to clean up pipeline: {}", e);
         }
-        if let Err(e) = self.signal.reset().await {
-            tracing::error!("Failed to reset signaling state: {}", e);
+        // Bounded: the reset command shares the coordinator's single-threaded
+        // queue, so a wedged coordinator could otherwise hang the restart loop
+        // indefinitely (the shutdown path is already bounded; this one wasn't).
+        match tokio::time::timeout(RESET_TIMEOUT, self.signal.reset()).await {
+            Ok(Ok(())) => {}
+            Ok(Err(e)) => tracing::error!("Failed to reset signaling state: {}", e),
+            Err(_) => tracing::error!("Signaling reset timed out after {:?}", RESET_TIMEOUT),
         }
     }
 }

@@ -1,12 +1,13 @@
 use anyhow::{Error, Result};
 use async_trait::async_trait;
-use gst::{prelude::*, DebugGraphDetails, Pipeline};
+use gst::{prelude::*, Pipeline};
 use gstreamer as gst;
 use std::sync::Arc;
 use std::time::Duration;
 use timed_locks::Mutex;
+use tokio::sync::mpsc;
 
-use crate::stream::branch::{is_whip_sink_name, Branch};
+use crate::stream::branch::{branch_id_from_name, Branch};
 use crate::stream::errors::{PipelineError, StreamError};
 use crate::stream::pipeline::{Args, BranchControl, PipelineLifecycle, SRTMode};
 use crate::stream::utils::run_discoverer;
@@ -29,14 +30,23 @@ impl PipelineWrapper {
 }
 
 #[derive(Clone)]
-pub struct SharablePipeline(Arc<Mutex<PipelineWrapper>>);
+pub struct SharablePipeline {
+    state: Arc<Mutex<PipelineWrapper>>,
+    /// Set once at wiring time (by the coordinator). The bus watch reports a
+    /// per-viewer branch's runtime error here so the coordinator can reap
+    /// that branch's connection instead of the error being merely logged.
+    branch_failures: Arc<std::sync::Mutex<Option<mpsc::Sender<String>>>>,
+}
 
 impl SharablePipeline {
     pub fn new(args: Args) -> Self {
-        Self(Arc::new(Mutex::new_with_timeout(
-            PipelineWrapper::new(args),
-            Duration::from_secs(1),
-        )))
+        Self {
+            state: Arc::new(Mutex::new_with_timeout(
+                PipelineWrapper::new(args),
+                Duration::from_secs(1),
+            )),
+            branch_failures: Arc::new(std::sync::Mutex::new(None)),
+        }
     }
 }
 
@@ -44,7 +54,7 @@ impl SharablePipeline {
 impl BranchControl for SharablePipeline {
     /// Check if SRT input stream is available
     async fn ready(&self) -> Result<bool, PipelineError> {
-        let pipeline_state = self.0.lock_err().await.inspect_err(|e| {
+        let pipeline_state = self.state.lock_err().await.inspect_err(|e| {
             tracing::error!("Failed to lock pipeline: {}", e);
         })?;
         let pipeline = pipeline_state.pipeline.as_ref();
@@ -91,7 +101,7 @@ impl BranchControl for SharablePipeline {
             return Err(PipelineError::NotReady);
         }
 
-        let pipeline_state = self.0.lock_err().await?;
+        let pipeline_state = self.state.lock_err().await?;
         // No pipeline means we are between supervisor restarts: retryable.
         let pipeline = pipeline_state
             .pipeline
@@ -119,7 +129,7 @@ impl BranchControl for SharablePipeline {
         // holding the 1s timed lock across those awaits surfaces a slow
         // teardown as spurious LockTimeout errors to every other caller.
         let pipeline = {
-            let pipeline_state = self.0.lock_err().await?;
+            let pipeline_state = self.state.lock_err().await?;
             pipeline_state
                 .pipeline
                 .as_ref()
@@ -140,13 +150,17 @@ impl BranchControl for SharablePipeline {
     /// This function is used to restart the pipeline in case of
     /// unrecoverable errors
     async fn quit(&self) -> Result<(), PipelineError> {
-        let pipeline_state = self.0.lock_err().await?;
+        let pipeline_state = self.state.lock_err().await?;
         if let Some(main_loop) = pipeline_state.main_loop.as_ref() {
             tracing::debug!("Force-quit pipeline");
             main_loop.quit();
         }
 
         Ok(())
+    }
+
+    fn set_branch_failure_sink(&self, sink: mpsc::Sender<String>) {
+        *self.branch_failures.lock().unwrap() = Some(sink);
     }
 }
 
@@ -163,7 +177,7 @@ impl PipelineLifecycle for SharablePipeline {
         gstrswebrtc::plugin_register_static()?;
         tracing::debug!("Setting up pipeline");
 
-        let args = self.0.lock_err().await?.args.clone();
+        let args = self.state.lock_err().await?.args.clone();
 
         // Create a pipeline
         let pipeline = gst::Pipeline::default();
@@ -423,7 +437,7 @@ impl PipelineLifecycle for SharablePipeline {
         // Set to playing
         pipeline.set_state(gst::State::Playing)?;
         {
-            self.0.lock_err().await?.pipeline = Some(pipeline);
+            self.state.lock_err().await?.pipeline = Some(pipeline);
         }
 
         Ok(())
@@ -432,7 +446,7 @@ impl PipelineLifecycle for SharablePipeline {
     /// Run pipeline and wait until the message bus receives an EOS or error message
     async fn run(&self) -> Result<(), Error> {
         let (bus, main_loop) = {
-            let mut pipeline_state = self.0.lock_err().await?;
+            let mut pipeline_state = self.state.lock_err().await?;
             let pipeline = pipeline_state
                 .pipeline
                 .as_ref()
@@ -447,6 +461,7 @@ impl PipelineLifecycle for SharablePipeline {
 
         // Wait until an EOS or error message appears
         let main_loop_clone = main_loop.clone();
+        let branch_failures = self.branch_failures.clone();
         let bus_watch = move |_: &gst::Bus, msg: &gst::Message| {
             use gst::MessageView;
 
@@ -459,32 +474,45 @@ impl PipelineLifecycle for SharablePipeline {
                     main_loop.quit();
                 }
                 MessageView::Error(err) => {
-                    // An error from a WHEP output branch (a `whip-sink-*` element or
-                    // anything nested inside it — e.g. its signaller timing out or its
-                    // peer going away) must not be fatal. That branch is torn down on
-                    // its own by the coordinator when the handshake times out; quitting
-                    // the main loop here would drop the SRT ingest and every other
-                    // viewer, and the ensuing supervisor restart would reset all
-                    // in-flight handshakes — the "wedge" a single bad peer must never
-                    // be able to cause.
+                    // An error from a WHEP output branch (a `whip-sink-*`/`*-queue-*`
+                    // element or anything nested inside it — e.g. its signaller timing
+                    // out or its peer going away) must not be fatal. Quitting the main
+                    // loop here would drop the SRT ingest and every other viewer, and
+                    // the ensuing supervisor restart would reset all in-flight
+                    // handshakes — the "wedge" a single bad peer must never be able to
+                    // cause. Instead we walk the error source's ancestry to find which
+                    // viewer's branch it belongs to and ask the coordinator to reap
+                    // that one connection, leaving the pipeline running.
                     let src = err.src();
-                    let mut from_output_branch = false;
+                    let mut branch_id: Option<String> = None;
                     let mut cursor = src.cloned();
                     while let Some(obj) = cursor {
-                        if is_whip_sink_name(&obj.name()) {
-                            from_output_branch = true;
+                        if let Some(id) = branch_id_from_name(obj.name().as_str()) {
+                            branch_id = Some(id.to_string());
                             break;
                         }
                         cursor = obj.parent();
                     }
 
-                    if from_output_branch {
+                    if let Some(id) = branch_id {
                         tracing::warn!(
-                            "Output branch {:?} errored; leaving pipeline running: {} ({:?})",
-                            src.as_ref().map(|s| s.path_string()),
+                            "Branch for {} errored; reaping it, pipeline stays up: {} ({:?})",
+                            id,
                             err.error(),
                             err.debug()
                         );
+                        // Fire-and-forget: the coordinator removes the branch and
+                        // drops the connection. `try_send` never blocks the GLib
+                        // loop thread; a full/closed channel just means the reap is
+                        // dropped (the sweep/DELETE remain a backstop).
+                        if let Some(sink) = branch_failures.lock().unwrap().clone() {
+                            if sink.try_send(id.clone()).is_err() {
+                                tracing::warn!(
+                                    "Could not signal coordinator to reap branch {}",
+                                    id
+                                );
+                            }
+                        }
                     } else {
                         tracing::error!(
                             "{:?} runs into error : {} ({:?})",
@@ -530,7 +558,7 @@ impl PipelineLifecycle for SharablePipeline {
 
     /// Close pipeline by sending EOS message
     async fn end(&self) -> Result<(), Error> {
-        let pipeline_state = self.0.lock_err().await?;
+        let pipeline_state = self.state.lock_err().await?;
         if let Some(pipeline) = pipeline_state.pipeline.as_ref() {
             tracing::debug!("Stopping pipeline");
             let result = pipeline.send_event(gst::event::Eos::new());
@@ -549,7 +577,7 @@ impl PipelineLifecycle for SharablePipeline {
         // Take the pipeline out under the lock, then do the async NULL
         // transition without holding it.
         let pipeline = {
-            let mut pipeline_state = self.0.lock_err().await?;
+            let mut pipeline_state = self.state.lock_err().await?;
             pipeline_state.main_loop = None;
             pipeline_state.pipeline.take()
         };
@@ -569,20 +597,6 @@ impl PipelineLifecycle for SharablePipeline {
 
 // Helper functions
 impl SharablePipeline {
-    /// Helper function for debugging
-    /// Print pipeline to dot file
-    /// Warning: this function should not be called when the pipeline is in locked state
-    pub async fn print(&self) -> Result<(), Error> {
-        let pipeline_state = self.0.lock_err().await?;
-        if let Some(pipeline) = pipeline_state.pipeline.as_ref() {
-            pipeline.debug_to_dot_file(DebugGraphDetails::all(), "pipeline");
-        } else {
-            tracing::error!("Pipeline is missing");
-        }
-
-        Ok(())
-    }
-
     /// Create a queue element with given name and properties
     /// To check if the queue is blocking, we connect to the overrun and underrun signals
     fn create_custom_queue(

@@ -30,11 +30,22 @@ fn whip_endpoint(port: u32, id: &str) -> String {
 }
 
 const WHIP_SINK_PREFIX: &str = "whip-sink-";
+const VIDEO_QUEUE_PREFIX: &str = "video-queue-";
+const AUDIO_QUEUE_PREFIX: &str = "audio-queue-";
 
-/// True when a GStreamer object name belongs to some viewer's whip sink.
-/// The bus watch uses this to contain branch errors to their branch.
-pub(crate) fn is_whip_sink_name(name: &str) -> bool {
-    name.starts_with(WHIP_SINK_PREFIX)
+/// If `name` is a per-viewer branch element, return the connection id it
+/// belongs to. Recognizes the whip sink AND the per-media queues. The core
+/// demux→tee chain's queues are named exactly `video-queue`/`audio-queue`
+/// (no id suffix), so the trailing dash in the prefixes keeps their errors
+/// out — a core-queue error must stay fatal.
+///
+/// The bus watch uses this to contain a dying branch's errors to that branch
+/// (reaping just that connection) instead of quitting the whole pipeline,
+/// which would drop the SRT ingest and every other viewer.
+pub(crate) fn branch_id_from_name(name: &str) -> Option<&str> {
+    name.strip_prefix(WHIP_SINK_PREFIX)
+        .or_else(|| name.strip_prefix(VIDEO_QUEUE_PREFIX))
+        .or_else(|| name.strip_prefix(AUDIO_QUEUE_PREFIX))
 }
 
 /// Handle on one connection's branch, keyed by connection id. Cheap to
@@ -54,11 +65,11 @@ impl Branch {
     }
 
     fn video_queue_name(&self) -> String {
-        format!("video-queue-{}", self.id)
+        format!("{}{}", VIDEO_QUEUE_PREFIX, self.id)
     }
 
     fn audio_queue_name(&self) -> String {
-        format!("audio-queue-{}", self.id)
+        format!("{}{}", AUDIO_QUEUE_PREFIX, self.id)
     }
 
     /// Create this viewer's whipclientsink and per-media queues, link them
@@ -266,13 +277,36 @@ mod tests {
         assert_eq!("whip-sink-abc", branch.whip_sink_name());
         assert_eq!("video-queue-abc", branch.video_queue_name());
         assert_eq!("audio-queue-abc", branch.audio_queue_name());
-        assert!(is_whip_sink_name(&branch.whip_sink_name()));
-        assert!(!is_whip_sink_name(&branch.video_queue_name()));
 
         assert_eq!("/whip_sink/abc", whip_sink_path("abc"));
         assert_eq!(
             "http://localhost:8000/whip_sink/abc",
             whip_endpoint(8000, "abc")
         );
+    }
+
+    #[test]
+    fn every_branch_element_is_contained_and_maps_back_to_its_id() {
+        let branch = Branch::for_id("abc");
+        // ALL of a viewer's elements — the whip sink AND its per-media
+        // queues — are recognized as branch-owned, so an error from any of
+        // them is contained to that branch instead of restarting the pipeline.
+        for name in [
+            branch.whip_sink_name(),
+            branch.video_queue_name(),
+            branch.audio_queue_name(),
+        ] {
+            assert_eq!(
+                Some("abc"),
+                branch_id_from_name(&name),
+                "{name} not contained"
+            );
+        }
+
+        // The core (non-branch) elements stay fatal: their errors must still
+        // quit the pipeline and trigger a supervisor restart.
+        for name in ["video-queue", "audio-queue", "demux", "srt_source"] {
+            assert_eq!(None, branch_id_from_name(name), "{name} wrongly contained");
+        }
     }
 }

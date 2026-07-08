@@ -64,7 +64,9 @@ async fn pipeline_survives_repeated_handshake_failures() {
         offer_timeout: Duration::from_secs(10),
         answer_timeout: Duration::from_secs(3),
         watchdog_threshold: 10, // deliberate failures below must not trip it
+        watchdog_window: Duration::from_secs(60),
         sweep_interval: Duration::from_millis(200),
+        teardown_timeout: Duration::from_secs(5),
     };
 
     let listener =
