@@ -56,7 +56,7 @@ async fn pipeline_survives_repeated_handshake_failures() {
         tsdemux_latency: 100,
         run_discoverer: false,
         discoverer_timeout_sec: 5,
-        port: HTTP_PORT as u32, // whipclientsink posts back to this port
+        port: HTTP_PORT, // whipclientsink posts back to this port
     };
 
     let pipeline = SharablePipeline::new(args.clone());

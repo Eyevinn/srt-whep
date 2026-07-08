@@ -23,7 +23,7 @@ pub fn whip_sink_path(id: &str) -> String {
 }
 
 /// The loopback URL a connection's whipclientsink POSTs its offer to.
-fn whip_endpoint(port: u32, id: &str) -> String {
+fn whip_endpoint(port: u16, id: &str) -> String {
     format!("http://localhost:{}{}", port, whip_sink_path(id))
 }
 
@@ -75,7 +75,7 @@ impl Branch {
     ///
     /// Synchronous GStreamer calls only; the caller may hold the pipeline
     /// state lock.
-    pub(crate) fn attach(&self, pipeline: &gst::Pipeline, port: u32) -> Result<(), Error> {
+    pub(crate) fn attach(&self, pipeline: &gst::Pipeline, port: u16) -> Result<(), Error> {
         let demux = pipeline
             .by_name("demux")
             .ok_or(StreamError::MissingElement("demux".to_string()))?;

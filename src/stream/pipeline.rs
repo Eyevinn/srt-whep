@@ -43,7 +43,7 @@ pub struct Args {
 
     /// Port for whep client
     #[clap(short, long, default_value_t = 8000)]
-    pub port: u32,
+    pub port: u16,
 }
 
 #[derive(ValueEnum, Clone, Debug, PartialEq)]
