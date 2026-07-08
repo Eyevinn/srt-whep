@@ -29,7 +29,9 @@ fn functional_config() -> CoordinatorConfig {
         offer_timeout: Duration::from_secs(5),
         answer_timeout: Duration::from_secs(5),
         watchdog_threshold: 3,
+        watchdog_window: Duration::from_secs(60),
         sweep_interval: Duration::from_millis(50),
+        teardown_timeout: Duration::from_secs(5),
     }
 }
 
@@ -39,7 +41,9 @@ fn expiring_config(watchdog_threshold: u32) -> CoordinatorConfig {
         offer_timeout: Duration::from_millis(300),
         answer_timeout: Duration::from_millis(300),
         watchdog_threshold,
+        watchdog_window: Duration::from_secs(60),
         sweep_interval: Duration::from_millis(50),
+        teardown_timeout: Duration::from_secs(5),
     }
 }
 
@@ -403,4 +407,45 @@ async fn list_and_delete_manage_the_connection_lifecycle() {
         .await
         .unwrap();
     assert!(list.is_empty());
+}
+
+#[tokio::test]
+async fn a_branch_runtime_failure_reaps_the_established_connection() {
+    let (address, pipeline) = spawn_app(functional_config());
+    let client = http_client();
+
+    let id = complete_exchange(&address, &pipeline, 0).await;
+
+    // The pipeline's bus watch reports this viewer's branch errored at runtime
+    // (its peer went away / its whipsink failed). The coordinator must reap the
+    // dead branch instead of leaking it as a ghost /list entry forever.
+    pipeline.fail_branch(&id);
+
+    for _ in 0..200 {
+        if pipeline.snapshot().removed.contains(&id) {
+            break;
+        }
+        tokio::time::sleep(Duration::from_millis(5)).await;
+    }
+    assert!(
+        pipeline.snapshot().removed.contains(&id),
+        "the errored branch was never reaped"
+    );
+
+    let list: Vec<serde_json::Value> = client
+        .get(format!("{}/list", address))
+        .send()
+        .await
+        .unwrap()
+        .json()
+        .await
+        .unwrap();
+    assert!(
+        list.is_empty(),
+        "reaped connection still listed: {:?}",
+        list
+    );
+
+    // A dead peer is not a pipeline-health signal: the pipeline stays up.
+    assert_eq!(0, pipeline.snapshot().quit_count);
 }

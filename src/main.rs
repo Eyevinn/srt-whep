@@ -5,7 +5,6 @@ use srt_whep::stream::{Args, SharablePipeline};
 use srt_whep::telemetry::{get_subscriber, init_subscriber};
 use std::error::Error;
 use std::net::TcpListener;
-use tokio::signal;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
@@ -19,13 +18,30 @@ async fn main() -> Result<(), Box<dyn Error>> {
         TcpListener::bind(format!("0.0.0.0:{}", args.port)).expect("WHEP port is already in use");
     let app = Application::assemble(listener, pipeline, CoordinatorConfig::default())?;
 
-    // One Ctrl-C stops everything: the HTTP server, the supervisor
-    // (EOS → join), and with them the coordinator.
-    app.run_until_stopped(async {
-        let _ = signal::ctrl_c().await;
-        tracing::info!("Received Ctrl-C signal");
-    })
-    .await?;
+    // Any termination signal stops everything gracefully: the HTTP server
+    // (drain), the supervisor (EOS → NULL-state cleanup → join), and with
+    // them the coordinator. `disable_signals()` removed actix's own handlers,
+    // so SIGTERM/SIGQUIT (docker stop, k8s) must be re-established here
+    // alongside SIGINT — otherwise those would hard-kill with no drain.
+    app.run_until_stopped(shutdown_signal()).await?;
 
     Ok(())
+}
+
+#[cfg(unix)]
+async fn shutdown_signal() {
+    use tokio::signal::unix::{signal, SignalKind};
+    let mut sigterm = signal(SignalKind::terminate()).expect("failed to install SIGTERM handler");
+    let mut sigquit = signal(SignalKind::quit()).expect("failed to install SIGQUIT handler");
+    tokio::select! {
+        _ = tokio::signal::ctrl_c() => tracing::info!("Received SIGINT (Ctrl-C)"),
+        _ = sigterm.recv() => tracing::info!("Received SIGTERM"),
+        _ = sigquit.recv() => tracing::info!("Received SIGQUIT"),
+    }
+}
+
+#[cfg(not(unix))]
+async fn shutdown_signal() {
+    let _ = tokio::signal::ctrl_c().await;
+    tracing::info!("Received Ctrl-C signal");
 }

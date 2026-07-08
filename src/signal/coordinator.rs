@@ -13,7 +13,16 @@ pub struct CoordinatorConfig {
     pub offer_timeout: Duration,
     pub answer_timeout: Duration,
     pub watchdog_threshold: u32,
+    /// Only failures within this window of each other count toward a watchdog
+    /// trip; older failures decay so unrelated ones over a long span never
+    /// force a pipeline restart that would drop established viewers.
+    pub watchdog_window: Duration,
     pub sweep_interval: Duration,
+    /// Upper bound on a single branch teardown (`remove_branch`/`quit`). These
+    /// run inline in the actor's select loop; bounding them keeps one wedged
+    /// GStreamer teardown from stalling every other signaling command, the
+    /// expiry sweep, and the watchdog.
+    pub teardown_timeout: Duration,
 }
 
 impl Default for CoordinatorConfig {
@@ -22,7 +31,9 @@ impl Default for CoordinatorConfig {
             offer_timeout: Duration::from_secs(10),
             answer_timeout: Duration::from_secs(10),
             watchdog_threshold: 3,
+            watchdog_window: Duration::from_secs(60),
             sweep_interval: Duration::from_secs(1),
+            teardown_timeout: Duration::from_secs(5),
         }
     }
 }
@@ -59,17 +70,25 @@ pub struct Coordinator<P: BranchControl> {
     connections: HashMap<ConnectionId, ConnectionState>,
     watchdog: Watchdog,
     rx: mpsc::Receiver<Command>,
+    // Per-branch runtime failures observed on the pipeline bus. The
+    // coordinator owns the receiver; the pipeline holds the matching sender
+    // (installed below). This is a separate channel from `rx`, so it never
+    // gates shutdown — the actor still stops when every SignalHandle drops.
+    branch_failures: mpsc::Receiver<ConnectionId>,
 }
 
 impl<P: BranchControl> Coordinator<P> {
     pub fn new(pipeline: P, config: CoordinatorConfig, rx: mpsc::Receiver<Command>) -> Self {
-        let watchdog = Watchdog::new(config.watchdog_threshold);
+        let watchdog = Watchdog::new(config.watchdog_threshold, config.watchdog_window);
+        let (fail_tx, fail_rx) = mpsc::channel(64);
+        pipeline.set_branch_failure_sink(fail_tx);
         Self {
             pipeline,
             config,
             connections: HashMap::new(),
             watchdog,
             rx,
+            branch_failures: fail_rx,
         }
     }
 
@@ -82,6 +101,7 @@ impl<P: BranchControl> Coordinator<P> {
                     Some(cmd) => self.handle(cmd).await,
                     None => break, // all handles dropped
                 },
+                Some(id) = self.branch_failures.recv() => self.reap_branch(id).await,
                 _ = sweep.tick() => self.sweep_expired().await,
             }
         }
@@ -132,8 +152,19 @@ impl<P: BranchControl> Coordinator<P> {
                 return;
             }
         }
-        if let Err(e) = self.pipeline.add_branch(id.clone()).await {
-            let _ = reply.send(Err(e.into()));
+        if let Err(add_err) = self.pipeline.add_branch(id.clone()).await {
+            // Attach failed partway through. The id was never inserted, so
+            // DELETE could never reach it — detach the half-attached branch
+            // now (detach tolerates a half-built branch) so we don't orphan a
+            // whipclientsink with no cleanup path.
+            if let Err(cleanup_err) = self.remove_branch_bounded(id.clone()).await {
+                tracing::error!(
+                    "Failed to detach half-attached branch for {}: {}",
+                    id,
+                    cleanup_err
+                );
+            }
+            let _ = reply.send(Err(add_err.into()));
             return;
         }
         let deadline = Instant::now() + self.config.offer_timeout;
@@ -213,12 +244,17 @@ impl<P: BranchControl> Coordinator<P> {
     }
 
     async fn remove_connection(&mut self, id: ConnectionId, reply: UnitReply) {
-        match self.connections.remove(&id) {
-            None => {
-                let _ = reply.send(Err(SignalError::NotFound(id)));
-            }
-            Some(state) => {
-                // Any pending waiter learns the connection is gone.
+        let Some(state) = self.connections.remove(&id) else {
+            let _ = reply.send(Err(SignalError::NotFound(id)));
+            return;
+        };
+        // Remove the branch FIRST; only drop the map entry once teardown
+        // succeeds. On failure we re-insert the connection so a retried DELETE
+        // can try again — dropping it first would return 404 on retry while
+        // leaking the branch.
+        match self.remove_branch_bounded(id.clone()).await {
+            Ok(()) => {
+                // The connection is really gone now; let any pending waiter learn it.
                 match state {
                     ConnectionState::AwaitingOffer { whep_reply, .. } => {
                         let _ = whep_reply.send(Err(SignalError::NotFound(id.clone())));
@@ -228,12 +264,11 @@ impl<P: BranchControl> Coordinator<P> {
                     }
                     ConnectionState::Established { .. } => {}
                 }
-                let result = self
-                    .pipeline
-                    .remove_branch(id)
-                    .await
-                    .map_err(SignalError::from);
-                let _ = reply.send(result);
+                let _ = reply.send(Ok(()));
+            }
+            Err(e) => {
+                self.connections.insert(id, state);
+                let _ = reply.send(Err(e));
             }
         }
     }
@@ -272,15 +307,71 @@ impl<P: BranchControl> Coordinator<P> {
     /// Clean up a failed handshake: remove its pipeline branch, record the
     /// failure, and restart the pipeline when the watchdog trips.
     async fn fail_connection(&mut self, id: ConnectionId) {
-        if let Err(e) = self.pipeline.remove_branch(id.clone()).await {
+        if let Err(e) = self.remove_branch_bounded(id.clone()).await {
             tracing::error!("Failed to remove branch for {}: {}", id, e);
         }
         if self.watchdog.record_failure() {
             tracing::error!("Watchdog tripped: restarting the pipeline");
             self.reset_all();
-            if let Err(e) = self.pipeline.quit().await {
-                tracing::error!("Failed to quit pipeline: {}", e);
+            self.quit_bounded().await;
+        }
+    }
+
+    /// A per-viewer branch failed at runtime (its whipsink errored, its peer
+    /// went away), reported by the pipeline's bus watch. Drop the connection
+    /// and detach its branch so it can't linger as a ghost `/list` entry with
+    /// orphaned elements. A dead peer is not a pipeline-health signal, so the
+    /// watchdog is deliberately left untouched.
+    async fn reap_branch(&mut self, id: ConnectionId) {
+        let Some(state) = self.connections.remove(&id) else {
+            return; // already gone: raced a DELETE or an expiry sweep
+        };
+        tracing::warn!("Reaping branch for {} after a runtime failure", id);
+        match state {
+            ConnectionState::AwaitingOffer { whep_reply, .. } => {
+                let _ = whep_reply.send(Err(SignalError::NotFound(id.clone())));
             }
+            ConnectionState::AwaitingAnswer { whip_reply, .. } => {
+                let _ = whip_reply.send(Err(SignalError::NotFound(id.clone())));
+            }
+            ConnectionState::Established { .. } => {}
+        }
+        if let Err(e) = self.remove_branch_bounded(id.clone()).await {
+            tracing::error!("Failed to remove branch for {}: {}", id, e);
+        }
+    }
+
+    /// Remove a branch, bounded by `teardown_timeout`. All teardown awaits run
+    /// inline in the actor's select loop; without a bound, one wedged
+    /// GStreamer teardown would stall every signaling command, the expiry
+    /// sweep, and the watchdog. A timeout surfaces as a retryable error.
+    async fn remove_branch_bounded(&self, id: ConnectionId) -> Result<(), SignalError> {
+        match tokio::time::timeout(
+            self.config.teardown_timeout,
+            self.pipeline.remove_branch(id.clone()),
+        )
+        .await
+        {
+            Ok(res) => res.map_err(SignalError::from),
+            Err(_) => {
+                tracing::error!(
+                    "Branch teardown for {} exceeded {:?}",
+                    id,
+                    self.config.teardown_timeout
+                );
+                Err(SignalError::PipelineBusy(
+                    "branch teardown timed out".into(),
+                ))
+            }
+        }
+    }
+
+    /// Force-restart the pipeline, bounded so a wedged quit can't stall the actor.
+    async fn quit_bounded(&self) {
+        match tokio::time::timeout(self.config.teardown_timeout, self.pipeline.quit()).await {
+            Ok(Ok(())) => {}
+            Ok(Err(e)) => tracing::error!("Failed to quit pipeline: {}", e),
+            Err(_) => tracing::error!("Pipeline quit exceeded {:?}", self.config.teardown_timeout),
         }
     }
 
@@ -322,7 +413,9 @@ mod tests {
             offer_timeout: Duration::from_secs(5),
             answer_timeout: Duration::from_secs(5),
             watchdog_threshold: 3,
+            watchdog_window: Duration::from_secs(60),
             sweep_interval: Duration::from_secs(1),
+            teardown_timeout: Duration::from_secs(5),
         }
     }
 
@@ -339,6 +432,44 @@ mod tests {
         let (tx, rx) = mpsc::channel(16);
         tokio::spawn(Coordinator::new(pipeline, config, rx).run());
         tx
+    }
+
+    /// Drive a full WHEP<->WHIP handshake so the connection reaches Established.
+    async fn establish(tx: &mpsc::Sender<Command>, id: &str) {
+        let (whep_tx, whep_rx) = oneshot::channel();
+        tx.send(Command::CreateConnection {
+            id: id.into(),
+            reply: whep_tx,
+        })
+        .await
+        .unwrap();
+        let (whip_tx, whip_rx) = oneshot::channel();
+        tx.send(Command::OfferReceived {
+            id: id.into(),
+            sdp: offer(),
+            reply: whip_tx,
+        })
+        .await
+        .unwrap();
+        whep_rx.await.unwrap().unwrap();
+        let (patch_tx, patch_rx) = oneshot::channel();
+        tx.send(Command::AnswerReceived {
+            id: id.into(),
+            sdp: answer(),
+            reply: patch_tx,
+        })
+        .await
+        .unwrap();
+        patch_rx.await.unwrap().unwrap();
+        whip_rx.await.unwrap().unwrap();
+    }
+
+    async fn list_ids(tx: &mpsc::Sender<Command>) -> Vec<String> {
+        let (list_tx, list_rx) = oneshot::channel();
+        tx.send(Command::ListConnections { reply: list_tx })
+            .await
+            .unwrap();
+        list_rx.await.unwrap().into_iter().map(|c| c.id).collect()
     }
 
     #[tokio::test(start_paused = true)]
@@ -782,5 +913,114 @@ mod tests {
         assert_eq!("awaiting_offer", list[0].state);
 
         drop(whep_rx); // silence unused warning; connection will be swept later
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn add_branch_failure_detaches_the_half_attached_branch() {
+        use crate::stream::PipelineError;
+
+        let pipeline = ready_pipeline();
+        pipeline.fail_next_add_branch(PipelineError::Fatal("attach blew up".into()));
+        let tx = spawn_actor(pipeline.clone(), test_config());
+
+        let (whep_tx, whep_rx) = oneshot::channel();
+        tx.send(Command::CreateConnection {
+            id: "a".into(),
+            reply: whep_tx,
+        })
+        .await
+        .unwrap();
+
+        // The create fails and the id is never registered...
+        assert!(whep_rx.await.unwrap().is_err());
+        tokio::task::yield_now().await;
+
+        // ...but the half-attached branch is detached, not orphaned.
+        assert_eq!(vec!["a".to_string()], pipeline.snapshot().removed);
+        assert!(list_ids(&tx).await.is_empty());
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn failed_delete_keeps_the_connection_retryable() {
+        use crate::stream::PipelineError;
+
+        let pipeline = ready_pipeline();
+        let tx = spawn_actor(pipeline.clone(), test_config());
+        establish(&tx, "a").await;
+
+        // First DELETE: the branch teardown fails transiently.
+        pipeline.fail_next_remove_branch(PipelineError::Transient("lock timed out".into()));
+        let (d1_tx, d1_rx) = oneshot::channel();
+        tx.send(Command::RemoveConnection {
+            id: "a".into(),
+            reply: d1_tx,
+        })
+        .await
+        .unwrap();
+        assert!(matches!(
+            d1_rx.await.unwrap(),
+            Err(SignalError::PipelineBusy(_))
+        ));
+
+        // The connection is kept, so a retried DELETE still finds it (no 404).
+        assert_eq!(vec!["a".to_string()], list_ids(&tx).await);
+
+        // Retried DELETE succeeds, removes the branch, and clears the entry.
+        let (d2_tx, d2_rx) = oneshot::channel();
+        tx.send(Command::RemoveConnection {
+            id: "a".into(),
+            reply: d2_tx,
+        })
+        .await
+        .unwrap();
+        assert!(d2_rx.await.unwrap().is_ok());
+        assert!(pipeline.snapshot().removed.contains(&"a".to_string()));
+        assert!(list_ids(&tx).await.is_empty());
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn established_connection_is_reaped_on_branch_failure() {
+        let pipeline = ready_pipeline();
+        let tx = spawn_actor(pipeline.clone(), test_config());
+        establish(&tx, "a").await;
+
+        // The pipeline's bus watch reports the branch errored at runtime.
+        pipeline.fail_branch("a");
+        for _ in 0..5 {
+            tokio::task::yield_now().await; // let the actor drain the reap channel
+        }
+
+        // The established connection is reaped: branch detached, entry gone.
+        assert!(pipeline.snapshot().removed.contains(&"a".to_string()));
+        assert!(list_ids(&tx).await.is_empty());
+        // A dead peer is not a pipeline-health failure: no restart.
+        assert_eq!(0, pipeline.snapshot().quit_count);
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn wedged_teardown_does_not_stall_the_actor() {
+        let pipeline = ready_pipeline();
+        let tx = spawn_actor(pipeline.clone(), test_config()); // teardown_timeout 5s
+        establish(&tx, "a").await;
+
+        // Its teardown wedges and never completes.
+        pipeline.block_remove_branch();
+        let (d_tx, d_rx) = oneshot::channel();
+        tx.send(Command::RemoveConnection {
+            id: "a".into(),
+            reply: d_tx,
+        })
+        .await
+        .unwrap();
+
+        // The teardown timeout fires (auto-advanced paused clock) and the actor
+        // recovers with a retryable error instead of hanging forever.
+        assert!(matches!(
+            d_rx.await.unwrap(),
+            Err(SignalError::PipelineBusy(_))
+        ));
+
+        // The actor is still responsive, and the connection stayed retryable.
+        assert_eq!(vec!["a".to_string()], list_ids(&tx).await);
     }
 }

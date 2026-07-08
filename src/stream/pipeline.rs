@@ -3,6 +3,7 @@ use anyhow::Error;
 use async_trait::async_trait;
 use clap::{Parser, ValueEnum};
 use std::sync::Arc;
+use tokio::sync::mpsc;
 
 #[derive(Parser, Debug, Clone)]
 #[command(author, version, about, long_about = None)]
@@ -84,6 +85,13 @@ pub trait BranchControl: Clone + Send + Sync {
     async fn add_branch(&self, id: String) -> Result<(), PipelineError>;
     async fn remove_branch(&self, id: String) -> Result<(), PipelineError>;
     async fn quit(&self) -> Result<(), PipelineError>;
+
+    /// Install the sink the pipeline reports a per-viewer branch's runtime
+    /// failure to (observed on its message bus) so the coordinator can reap
+    /// that dead branch's connection instead of leaking it. Called once at
+    /// wiring time. Default: a no-op — a fake without a real bus never
+    /// reports one.
+    fn set_branch_failure_sink(&self, _sink: mpsc::Sender<String>) {}
 }
 
 /// The supervisor's view of the pipeline: whole-pipeline lifecycle.
@@ -111,6 +119,7 @@ pub struct TestPipelineState {
     pub end_count: u32,
     pub cleanup_count: u32,
     next_run_error: Option<String>,
+    block_remove_branch: bool,
 }
 
 /// A recording fake for unit and integration tests: `ready` is settable,
@@ -122,6 +131,8 @@ pub struct TestPipeline {
     state: Arc<std::sync::Mutex<TestPipelineState>>,
     run_gate: Arc<tokio::sync::Notify>,
     add_branch_error: Arc<std::sync::Mutex<Option<PipelineError>>>,
+    remove_branch_error: Arc<std::sync::Mutex<Option<PipelineError>>>,
+    branch_failures: Arc<std::sync::Mutex<Option<mpsc::Sender<String>>>>,
 }
 
 impl TestPipeline {
@@ -136,6 +147,26 @@ impl TestPipeline {
     /// Make the next `add_branch` call fail with the given error.
     pub fn fail_next_add_branch(&self, err: PipelineError) {
         *self.add_branch_error.lock().unwrap() = Some(err);
+    }
+
+    /// Make the next `remove_branch` call fail with the given error.
+    pub fn fail_next_remove_branch(&self, err: PipelineError) {
+        *self.remove_branch_error.lock().unwrap() = Some(err);
+    }
+
+    /// Make every `remove_branch` call hang forever, simulating a wedged
+    /// GStreamer teardown, so the coordinator's teardown timeout is exercised.
+    pub fn block_remove_branch(&self) {
+        self.state.lock().unwrap().block_remove_branch = true;
+    }
+
+    /// Simulate the bus watch reporting a per-viewer branch's runtime
+    /// failure (its whipsink errored / its peer went away), exactly as the
+    /// real pipeline does, so the coordinator reaps that connection.
+    pub fn fail_branch(&self, id: &str) {
+        if let Some(sink) = self.branch_failures.lock().unwrap().clone() {
+            let _ = sink.try_send(id.to_string());
+        }
     }
 
     /// Release a parked `run()` as a clean EOS.
@@ -165,6 +196,14 @@ impl BranchControl for TestPipeline {
     }
 
     async fn remove_branch(&self, id: String) -> Result<(), PipelineError> {
+        if let Some(err) = self.remove_branch_error.lock().unwrap().take() {
+            return Err(err);
+        }
+        if self.state.lock().unwrap().block_remove_branch {
+            // A wedged teardown that never resolves; the coordinator's
+            // teardown timeout is what unblocks the actor.
+            std::future::pending::<()>().await;
+        }
         self.state.lock().unwrap().removed.push(id);
         Ok(())
     }
@@ -173,6 +212,10 @@ impl BranchControl for TestPipeline {
         self.state.lock().unwrap().quit_count += 1;
         self.run_gate.notify_one();
         Ok(())
+    }
+
+    fn set_branch_failure_sink(&self, sink: mpsc::Sender<String>) {
+        *self.branch_failures.lock().unwrap() = Some(sink);
     }
 }
 
