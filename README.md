@@ -251,6 +251,23 @@ cargo run --release -- -i 127.0.0.1:1234 -o 127.0.0.1:8888 -p 8000 -s listener |
 
 This also expects the SRT address `127.0.0.1:8888` to be running in caller mode.
 
+## Testing
+
+To verify **end-to-end that a real browser actually decodes the media** — not just that the WHEP connection is established — run the automated browser check (macOS):
+
+```
+tests/browser/run.sh                 # headless Chrome, default profile
+tests/browser/run.sh --headed        # watch the Chrome window
+```
+
+It brings up an SRT test source and srt-whep, serves a diagnostic WHEP player, drives the real system Google Chrome through the full WHEP handshake, and exits `0`/`1` based on whether video frames actually decode — so it catches the "connected but zero media" failure that a plain connection check misses. It prints a per-stage report and writes JSON to `target/codec-test/`. See [`tests/browser/README.md`](./tests/browser/README.md) for prerequisites and options (profiles, `--headed`, `--skip-bringup`). For the H.264 profile × browser compatibility matrix (including Safari), see [`docs/supported_codecs.md`](./docs/supported_codecs.md).
+
+The Rust unit and integration tests run with:
+
+```
+cargo test
+```
+
 ## Tips for Successful Streaming
 
 When working with SRT streams, there are several important considerations that can affect the success of your streaming experience:
