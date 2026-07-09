@@ -126,6 +126,7 @@ pub struct TestPipelineState {
     pub cleanup_count: u32,
     next_run_error: Option<String>,
     block_remove_branch: bool,
+    block_add_branch: bool,
 }
 
 /// A recording fake for unit and integration tests: `ready` is settable,
@@ -166,6 +167,13 @@ impl TestPipeline {
         self.state.lock().unwrap().block_remove_branch = true;
     }
 
+    /// Make every `add_branch` call hang forever, simulating a wedged
+    /// GStreamer cleanup detach on a failed attach, so the coordinator's
+    /// teardown timeout is exercised on this path too.
+    pub fn block_add_branch(&self) {
+        self.state.lock().unwrap().block_add_branch = true;
+    }
+
     /// Simulate the bus watch reporting a per-viewer branch's runtime
     /// failure (its whipsink errored / its peer went away), exactly as the
     /// real pipeline does, so the coordinator reaps that connection.
@@ -200,6 +208,11 @@ impl BranchControl for TestPipeline {
         // Mirror the real adapter: a branch cannot be added to a not-ready input.
         if !self.state.lock().unwrap().ready {
             return Err(PipelineError::NotReady);
+        }
+        if self.state.lock().unwrap().block_add_branch {
+            // A wedged cleanup detach that never resolves; the coordinator's
+            // teardown timeout is what unblocks the actor.
+            std::future::pending::<()>().await;
         }
         self.state.lock().unwrap().added.push(id);
         Ok(())

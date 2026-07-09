@@ -126,9 +126,10 @@ impl BranchControl for SharablePipeline {
             // Attach ran partway: detach our own half-built branch so the caller
             // never has to reason about stream-plane cleanup (ADR 0002 -- the
             // semantic is unchanged; only the location moved here from the
-            // coordinator). detach tolerates a half-built branch (missing
-            // elements are skipped). Best-effort: the original attach error is
-            // what we report.
+            // coordinator). detach removes whatever branch elements are
+            // present; a queue added but not yet linked is left for a later
+            // reap (see remove_branch_from_pipeline). Best-effort -- the
+            // original attach error is what we report.
             tracing::warn!(
                 "attach for {} failed ({}); detaching half-built branch",
                 id,

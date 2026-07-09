@@ -263,12 +263,35 @@ impl<P: BranchControl> Coordinator<P> {
             let _ = reply.send(Err(SignalError::WrongState(id)));
             return;
         }
-        if let Err(add_err) = self.pipeline.add_branch(id.clone()).await {
-            // add_branch owns detaching a half-attached branch (ADR 0002); the
-            // coordinator just maps the error. Error variants mean retry policy
-            // only again -- no matching on stream error variants here.
-            let _ = reply.send(Err(add_err.into()));
-            return;
+        // Bound add_branch on the actor's critical path. Its failure path now
+        // detaches a half-built branch internally (ADR 0002); an unbounded
+        // detach would let one wedged GStreamer teardown stall every command,
+        // the sweep, and the watchdog -- the same bound remove_branch_bounded
+        // gives the other teardown paths. The synchronous attach has no await
+        // to cancel; this bounds the internal cleanup detach.
+        match tokio::time::timeout(
+            self.config.teardown_timeout,
+            self.pipeline.add_branch(id.clone()),
+        )
+        .await
+        {
+            Ok(Ok(())) => {}
+            Ok(Err(add_err)) => {
+                // Error variants mean retry policy only -- no matching here.
+                let _ = reply.send(Err(add_err.into()));
+                return;
+            }
+            Err(_) => {
+                tracing::error!(
+                    "add_branch for {} exceeded {:?}",
+                    id,
+                    self.config.teardown_timeout
+                );
+                let _ = reply.send(Err(SignalError::PipelineBusy(
+                    "branch attach/cleanup timed out".into(),
+                )));
+                return;
+            }
         }
         let deadline = Instant::now() + self.config.offer_timeout;
         self.connections
@@ -1087,6 +1110,29 @@ mod tests {
 
         // The actor is still responsive, and the connection stayed retryable.
         assert_eq!(vec!["a".to_string()], list_ids(&tx).await);
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn wedged_add_branch_cleanup_times_out_to_a_retryable_error() {
+        use actix_web::ResponseError;
+
+        let pipeline = ready_pipeline();
+        pipeline.block_add_branch(); // simulates a wedged cleanup detach
+        let tx = spawn_actor(pipeline.clone(), test_config()); // teardown_timeout 5s
+
+        let (whep_tx, whep_rx) = oneshot::channel();
+        tx.send(Command::CreateConnection {
+            id: "a".into(),
+            reply: whep_tx,
+        })
+        .await
+        .unwrap();
+
+        // The bound fires (auto-advanced paused clock) and the actor recovers
+        // with a retryable error instead of hanging forever.
+        let err = whep_rx.await.unwrap().unwrap_err();
+        assert_eq!(503, err.status_code().as_u16());
+        assert!(err.error_response().headers().get("Retry-After").is_some());
     }
 
     #[tokio::test]
