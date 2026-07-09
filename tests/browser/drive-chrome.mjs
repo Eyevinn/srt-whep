@@ -3,7 +3,7 @@
 // diagnostic player, sample the connection stages, and emit report + JSON +
 // exit code. Owns the browser only; all pass/fail logic lives in verdict.mjs.
 import puppeteer from 'puppeteer-core';
-import { writeFileSync, mkdirSync } from 'node:fs';
+import { writeFileSync, mkdirSync, existsSync } from 'node:fs';
 import { dirname } from 'node:path';
 import {
   parseOfferStatus, parseVideoBytes, computeVerdict, formatReport,
@@ -35,11 +35,40 @@ const CHROME_PATH  = args['chrome-path'] || process.env.CHROME_PATH ||
 const text = (page, id) =>
   page.$eval('#' + id, (el) => el.textContent.trim()).catch(() => '');
 
-const browser = await puppeteer.launch({
-  executablePath: CHROME_PATH,
-  headless: HEADED ? false : 'new',
-  args: ['--autoplay-policy=no-user-gesture-required'],
-});
+// Emit a structured failure verdict + JSON + report when the browser can't
+// even launch (e.g. wrong CHROME_PATH), so the tool still honors its
+// "always emit JSON + report" contract instead of throwing a bare stack trace.
+function emitLaunchFailure(message) {
+  const log = `DRIVER EXCEPTION: ${message}`;
+  const verdict = computeVerdict({
+    profile: PROFILE, offerStatus: null, connection: 'error', log,
+    framesFirst: 0, framesLast: 0, videoBytes: 0, codec: '', frameSize: '',
+  });
+  const result = {
+    ...verdict, endpoint: ENDPOINT,
+    offerVideoMLine: '', answerVideoMLine: '', log: log.split('\n'),
+  };
+  mkdirSync(dirname(JSON_OUT), { recursive: true });
+  writeFileSync(JSON_OUT, JSON.stringify(result, null, 2));
+  console.log(formatReport(verdict, log));
+  console.log(`\nJSON: ${JSON_OUT}`);
+  process.exit(1);
+}
+
+if (!existsSync(CHROME_PATH)) {
+  emitLaunchFailure(`Google Chrome not found at ${CHROME_PATH} (set CHROME_PATH or --chrome-path)`);
+}
+
+let browser;
+try {
+  browser = await puppeteer.launch({
+    executablePath: CHROME_PATH,
+    headless: HEADED ? false : 'new',
+    args: ['--autoplay-policy=no-user-gesture-required'],
+  });
+} catch (err) {
+  emitLaunchFailure(`could not launch Chrome at ${CHROME_PATH}: ${err.message}`);
+}
 
 try {
   let connection = 'error';

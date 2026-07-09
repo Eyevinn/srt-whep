@@ -16,6 +16,7 @@ skill — same diagnostic player, same bring-up scripts, no clicking.
   `CHROME_PATH`). **Real Chrome, not Chromium** — Chromium may lack the H.264
   decoder and would show 0 frames on a good stream.
 - Node 20+ and `npm` on PATH. `ffmpeg` only for VideoToolbox profiles.
+- **Python 3** on PATH — `run.sh` serves the player via `python3 -m http.server`.
 
 ## Run
 
@@ -33,6 +34,8 @@ First run does `npm install` (installs `puppeteer-core`; no browser download).
 
 A per-stage table prints to stdout; full detail (incl. offer/answer video
 m-lines and the player log) lands in `target/codec-test/whep-auto-<profile>.json`.
+The JSON always lands at `<repo-root>/target/codec-test/whep-auto-<profile>.json`
+regardless of the directory you invoke `run.sh` from.
 
 | Stage | Pass condition |
 |---|---|
