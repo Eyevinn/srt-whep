@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  parseOfferStatus, videoRejected, parseVideoBytes, framesVerdict, computeVerdict,
+  parseOfferStatus, videoRejected, parseVideoBytes, framesVerdict, computeVerdict, formatReport,
 } from './verdict.mjs';
 
 test('parseOfferStatus reads the first 3-digit status after an arrow', () => {
@@ -51,4 +51,28 @@ test('computeVerdict passes only when every gate is ok', () => {
   });
   assert.equal(noOffer.pass, false);
   assert.equal(noOffer.failedStage, 'offer');
+});
+
+test('formatReport renders a PASS report with a climbing frames line', () => {
+  const good = computeVerdict({
+    profile: 'constrained-baseline', offerStatus: 201, connection: 'connected',
+    log: '  → 201 Created', framesFirst: 5, framesLast: 187,
+    videoBytes: 240113, codec: 'video/H264', frameSize: '1280x720',
+  });
+  const report = formatReport(good, '  → 201 Created');
+  assert.match(report, /PASS/);
+  assert.match(report, /constrained-baseline/);
+  assert.match(report, /5 → 187 \(climbing\)/);
+});
+
+test('formatReport renders a FAIL report naming the failed stage, no climbing', () => {
+  const skew = computeVerdict({
+    profile: 'constrained-baseline', offerStatus: 201, connection: 'connected',
+    log: 'ok', framesFirst: 0, framesLast: 0,
+    videoBytes: 0, codec: '', frameSize: '',
+  });
+  const report = formatReport(skew, 'ok');
+  assert.match(report, /FAIL \(failed: frames\)/);
+  assert.match(report, /0 → 0/);
+  assert.doesNotMatch(report, /0 → 0 \(climbing\)/);
 });
