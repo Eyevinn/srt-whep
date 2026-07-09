@@ -6,3 +6,4 @@
 .vscode
 .DS_Store
 docs/.DS_Store
+tests/browser/node_modules

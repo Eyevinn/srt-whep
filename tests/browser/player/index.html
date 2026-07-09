@@ -1,0 +1,163 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>srt-whep diagnostic WHEP player</title>
+<style>
+  body { font: 14px/1.5 -apple-system, system-ui, sans-serif; margin: 0; background:#111; color:#eee; }
+  header { padding: 10px 16px; background:#1b1b1b; display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
+  input { font: inherit; padding:6px 8px; width:340px; background:#000; color:#0f0; border:1px solid #444; border-radius:4px; }
+  button { font: inherit; padding:6px 14px; border:0; border-radius:4px; cursor:pointer; }
+  #play { background:#2d7; } #stop { background:#c44; color:#fff; }
+  main { display:flex; gap:12px; padding:12px 16px; flex-wrap:wrap; }
+  video { background:#000; width:640px; max-width:100%; border:1px solid #333; border-radius:6px; }
+  #side { flex:1; min-width:320px; }
+  .kv { display:flex; gap:8px; margin:2px 0; }
+  .kv b { display:inline-block; width:130px; color:#8cf; }
+  .badge { padding:1px 8px; border-radius:10px; font-weight:600; }
+  .ok { background:#183; } .bad { background:#722; } .warn { background:#850; } .idle { background:#333; }
+  pre { background:#000; border:1px solid #333; border-radius:6px; padding:8px; max-height:260px; overflow:auto; white-space:pre-wrap; font:12px/1.4 ui-monospace, monospace; }
+  h3 { margin:14px 0 4px; color:#fa4; }
+</style>
+</head>
+<body>
+<header>
+  <b>WHEP endpoint</b>
+  <input id="url" value="http://localhost:8000/channel">
+  <button id="play">▶ Connect</button>
+  <button id="stop">■ Stop</button>
+  <span id="ua" style="color:#888"></span>
+</header>
+<main>
+  <video id="v" autoplay playsinline muted controls></video>
+  <div id="side">
+    <div class="kv"><b>Connection</b><span id="pc" class="badge idle">idle</span></div>
+    <div class="kv"><b>ICE</b><span id="ice" class="badge idle">idle</span></div>
+    <div class="kv"><b>ICE gathering</b><span id="gather" class="badge idle">idle</span></div>
+    <div class="kv"><b>Video track</b><span id="vt" class="badge idle">—</span></div>
+    <div class="kv"><b>Decoded codec</b><span id="codec">—</span></div>
+    <div class="kv"><b>Frames decoded</b><span id="frames">0</span></div>
+    <div class="kv"><b>Bytes recv (v/a)</b><span id="bytes">0 / 0</span></div>
+    <div class="kv"><b>Frame size</b><span id="size">—</span></div>
+    <h3>Log</h3>
+    <pre id="log"></pre>
+    <h3>Server OFFER (video m-line)</h3>
+    <pre id="offer"></pre>
+    <h3>Browser ANSWER (video m-line)</h3>
+    <pre id="answer"></pre>
+  </div>
+</main>
+<script>
+const $ = id => document.getElementById(id);
+$('ua').textContent = navigator.userAgent.includes('Chrome') ? 'Chrome' :
+                      (navigator.userAgent.includes('Safari') ? 'Safari' : 'other');
+function log(...a){ $('log').textContent += a.join(' ') + '\n'; $('log').scrollTop = 1e9; }
+function badge(el, txt, cls){ el.textContent = txt; el.className = 'badge ' + cls; }
+function mline(sdp, kind){
+  const lines = sdp.split(/\r?\n/); let out=[], grab=false;
+  for(const l of lines){
+    if(l.startsWith('m=')) grab = l.startsWith('m='+kind);
+    if(grab && /^(m=|a=(rtpmap|fmtp|rtcp-fb|mid|sendrecv|recvonly|sendonly|inactive|setup)|c=)/.test(l)) out.push(l);
+  }
+  return out.join('\n') || '(no '+kind+' section)';
+}
+
+let pc = null, statsTimer = null;
+
+async function connect(){
+  await stop();
+  const ENDPOINT = $('url').value.trim();
+  pc = new RTCPeerConnection();
+  pc.addEventListener('connectionstatechange', () => {
+    const s = pc.connectionState;
+    badge($('pc'), s, s==='connected'?'ok':(s==='failed'?'bad':(s==='connecting'?'warn':'idle')));
+    log('connectionState:', s);
+  });
+  pc.addEventListener('iceconnectionstatechange', () => {
+    const s = pc.iceConnectionState;
+    badge($('ice'), s, (s==='connected'||s==='completed')?'ok':(s==='failed'?'bad':'warn'));
+    log('iceConnectionState:', s);
+  });
+  pc.addEventListener('icegatheringstatechange', () =>
+    badge($('gather'), pc.iceGatheringState, pc.iceGatheringState==='complete'?'ok':'warn'));
+  pc.addEventListener('track', e => {
+    log('ontrack:', e.track.kind);
+    if(e.track.kind === 'video'){
+      $('v').srcObject = e.streams[0];
+      badge($('vt'), 'received', 'ok');
+      e.track.addEventListener('unmute', ()=>log('video track unmuted (media flowing)'));
+      e.track.addEventListener('mute', ()=>log('video track MUTED (no media)'));
+    }
+  });
+
+  try {
+    log('POST', ENDPOINT, '(empty body) → asking server for offer');
+    const res = await fetch(ENDPOINT, { method:'POST', headers:{'Content-Type':'application/sdp'}, body:'' });
+    log('  →', res.status, res.statusText);
+    const loc = res.headers.get('Location');
+    const offerSdp = await res.text();
+    if(!res.ok){ log('SERVER ERROR BODY:', offerSdp); badge($('pc'),'server '+res.status,'bad'); return; }
+    $('offer').textContent = mline(offerSdp, 'video');
+    await pc.setRemoteDescription({ type:'offer', sdp: offerSdp });
+    log('setRemoteDescription(offer) OK');
+
+    const answer = await pc.createAnswer();
+    await pc.setLocalDescription(answer);
+    log('createAnswer/setLocalDescription OK — gathering ICE…');
+    await iceComplete(pc, 5000);
+
+    const finalAnswer = pc.localDescription.sdp;
+    $('answer').textContent = mline(finalAnswer, 'video');
+    const vm = finalAnswer.split(/\r?\n/).find(l=>l.startsWith('m=video'));
+    if(vm && / 0 /.test(vm)) log('⚠️ ANSWER REJECTED VIDEO (m=video port 0) — codec not accepted');
+
+    const resourceUrl = new URL(loc, ENDPOINT).href;
+    log('PATCH', resourceUrl, '(answer)');
+    const p = await fetch(resourceUrl, { method:'PATCH', headers:{'Content-Type':'application/sdp'}, body: finalAnswer });
+    log('  →', p.status, p.statusText);
+    if(!p.ok) log('PATCH ERROR BODY:', await p.text());
+
+    statsTimer = setInterval(pollStats, 1000);
+  } catch(err){ log('EXCEPTION:', err.message); badge($('pc'),'error','bad'); }
+}
+
+function iceComplete(pc, timeout){
+  return new Promise(resolve => {
+    if(pc.iceGatheringState === 'complete') return resolve();
+    const done = () => { pc.removeEventListener('icegatheringstatechange', chk); resolve(); };
+    const chk = () => { if(pc.iceGatheringState === 'complete') done(); };
+    pc.addEventListener('icegatheringstatechange', chk);
+    setTimeout(done, timeout);
+  });
+}
+
+async function pollStats(){
+  if(!pc) return;
+  const stats = await pc.getStats();
+  let vBytes=0, aBytes=0, frames=0, codecId=null, w=0, h=0;
+  const codecs = {};
+  stats.forEach(r => {
+    if(r.type==='codec') codecs[r.id] = r;
+    if(r.type==='inbound-rtp' && r.kind==='video'){ vBytes=r.bytesReceived||0; frames=r.framesDecoded||0; codecId=r.codecId; w=r.frameWidth||0; h=r.frameHeight||0; }
+    if(r.type==='inbound-rtp' && r.kind==='audio'){ aBytes=r.bytesReceived||0; }
+  });
+  $('frames').textContent = frames;
+  $('bytes').textContent = vBytes + ' / ' + aBytes;
+  if(w&&h) $('size').textContent = w+'×'+h;
+  if(codecId && codecs[codecId]) $('codec').textContent = codecs[codecId].mimeType + '  ' + (codecs[codecId].sdpFmtpLine||'');
+}
+
+async function stop(){
+  if(statsTimer){ clearInterval(statsTimer); statsTimer=null; }
+  if(pc){ try{ pc.close(); }catch(e){} pc=null; }
+  $('v').srcObject = null;
+  ['pc','ice','gather'].forEach(id=>badge($(id),'idle','idle'));
+  badge($('vt'),'—','idle');
+}
+
+$('play').onclick = connect;
+$('stop').onclick = stop;
+</script>
+</body>
+</html>
