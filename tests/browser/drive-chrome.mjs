@@ -42,29 +42,39 @@ const browser = await puppeteer.launch({
 });
 
 try {
-  const page = await browser.newPage();
-  await page.goto(PLAYER_URL, { waitUntil: 'load' });
-  await page.$eval('#url', (el, v) => { el.value = v; }, ENDPOINT);
-  await page.click('#play');
+  let connection = 'error';
+  let framesFirst = 0, framesLast = 0;
+  let log = '', bytesText = '', codec = '', frameSize = '', offerM = '', answerM = '';
+  try {
+    const page = await browser.newPage();
+    await page.goto(PLAYER_URL, { waitUntil: 'load' });
+    await page.$eval('#url', (el, v) => { el.value = v; }, ENDPOINT);
+    await page.click('#play');
 
-  // Wait for the connection badge to settle to a terminal-ish state (or the
-  // connect timeout); a swallowed timeout just means we read whatever we reached.
-  await page.waitForFunction(() => {
-    const s = document.getElementById('pc').textContent.trim();
-    return ['connected', 'failed', 'error'].includes(s) || s.startsWith('server');
-  }, { timeout: CONNECT_WAIT }).catch(() => {});
+    // Wait for the connection badge to settle to a terminal-ish state (or the
+    // connect timeout); a swallowed timeout just means we read whatever we reached.
+    await page.waitForFunction(() => {
+      const s = document.getElementById('pc').textContent.trim();
+      return ['connected', 'failed', 'error'].includes(s) || s.startsWith('server');
+    }, { timeout: CONNECT_WAIT }).catch(() => {});
 
-  const connection  = await text(page, 'pc');
-  const framesFirst = Number(await text(page, 'frames')) || 0;
-  await new Promise((r) => setTimeout(r, MEDIA_WAIT)); // media-wait window
-  const framesLast  = Number(await text(page, 'frames')) || 0;
+    connection  = await text(page, 'pc');
+    framesFirst = Number(await text(page, 'frames')) || 0;
+    await new Promise((r) => setTimeout(r, MEDIA_WAIT)); // media-wait window
+    framesLast  = Number(await text(page, 'frames')) || 0;
 
-  const log       = await page.$eval('#log',    (el) => el.textContent).catch(() => '');
-  const bytesText = await text(page, 'bytes');
-  const codec     = await text(page, 'codec');
-  const frameSize = await text(page, 'size');
-  const offerM    = await page.$eval('#offer',  (el) => el.textContent).catch(() => '');
-  const answerM   = await page.$eval('#answer', (el) => el.textContent).catch(() => '');
+    log       = await page.$eval('#log',    (el) => el.textContent).catch(() => '');
+    bytesText = await text(page, 'bytes');
+    codec     = await text(page, 'codec');
+    frameSize = await text(page, 'size');
+    offerM    = await page.$eval('#offer',  (el) => el.textContent).catch(() => '');
+    answerM   = await page.$eval('#answer', (el) => el.textContent).catch(() => '');
+  } catch (err) {
+    // Player unreachable, DOM drift, or navigation failure: still emit a
+    // structured verdict instead of an uncaught stack trace.
+    log = `DRIVER EXCEPTION: ${err.message}\n${log}`;
+    connection = 'error';
+  }
 
   const verdict = computeVerdict({
     profile: PROFILE,
