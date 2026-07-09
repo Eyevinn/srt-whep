@@ -30,14 +30,20 @@ that owns all connection state) → one hot-plugged GStreamer branch per viewer
 → WebRTC/WHEP out. Each viewer's branch reaches the signaling plane through an
 in-process loopback WHIP bridge, so the pipeline never imports signaling code.
 
+![Animated architecture diagram: SRT source feeds the GStreamer pipeline; the
+coordinator actor owns connection state and drives branch add/remove; HTTP
+routes talk to it via SignalHandle; the connection lifecycle advances
+AwaitingOffer → AwaitingAnswer → Established, with the sweep reaping timeouts
+and the watchdog escalating to a supervisor restart](docs/srt-whep-coordinator-actor.gif)
+
 For the module map and domain glossary see [`CONTEXT.md`](./CONTEXT.md); the
 design decisions behind this shape are recorded in [`docs/adr/`](./docs/adr/).
 
 ## Design Principles
 When conceiving this project, we made deliberate design choices to shape its functionality and behavior in alignment with our vision:
 
-- No Video Transcoding:
-We have intentionally refrained from implementing video transcoding within this component. This decision stems from the desire to maintain the integrity of the original video stream. This approach caters to use cases like confidence monitoring or preview. If you wish to transcode video anyway, here is an [example](https://github.com/Eyevinn/srt-whep/issues/36#issuecomment-1667880628) to do that.
+- No Video Transcoding by Default:
+We have intentionally refrained from transcoding video in the default configuration. This decision stems from the desire to maintain the integrity of the original video stream. This approach caters to use cases like confidence monitoring or preview. If you wish to transcode video anyway, run with the `-D`/`--decode-video` option: the incoming H264 stream is then decoded and re-encoded by the WebRTC sink for each viewer.
 - Server-Side Initiation Mode:
 Our project does not currently support the client-side initiation mode of [WebRTC-HTTP Egress Protocol (WHEP)](./docs/whep.md). Instead, we have adopted a server-side initiation approach. In this mode, the server provides the SDP offer, as it possesses knowledge of the available streams.
 - Focus on SDP Offer/Answer Exchange:
