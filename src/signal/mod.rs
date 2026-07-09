@@ -8,7 +8,7 @@ pub use errors::SignalError;
 pub use messages::{Command, ConnectionId, ConnectionInfo};
 
 use crate::domain::{SdpAnswer, SdpOffer};
-use crate::stream::BranchControl;
+use crate::stream::{BranchControl, BranchId};
 use tokio::sync::{mpsc, oneshot};
 
 /// Clone-able handle to the coordinator actor. HTTP handlers and the
@@ -18,13 +18,17 @@ pub struct SignalHandle {
     tx: mpsc::Sender<Command>,
 }
 
-/// Spawn the coordinator actor and return the handle for it.
+/// Spawn the coordinator actor and return the handle for it. `branch_failures`
+/// is the receiving end of the pipeline's bus-reap channel (its sender was
+/// handed to the pipeline at construction), so the sink is present from birth
+/// and no post-construction installer is needed.
 pub fn spawn_coordinator<P: BranchControl + 'static>(
     pipeline: P,
     config: CoordinatorConfig,
+    branch_failures: mpsc::Receiver<BranchId>,
 ) -> SignalHandle {
     let (tx, rx) = mpsc::channel(64);
-    tokio::spawn(Coordinator::new(pipeline, config, rx).run());
+    tokio::spawn(Coordinator::new(pipeline, config, rx, branch_failures).run());
     SignalHandle { tx }
 }
 
@@ -108,12 +112,15 @@ mod tests {
     use super::{spawn_coordinator, CoordinatorConfig};
     use crate::domain::{SdpAnswer, SdpOffer, VALID_WHEP_ANSWER, VALID_WHIP_OFFER};
     use crate::stream::TestPipeline;
+    use tokio::sync::mpsc;
 
     #[tokio::test(start_paused = true)]
     async fn handle_drives_a_full_handshake() {
         let pipeline = TestPipeline::default();
         pipeline.set_ready(true);
-        let handle = spawn_coordinator(pipeline.clone(), CoordinatorConfig::default());
+        // This test never reaps: a disconnected failure receiver.
+        let (_fail_tx, fail_rx) = mpsc::channel(1);
+        let handle = spawn_coordinator(pipeline.clone(), CoordinatorConfig::default(), fail_rx);
 
         // The three legs run concurrently, exactly like the HTTP handlers do.
         let whep = {

@@ -40,6 +40,30 @@ pub(crate) fn video_decoder_name(id: &str) -> String {
     format!("{VIDEO_DECODER_STEM}-{id}")
 }
 
+/// Identity of one viewer's WHEP output branch as it crosses the pipeline's
+/// bus-reap channel to the coordinator. A newtype so the seam carries a type
+/// instead of a bare `String`, and so `src/stream` owns it — the module graph
+/// stays acyclic (ADR 0001): `stream` must not import `signal`'s `ConnectionId`,
+/// so the coordinator maps `BranchId` to a `ConnectionId` at its own edge.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct BranchId(String);
+
+impl BranchId {
+    pub fn new(id: impl Into<String>) -> Self {
+        Self(id.into())
+    }
+
+    /// Consume the newtype, yielding the raw id string (used by the coordinator
+    /// to map into its `ConnectionId` domain at the seam).
+    pub fn into_string(self) -> String {
+        self.0
+    }
+
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
 /// If `name` is a per-viewer branch element, return the connection id it
 /// belongs to. Recognizes the whip sink, the per-media queues, and the optional
 /// `--decode-video` H264 decoder.

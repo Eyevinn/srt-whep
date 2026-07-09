@@ -2,7 +2,7 @@ use super::errors::SignalError;
 use super::messages::{AnswerReply, Command, ConnectionId, ConnectionInfo, OfferReply, UnitReply};
 use super::watchdog::Watchdog;
 use crate::domain::{SdpAnswer, SdpOffer};
-use crate::stream::BranchControl;
+use crate::stream::{BranchControl, BranchId};
 use std::collections::HashMap;
 use std::time::Duration;
 use tokio::sync::mpsc;
@@ -207,23 +207,26 @@ pub struct Coordinator<P: BranchControl> {
     rx: mpsc::Receiver<Command>,
     // Per-branch runtime failures observed on the pipeline bus. The
     // coordinator owns the receiver; the pipeline holds the matching sender
-    // (installed below). This is a separate channel from `rx`, so it never
-    // gates shutdown — the actor still stops when every SignalHandle drops.
-    branch_failures: mpsc::Receiver<ConnectionId>,
+    // (from its own construction). This is a separate channel from `rx`, so it
+    // never gates shutdown — the actor still stops when every SignalHandle drops.
+    branch_failures: mpsc::Receiver<BranchId>,
 }
 
 impl<P: BranchControl> Coordinator<P> {
-    pub fn new(pipeline: P, config: CoordinatorConfig, rx: mpsc::Receiver<Command>) -> Self {
+    pub fn new(
+        pipeline: P,
+        config: CoordinatorConfig,
+        rx: mpsc::Receiver<Command>,
+        branch_failures: mpsc::Receiver<BranchId>,
+    ) -> Self {
         let watchdog = Watchdog::new(config.watchdog_threshold, config.watchdog_window);
-        let (fail_tx, fail_rx) = mpsc::channel(64);
-        pipeline.set_branch_failure_sink(fail_tx);
         Self {
             pipeline,
             config,
             connections: HashMap::new(),
             watchdog,
             rx,
-            branch_failures: fail_rx,
+            branch_failures,
         }
     }
 
@@ -236,7 +239,10 @@ impl<P: BranchControl> Coordinator<P> {
                     Some(cmd) => self.handle(cmd).await,
                     None => break, // all handles dropped
                 },
-                Some(id) = self.branch_failures.recv() => self.reap_branch(id).await,
+                // Map the stream plane's `BranchId` into the signal plane's
+                // `ConnectionId` at this seam (they are the same value; the
+                // newtype keeps the two module vocabularies from leaking).
+                Some(branch) = self.branch_failures.recv() => self.reap_branch(branch.into_string()).await,
                 _ = sweep.tick() => self.sweep_expired().await,
             }
         }
@@ -492,7 +498,7 @@ mod tests {
     use crate::domain::{SdpAnswer, SdpOffer, VALID_WHEP_ANSWER, VALID_WHIP_OFFER};
     use crate::signal::messages::Command;
     use crate::signal::SignalError;
-    use crate::stream::TestPipeline;
+    use crate::stream::{BranchId, TestPipeline};
     use std::time::Duration;
     use tokio::sync::{mpsc, oneshot};
 
@@ -528,8 +534,24 @@ mod tests {
         pipeline: TestPipeline,
         config: CoordinatorConfig,
     ) -> mpsc::Sender<Command> {
+        // No reaper wired: a disconnected failure receiver (its sender dropped)
+        // so `branch_failures.recv()` yields `None` and that select arm stays
+        // idle. Tests that exercise reaping use `spawn_actor_with_reaper`.
+        let (_fail_tx, fail_rx) = mpsc::channel(1);
         let (tx, rx) = mpsc::channel(16);
-        tokio::spawn(Coordinator::new(pipeline, config, rx).run());
+        tokio::spawn(Coordinator::new(pipeline, config, rx, fail_rx).run());
+        tx
+    }
+
+    /// Spawn the actor sharing `branch_failures` with a pipeline built via
+    /// `TestPipeline::new`, so the fake's `fail_branch` reaches this coordinator.
+    pub(super) fn spawn_actor_with_reaper(
+        pipeline: TestPipeline,
+        config: CoordinatorConfig,
+        branch_failures: mpsc::Receiver<BranchId>,
+    ) -> mpsc::Sender<Command> {
+        let (tx, rx) = mpsc::channel(16);
+        tokio::spawn(Coordinator::new(pipeline, config, rx, branch_failures).run());
         tx
     }
 
@@ -1081,8 +1103,12 @@ mod tests {
 
     #[tokio::test(start_paused = true)]
     async fn established_connection_is_reaped_on_branch_failure() {
-        let pipeline = ready_pipeline();
-        let tx = spawn_actor(pipeline.clone(), test_config());
+        // The fake shares its failure channel with the coordinator, mirroring
+        // how the real pipeline's bus watch reaches the actor.
+        let (fail_tx, fail_rx) = mpsc::channel(64);
+        let pipeline = TestPipeline::new(fail_tx);
+        pipeline.set_ready(true);
+        let tx = spawn_actor_with_reaper(pipeline.clone(), test_config(), fail_rx);
         establish(&tx, "a").await;
 
         // The pipeline's bus watch reports the branch errored at runtime.

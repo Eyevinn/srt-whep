@@ -5,6 +5,7 @@ use srt_whep::stream::{Args, SharablePipeline};
 use srt_whep::telemetry::{get_subscriber, init_subscriber};
 use std::error::Error;
 use std::net::TcpListener;
+use tokio::sync::mpsc;
 
 /// srt-whep: SRT to WHEP (WebRTC) gateway.
 #[derive(Parser, Debug)]
@@ -23,7 +24,11 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let subscriber = get_subscriber("srt_whep".into(), "debug".into(), std::io::stdout);
     init_subscriber(subscriber);
 
-    let pipeline = SharablePipeline::new(cli.pipeline.clone());
+    // The bus-reap channel: the pipeline holds the sender (from birth), the
+    // coordinator (inside `assemble`) the receiver. Created here so both ends
+    // exist before either is spawned.
+    let (branch_failures_tx, branch_failures_rx) = mpsc::channel(64);
+    let pipeline = SharablePipeline::new(cli.pipeline.clone(), branch_failures_tx);
     let listener = TcpListener::bind(format!("0.0.0.0:{}", cli.pipeline.port))
         .expect("WHEP port is already in use");
     let app = Application::assemble(
@@ -31,6 +36,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
         pipeline,
         cli.coordinator.to_config(),
         Some(cli.pipeline.port),
+        branch_failures_rx,
     )?;
 
     // Any termination signal stops everything gracefully: the HTTP server

@@ -1,12 +1,13 @@
 use crate::routes::*;
 use crate::signal::{spawn_coordinator, CoordinatorConfig, SignalHandle};
-use crate::stream::{BranchControl, PipelineLifecycle, WHIP_SINK_ROUTE};
+use crate::stream::{BranchControl, BranchId, PipelineLifecycle, WHIP_SINK_ROUTE};
 use crate::supervisor::Supervisor;
 use actix_cors::Cors;
 use actix_web::dev::Server;
 use actix_web::{guard, web, App, HttpServer};
 use std::future::Future;
 use std::net::TcpListener;
+use tokio::sync::mpsc;
 use tokio::sync::watch;
 use tokio::task::JoinHandle;
 use tracing_actix_web::TracingLogger;
@@ -52,6 +53,7 @@ impl Application {
         pipeline: P,
         config: CoordinatorConfig,
         expected_whip_port: Option<u16>,
+        branch_failures: mpsc::Receiver<BranchId>,
     ) -> Result<Self, std::io::Error>
     where
         P: BranchControl + PipelineLifecycle + 'static,
@@ -73,7 +75,7 @@ impl Application {
                 ));
             }
         }
-        let signal = spawn_coordinator(pipeline.clone(), config);
+        let signal = spawn_coordinator(pipeline.clone(), config, branch_failures);
         let (shutdown_tx, shutdown_rx) = watch::channel(false);
         let supervisor = Supervisor::spawn(pipeline, signal.clone(), shutdown_rx);
         let server = run(listener, signal.clone())?;

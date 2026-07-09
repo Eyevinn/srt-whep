@@ -156,10 +156,18 @@ fn flatten_join(
 #[cfg(test)]
 mod tests {
     use super::Supervisor;
-    use crate::signal::{spawn_coordinator, CoordinatorConfig, SignalError};
+    use crate::signal::{spawn_coordinator, CoordinatorConfig, SignalError, SignalHandle};
     use crate::stream::{BranchControl, TestPipeline, TestPipelineState};
     use std::time::Duration;
-    use tokio::sync::watch;
+    use tokio::sync::{mpsc, watch};
+
+    /// These tests exercise the supervisor, never reaping, so the coordinator
+    /// gets a disconnected failure receiver (its sender dropped) and default
+    /// config.
+    fn spawn_coordinator_no_reaper(pipeline: TestPipeline) -> SignalHandle {
+        let (_fail_tx, fail_rx) = mpsc::channel(1);
+        spawn_coordinator(pipeline, CoordinatorConfig::default(), fail_rx)
+    }
 
     async fn wait_until(pipeline: &TestPipeline, f: impl Fn(&TestPipelineState) -> bool) {
         for _ in 0..500 {
@@ -174,7 +182,7 @@ mod tests {
     #[tokio::test(start_paused = true)]
     async fn restarts_after_a_failed_run() {
         let pipeline = TestPipeline::default();
-        let signal = spawn_coordinator(pipeline.clone(), CoordinatorConfig::default());
+        let signal = spawn_coordinator_no_reaper(pipeline.clone());
         let (_shutdown_tx, shutdown_rx) = watch::channel(false);
         let _sup = Supervisor::spawn(pipeline.clone(), signal.clone(), shutdown_rx);
 
@@ -191,7 +199,7 @@ mod tests {
     async fn reset_on_cleanup_fails_inflight_handshakes() {
         let pipeline = TestPipeline::default();
         pipeline.set_ready(true);
-        let signal = spawn_coordinator(pipeline.clone(), CoordinatorConfig::default());
+        let signal = spawn_coordinator_no_reaper(pipeline.clone());
         let (_shutdown_tx, shutdown_rx) = watch::channel(false);
         let _sup = Supervisor::spawn(pipeline.clone(), signal.clone(), shutdown_rx);
         wait_until(&pipeline, |s| s.run_count == 1).await;
@@ -210,7 +218,7 @@ mod tests {
     #[tokio::test(start_paused = true)]
     async fn shutdown_sends_eos_joins_and_stops_the_loop() {
         let pipeline = TestPipeline::default();
-        let signal = spawn_coordinator(pipeline.clone(), CoordinatorConfig::default());
+        let signal = spawn_coordinator_no_reaper(pipeline.clone());
         let (shutdown_tx, shutdown_rx) = watch::channel(false);
         let sup = Supervisor::spawn(pipeline.clone(), signal.clone(), shutdown_rx);
         wait_until(&pipeline, |s| s.run_count == 1).await;
@@ -227,7 +235,7 @@ mod tests {
     #[tokio::test(start_paused = true)]
     async fn dropped_shutdown_sender_also_stops_the_loop() {
         let pipeline = TestPipeline::default();
-        let signal = spawn_coordinator(pipeline.clone(), CoordinatorConfig::default());
+        let signal = spawn_coordinator_no_reaper(pipeline.clone());
         let (shutdown_tx, shutdown_rx) = watch::channel(false);
         let sup = Supervisor::spawn(pipeline.clone(), signal.clone(), shutdown_rx);
         wait_until(&pipeline, |s| s.run_count == 1).await;
@@ -241,7 +249,7 @@ mod tests {
     async fn quit_restarts_like_a_clean_run() {
         // The watchdog's quit() resolves run() with Ok, exactly like EOS.
         let pipeline = TestPipeline::default();
-        let signal = spawn_coordinator(pipeline.clone(), CoordinatorConfig::default());
+        let signal = spawn_coordinator_no_reaper(pipeline.clone());
         let (_shutdown_tx, shutdown_rx) = watch::channel(false);
         let _sup = Supervisor::spawn(pipeline.clone(), signal.clone(), shutdown_rx);
         wait_until(&pipeline, |s| s.run_count == 1).await;
@@ -254,7 +262,7 @@ mod tests {
     #[tokio::test(start_paused = true)]
     async fn backoff_doubles_on_consecutive_failures_and_resets_on_success() {
         let pipeline = TestPipeline::default();
-        let signal = spawn_coordinator(pipeline.clone(), CoordinatorConfig::default());
+        let signal = spawn_coordinator_no_reaper(pipeline.clone());
         let (_shutdown_tx, shutdown_rx) = watch::channel(false);
         let _sup = Supervisor::spawn(pipeline.clone(), signal.clone(), shutdown_rx);
 

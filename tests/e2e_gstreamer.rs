@@ -60,7 +60,8 @@ async fn pipeline_survives_repeated_handshake_failures() {
         decode_video: false,
     };
 
-    let pipeline = SharablePipeline::new(args.clone());
+    let (branch_failures_tx, branch_failures_rx) = tokio::sync::mpsc::channel(64);
+    let pipeline = SharablePipeline::new(args.clone(), branch_failures_tx);
     let config = CoordinatorConfig {
         offer_timeout: Duration::from_secs(10),
         answer_timeout: Duration::from_secs(3),
@@ -73,7 +74,14 @@ async fn pipeline_survives_repeated_handshake_failures() {
     let listener =
         TcpListener::bind(format!("127.0.0.1:{}", HTTP_PORT)).expect("e2e HTTP port in use");
     // The production wiring: coordinator + supervisor + HTTP server.
-    let app = Application::assemble(listener, pipeline.clone(), config, Some(HTTP_PORT)).unwrap();
+    let app = Application::assemble(
+        listener,
+        pipeline.clone(),
+        config,
+        Some(HTTP_PORT),
+        branch_failures_rx,
+    )
+    .unwrap();
     let (stop_tx, stop_rx) = tokio::sync::oneshot::channel::<()>();
     let app_task = tokio::spawn(app.run_until_stopped(async move {
         let _ = stop_rx.await;

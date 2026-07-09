@@ -1,4 +1,5 @@
 use crate::stream::errors::PipelineError;
+use crate::stream::naming::BranchId;
 use anyhow::Error;
 use async_trait::async_trait;
 use clap::ValueEnum;
@@ -91,13 +92,6 @@ pub trait BranchControl: Clone + Send + Sync {
     async fn add_branch(&self, id: String) -> Result<(), PipelineError>;
     async fn remove_branch(&self, id: String) -> Result<(), PipelineError>;
     async fn quit(&self) -> Result<(), PipelineError>;
-
-    /// Install the sink the pipeline reports a per-viewer branch's runtime
-    /// failure to (observed on its message bus) so the coordinator can reap
-    /// that dead branch's connection instead of leaking it. Called once at
-    /// wiring time. Default: a no-op — a fake without a real bus never
-    /// reports one.
-    fn set_branch_failure_sink(&self, _sink: mpsc::Sender<String>) {}
 }
 
 /// The supervisor's view of the pipeline: whole-pipeline lifecycle.
@@ -133,16 +127,47 @@ pub struct TestPipelineState {
 /// every call is recorded for assertions, and `run()` parks until released
 /// — by `finish_run`/`fail_run` from a test, or by `end`/`quit` exactly
 /// like EOS / forced-quit resolve the real pipeline's `run()`.
-#[derive(Clone, Default)]
+#[derive(Clone)]
 pub struct TestPipeline {
     state: Arc<std::sync::Mutex<TestPipelineState>>,
     run_gate: Arc<tokio::sync::Notify>,
     add_branch_error: Arc<std::sync::Mutex<Option<PipelineError>>>,
     remove_branch_error: Arc<std::sync::Mutex<Option<PipelineError>>>,
-    branch_failures: Arc<std::sync::Mutex<Option<mpsc::Sender<String>>>>,
+    /// Where `fail_branch` reports a simulated bus failure. Present from birth,
+    /// mirroring the real pipeline (no `Option`). `default()` wires a
+    /// disconnected sink — the common case for tests that never reap; tests
+    /// that do reap use `TestPipeline::new(sink)` to share the coordinator's
+    /// channel.
+    branch_failures: mpsc::Sender<BranchId>,
+}
+
+impl Default for TestPipeline {
+    fn default() -> Self {
+        // A disconnected failure sink (its receiver is dropped): `fail_branch`
+        // on such a fake is a no-op, exactly like the real pipeline before any
+        // branch errors, and no coordinator is listening.
+        let (branch_failures, _rx) = mpsc::channel(1);
+        Self {
+            state: Arc::default(),
+            run_gate: Arc::default(),
+            add_branch_error: Arc::default(),
+            remove_branch_error: Arc::default(),
+            branch_failures,
+        }
+    }
 }
 
 impl TestPipeline {
+    /// Build a fake whose `fail_branch` reports go to `branch_failures`, so a
+    /// coordinator holding the matching receiver reaps the connection. Mirrors
+    /// the real `SharablePipeline::new(args, sink)` constructor shape.
+    pub fn new(branch_failures: mpsc::Sender<BranchId>) -> Self {
+        Self {
+            branch_failures,
+            ..Self::default()
+        }
+    }
+
     pub fn set_ready(&self, ready: bool) {
         self.state.lock().unwrap().ready = ready;
     }
@@ -178,9 +203,7 @@ impl TestPipeline {
     /// failure (its whipsink errored / its peer went away), exactly as the
     /// real pipeline does, so the coordinator reaps that connection.
     pub fn fail_branch(&self, id: &str) {
-        if let Some(sink) = self.branch_failures.lock().unwrap().clone() {
-            let _ = sink.try_send(id.to_string());
-        }
+        let _ = self.branch_failures.try_send(BranchId::new(id));
     }
 
     /// Release a parked `run()` as a clean EOS.
@@ -235,10 +258,6 @@ impl BranchControl for TestPipeline {
         self.state.lock().unwrap().quit_count += 1;
         self.run_gate.notify_one();
         Ok(())
-    }
-
-    fn set_branch_failure_sink(&self, sink: mpsc::Sender<String>) {
-        *self.branch_failures.lock().unwrap() = Some(sink);
     }
 }
 

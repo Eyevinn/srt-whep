@@ -9,7 +9,7 @@ use tokio::sync::mpsc;
 
 use crate::stream::branch::Branch;
 use crate::stream::errors::{PipelineError, StreamError};
-use crate::stream::naming;
+use crate::stream::naming::{self, BranchId};
 use crate::stream::pipeline::{Args, BranchControl, PipelineLifecycle, SRTMode};
 use crate::stream::utils::run_discoverer;
 
@@ -33,20 +33,22 @@ impl PipelineWrapper {
 #[derive(Clone)]
 pub struct SharablePipeline {
     state: Arc<Mutex<PipelineWrapper>>,
-    /// Set once at wiring time (by the coordinator). The bus watch reports a
-    /// per-viewer branch's runtime error here so the coordinator can reap
-    /// that branch's connection instead of the error being merely logged.
-    branch_failures: Arc<std::sync::Mutex<Option<mpsc::Sender<String>>>>,
+    /// Present from birth (a constructor argument). The bus watch reports a
+    /// per-viewer branch's runtime error here so the coordinator can reap that
+    /// branch's connection instead of the error being merely logged. Lives on
+    /// this wrapper, which survives pipeline reruns, so a supervisor restart
+    /// keeps reaping without re-wiring.
+    branch_failures: mpsc::Sender<BranchId>,
 }
 
 impl SharablePipeline {
-    pub fn new(args: Args) -> Self {
+    pub fn new(args: Args, branch_failures: mpsc::Sender<BranchId>) -> Self {
         Self {
             state: Arc::new(Mutex::new_with_timeout(
                 PipelineWrapper::new(args),
                 Duration::from_secs(1),
             )),
-            branch_failures: Arc::new(std::sync::Mutex::new(None)),
+            branch_failures,
         }
     }
 
@@ -192,10 +194,6 @@ impl BranchControl for SharablePipeline {
         }
 
         Ok(())
-    }
-
-    fn set_branch_failure_sink(&self, sink: mpsc::Sender<String>) {
-        *self.branch_failures.lock().unwrap() = Some(sink);
     }
 }
 
@@ -545,13 +543,8 @@ impl PipelineLifecycle for SharablePipeline {
                         // drops the connection. `try_send` never blocks the GLib
                         // loop thread; a full/closed channel just means the reap is
                         // dropped (the sweep/DELETE remain a backstop).
-                        if let Some(sink) = branch_failures.lock().unwrap().clone() {
-                            if sink.try_send(id.clone()).is_err() {
-                                tracing::warn!(
-                                    "Could not signal coordinator to reap branch {}",
-                                    id
-                                );
-                            }
+                        if branch_failures.try_send(BranchId::new(id.clone())).is_err() {
+                            tracing::warn!("Could not signal coordinator to reap branch {}", id);
                         }
                     } else {
                         tracing::error!(
