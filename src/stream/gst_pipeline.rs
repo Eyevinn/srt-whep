@@ -54,9 +54,9 @@ impl SharablePipeline {
     /// branch can be linked. Pure check over an already-locked pipeline; the
     /// single source of truth for both `ready()` and `add_branch()`.
     fn input_ready(pipeline: &Pipeline) -> Result<bool, PipelineError> {
-        let demux = pipeline
-            .by_name("demux")
-            .ok_or_else(|| PipelineError::Fatal("Failed to find element: demux".to_string()))?;
+        let demux = pipeline.by_name(naming::DEMUX).ok_or_else(|| {
+            PipelineError::Fatal(format!("Failed to find element: {}", naming::DEMUX))
+        })?;
 
         let pads = demux.pads();
         let has_video = pads.iter().any(|pad| pad.name().starts_with("video"));
@@ -68,8 +68,8 @@ impl SharablePipeline {
         // The demux exposes its media pads (pad-added) before the output tees
         // are built (no-more-pads -> link_media). A branch links onto those
         // tees, so the input is only truly ready once the matching tee exists.
-        let video_ready = !has_video || pipeline.by_name("output_tee_video").is_some();
-        let audio_ready = !has_audio || pipeline.by_name("output_tee_audio").is_some();
+        let video_ready = !has_video || pipeline.by_name(naming::OUTPUT_TEE_VIDEO).is_some();
+        let audio_ready = !has_audio || pipeline.by_name(naming::OUTPUT_TEE_AUDIO).is_some();
         Ok(video_ready && audio_ready)
     }
 }
@@ -219,12 +219,12 @@ impl PipelineLifecycle for SharablePipeline {
             .name("typefind")
             .build()?;
         let tsdemux = gst::ElementFactory::make("tsdemux")
-            .name("demux")
+            .name(naming::DEMUX)
             .property("latency", args.tsdemux_latency as i32)
             .build()?;
 
-        let video_queue = Self::create_custom_queue("video-queue", "0", "0", "no")?;
-        let audio_queue = Self::create_custom_queue("audio-queue", "0", "0", "no")?;
+        let video_queue = Self::create_custom_queue(naming::VIDEO_QUEUE, "0", "0", "no")?;
+        let audio_queue = Self::create_custom_queue(naming::AUDIO_QUEUE, "0", "0", "no")?;
         let srt_queue = Self::create_custom_queue("srt-queue", "0", "0", "downstream")?;
 
         let output_uri = format!(
@@ -295,7 +295,7 @@ impl PipelineLifecycle for SharablePipeline {
                     if let Some(parser) = video_parser {
                         let parse = gst::ElementFactory::make(parser).build()?;
                         let output_tee_video = gst::ElementFactory::make("tee")
-                            .name("output_tee_video")
+                            .name(naming::OUTPUT_TEE_VIDEO)
                             .build()?;
                         // Add a fakesink to the end of pipeline to consume buffers
                         // it receives and pops EOS to message bus when the SRT input stream is closed
@@ -322,7 +322,7 @@ impl PipelineLifecycle for SharablePipeline {
                         let audioresample = gst::ElementFactory::make("audioresample").build()?;
                         let opusenc = gst::ElementFactory::make("opusenc").build()?;
                         let output_tee_audio = gst::ElementFactory::make("tee")
-                            .name("output_tee_audio")
+                            .name(naming::OUTPUT_TEE_AUDIO)
                             .build()?;
                         let fakesink = gst::ElementFactory::make("fakesink")
                             .property("can-activate-pull", true)
@@ -407,14 +407,15 @@ impl PipelineLifecycle for SharablePipeline {
                     // Get the queue element's sink pad and link the decodebin's newly created
                     // src pad for the audio stream to it.
                     let audio_queue = pipeline
-                        .by_name("audio-queue")
-                        .ok_or(StreamError::MissingElement("audio-queue".to_string()))?;
+                        .by_name(naming::AUDIO_QUEUE)
+                        .ok_or(StreamError::MissingElement(naming::AUDIO_QUEUE.to_string()))?;
                     let sink_pad =
                         audio_queue
                             .static_pad("sink")
-                            .ok_or(StreamError::MissingElement(
-                                "audio-queue's sink pad".to_string(),
-                            ))?;
+                            .ok_or(StreamError::MissingElement(format!(
+                                "{}'s sink pad",
+                                naming::AUDIO_QUEUE
+                            )))?;
                     src_pad.link(&sink_pad)?;
 
                     tracing::info!("Successfully inserted audio sink");
@@ -423,14 +424,15 @@ impl PipelineLifecycle for SharablePipeline {
                     // Get the queue element's sink pad and link the decodebin's newly created
                     // src pad for the video stream to it.
                     let video_queue = pipeline
-                        .by_name("video-queue")
-                        .ok_or(StreamError::MissingElement("video-queue".to_string()))?;
+                        .by_name(naming::VIDEO_QUEUE)
+                        .ok_or(StreamError::MissingElement(naming::VIDEO_QUEUE.to_string()))?;
                     let sink_pad =
                         video_queue
                             .static_pad("sink")
-                            .ok_or(StreamError::MissingElement(
-                                "video-queue's sink pad".to_string(),
-                            ))?;
+                            .ok_or(StreamError::MissingElement(format!(
+                                "{}'s sink pad",
+                                naming::VIDEO_QUEUE
+                            )))?;
                     src_pad.link(&sink_pad)?;
 
                     tracing::info!("Successfully inserted video sink");
