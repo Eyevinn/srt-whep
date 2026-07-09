@@ -1,6 +1,6 @@
 # Architecture Deepening Candidates — Handover
 
-**Status:** C1 + C2a + C5 + C7 **landed on main** (2026-07-09, commits `b7184ad`…`316b9f8`); C2b, C3, C4, C6 not started
+**Status:** C1 + C2a + C5 + C7 + C3 **landed on main** (2026-07-09, commits `b7184ad`…`57b2703`); C2b, C4, C6 not started
 **Date:** 2026-07-09
 **Base commit:** c93f9b4 (line numbers below refer to this commit). ⚠ **Now partly stale:**
 main is at `55e4cd8` after C1+C2a. Those two landed touched `src/stream/naming.rs`
@@ -54,7 +54,23 @@ main is at `55e4cd8` after C1+C2a. Those two landed touched `src/stream/naming.r
   collapsed — the swap guard from `08d0bb4`). Pure refactor, done directly.
   `cargo test --all-targets` green (52 lib + 12 integration), clippy
   `-D warnings` + fmt clean.
-  - **Remaining:** C2b, C3, C4, C6.
+  - **Remaining after this entry:** C2b, C3, C4, C6.
+
+- **2026-07-09 — C3 landed** (`57b2703`). The bus-reap channel is now a
+  constructor argument (`SharablePipeline::new(args, branch_failures)` /
+  `TestPipeline::new(sink)`), present from birth: the `Arc<Mutex<Option<..>>>`
+  and the no-op `set_branch_failure_sink` trait method are gone, and a new
+  `BranchId` newtype in `src/stream` (naming.rs) types the seam — the
+  coordinator maps `BranchId` → `ConnectionId` at its edge, keeping the module
+  graph acyclic. `main`/`assemble`/`spawn_coordinator` thread the receiver;
+  `TestPipeline::default()` wires a disconnected sink for the many non-reaping
+  tests. Pinned by the existing unit + integration reap tests; e2e passed once.
+  - ⚠ **Landing note:** a concurrent `feat/browser-whep-test` session swept
+    this (then-uncommitted) C3 work into its commits (`288d761`/`417d83c`), so
+    C3 also appears in that branch's history entangled with browser-test files.
+    It was re-landed here as a clean standalone commit on `main` (`57b2703`).
+  - **Remaining:** C2b, C4, C6. (C4 held: it heavily edits `coordinator.rs`,
+    which the concurrent session is also writing — resume once that settles.)
 
 Seven independent refactor candidates, each sized for one agent to pick up
 solo. Read this whole preamble before starting any candidate — it exists so
@@ -106,14 +122,14 @@ you don't re-litigate closed decisions or break pinned semantics.
 | ~~C1 naming module~~ | — | ✅ **landed** (`b7184ad`, `3ba3fa6`) | S |
 | ~~C2a add_branch cleans up after itself~~ | — | ✅ **landed** (`55ceef0`, `f78a3d4`) | S–M |
 | C2b retire `ready()` | after C2a (landed); contradicts a recorded decision — read its card | low | S |
-| C3 constructor-inject reap channel | — | low–medium | S–M |
+| ~~C3 constructor-inject reap channel~~ | — | ✅ **landed** (`57b2703`) | S–M |
 | C4 test through SignalHandle | — | low (tests only) | M |
 | ~~C5 config defaults single-source~~ | — | ✅ **landed** (`04f464b`) | XS |
 | C6 watchdog restart via supervisor | needs ADR discussion FIRST | high (pinned semantics) | M |
 | ~~C7 SDP newtype dedup~~ | — | ✅ **landed** (`316b9f8`) | S |
 
-C1+C2a+C5+C7 landed (2026-07-09) — see the Progress log. Of what remains,
-C3 and C4 are the low-risk standalones; C2b is the natural follow-on to the
+C1+C2a+C5+C7+C3 landed (2026-07-09) — see the Progress log. Of what remains,
+C4 is the low-risk standalone (tests only); C2b is the natural follow-on to the
 landed C2a (but read its ⚠ card — it contradicts a recorded decision); C6
 must not be started without a design conversation and a new/amended ADR.
 
@@ -237,7 +253,7 @@ passes, or the retention is re-recorded with its reason.
 
 ---
 
-## C3 — Constructor-inject the typed bus-reap channel  · **Worth exploring**
+## C3 — Constructor-inject the typed bus-reap channel  · ✅ **LANDED** (`57b2703`)
 
 **Files:** `src/stream/gst_pipeline.rs:37–39` (the
 `Arc<std::sync::Mutex<Option<mpsc::Sender<String>>>>` field), `168–170`
