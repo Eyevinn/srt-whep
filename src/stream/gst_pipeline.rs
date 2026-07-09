@@ -123,12 +123,14 @@ impl BranchControl for SharablePipeline {
         };
 
         if let Err(attach_err) = attach_result {
-            // Attach ran partway: detach our own half-built branch so the caller
-            // never has to reason about stream-plane cleanup (ADR 0002 -- the
-            // semantic is unchanged; only the location moved here from the
-            // coordinator). detach removes whatever branch elements are
-            // present; a queue added but not yet linked is left for a later
-            // reap (see remove_branch_from_pipeline). Best-effort -- the
+            // Attach ran partway: best-effort detach of our own half-built
+            // branch so the caller never has to reason about stream-plane
+            // cleanup (ADR 0002 -- the semantic is unchanged; only the location
+            // moved here from the coordinator). detach stops at the first queue
+            // that was added but never linked (remove_branch_from_pipeline
+            // errors on an unlinked queue), so a partial attach can leave
+            // elements behind; they are untracked (the id never entered the
+            // connection map) and are cleared on the next pipeline restart. The
             // original attach error is what we report.
             tracing::warn!(
                 "attach for {} failed ({}); detaching half-built branch",
