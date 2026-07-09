@@ -1,6 +1,6 @@
 # Architecture Deepening Candidates — Handover
 
-**Status:** C1 + C2a + C5 **landed on main** (2026-07-09, commits `b7184ad`…`04f464b`); C2b, C3, C4, C6, C7 not started
+**Status:** C1 + C2a + C5 + C7 **landed on main** (2026-07-09, commits `b7184ad`…`316b9f8`); C2b, C3, C4, C6 not started
 **Date:** 2026-07-09
 **Base commit:** c93f9b4 (line numbers below refer to this commit). ⚠ **Now partly stale:**
 main is at `55e4cd8` after C1+C2a. Those two landed touched `src/stream/naming.rs`
@@ -38,7 +38,23 @@ main is at `55e4cd8` after C1+C2a. Those two landed touched `src/stream/naming.r
   `cargo test --all-targets` green (52 lib + 12 integration), clippy
   `-D warnings` + fmt clean. Done directly (no subagent flow — pure
   mechanical refactor, card was already the spec).
-  - **Remaining:** C2b, C3, C4, C6, C7.
+  - **Remaining after this entry:** C2b, C3, C4, C6, C7.
+
+- **2026-07-09 — C7 landed** (`316b9f8`). **Verification gate resolved to
+  outcome (a):** `SdpOffer::parse` rejects non-sendonly SDP and
+  `SdpAnswer::parse` rejects sendonly SDP; both newtypes have a private inner
+  field constructed only in their own `parse`, so direction holds by
+  construction. The HTTP handlers enforce direction solely through `parse` and
+  never call `is_sendonly` on these types — so `is_sendonly` now returns the
+  documented constant (`true`/`false`), runtime `a=sendonly` scan deleted
+  (parse-don't-validate completed), HTTP behavior unchanged. The identical
+  `AsRef<str>` + `Display` pair on all three types is folded behind one
+  `impl_sdp_string_traits!` macro; `parse` stays hand-written per type so the
+  offer-vs-answer distinction stays greppable. All three types kept (never
+  collapsed — the swap guard from `08d0bb4`). Pure refactor, done directly.
+  `cargo test --all-targets` green (52 lib + 12 integration), clippy
+  `-D warnings` + fmt clean.
+  - **Remaining:** C2b, C3, C4, C6.
 
 Seven independent refactor candidates, each sized for one agent to pick up
 solo. Read this whole preamble before starting any candidate — it exists so
@@ -94,13 +110,12 @@ you don't re-litigate closed decisions or break pinned semantics.
 | C4 test through SignalHandle | — | low (tests only) | M |
 | ~~C5 config defaults single-source~~ | — | ✅ **landed** (`04f464b`) | XS |
 | C6 watchdog restart via supervisor | needs ADR discussion FIRST | high (pinned semantics) | M |
-| C7 SDP newtype dedup | — | low, one verification gate | S |
+| ~~C7 SDP newtype dedup~~ | — | ✅ **landed** (`316b9f8`) | S |
 
-C1+C2a+C5 landed (2026-07-09) — see the Progress log. Of what remains,
-C7 is the safe warm-up task; C2b is the natural follow-on to the landed C2a
-(but read its ⚠ card — it contradicts a recorded decision); C3 and C4 are
-low-risk standalones; C6 must not be started without a design conversation
-and a new/amended ADR.
+C1+C2a+C5+C7 landed (2026-07-09) — see the Progress log. Of what remains,
+C3 and C4 are the low-risk standalones; C2b is the natural follow-on to the
+landed C2a (but read its ⚠ card — it contradicts a recorded decision); C6
+must not be started without a design conversation and a new/amended ADR.
 
 ---
 
@@ -363,7 +378,14 @@ rejection reason so future reviews don't re-suggest it.
 
 ---
 
-## C7 — Fold the SDP newtypes' triplicated ceremony  · **Speculative**
+## C7 — Fold the SDP newtypes' triplicated ceremony  · ✅ **LANDED** (`316b9f8`)
+
+**Gate outcome (a):** parse proves direction (`SdpOffer::parse` rejects
+non-sendonly, `SdpAnswer::parse` rejects sendonly; private inner field built
+only in `parse`), and the handlers enforce direction through `parse` alone —
+so `is_sendonly` returns the documented constant and the runtime scan is gone.
+The `AsRef<str>`+`Display` pair is folded behind one `impl_sdp_string_traits!`
+macro; `parse` stays per-type. All three types kept.
 
 **Files:** `src/domain/session_description.rs:9–131`.
 
