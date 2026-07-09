@@ -494,15 +494,13 @@ impl<P: BranchControl> Coordinator<P> {
 
 #[cfg(test)]
 mod tests {
-    use super::{Coordinator, CoordinatorConfig};
+    use super::ConnectionState;
+    use super::CoordinatorConfig;
     use crate::domain::{SdpAnswer, SdpOffer, VALID_WHEP_ANSWER, VALID_WHIP_OFFER};
-    use crate::signal::messages::Command;
-    use crate::signal::SignalError;
+    use crate::signal::{spawn_coordinator, SignalError, SignalHandle};
     use crate::stream::{BranchId, TestPipeline};
     use std::time::Duration;
     use tokio::sync::{mpsc, oneshot};
-
-    use super::ConnectionState;
     use tokio::time::Instant;
 
     pub(super) fn offer() -> SdpOffer {
@@ -530,108 +528,87 @@ mod tests {
         pipeline
     }
 
-    pub(super) fn spawn_actor(
-        pipeline: TestPipeline,
-        config: CoordinatorConfig,
-    ) -> mpsc::Sender<Command> {
-        // No reaper wired: a disconnected failure receiver (its sender dropped)
-        // so `branch_failures.recv()` yields `None` and that select arm stays
-        // idle. Tests that exercise reaping use `spawn_actor_with_reaper`.
+    /// Spawn the coordinator and return its `SignalHandle` -- the exact facade
+    /// the HTTP routes use. No reaper wired: a disconnected failure receiver
+    /// (its sender dropped) so `branch_failures.recv()` yields `None` and that
+    /// select arm stays idle. Tests that exercise reaping use
+    /// `spawn_actor_with_reaper`.
+    pub(super) fn spawn_actor(pipeline: TestPipeline, config: CoordinatorConfig) -> SignalHandle {
         let (_fail_tx, fail_rx) = mpsc::channel(1);
-        let (tx, rx) = mpsc::channel(16);
-        tokio::spawn(Coordinator::new(pipeline, config, rx, fail_rx).run());
-        tx
+        spawn_coordinator(pipeline, config, fail_rx)
     }
 
-    /// Spawn the actor sharing `branch_failures` with a pipeline built via
+    /// Spawn the coordinator sharing `branch_failures` with a pipeline built via
     /// `TestPipeline::new`, so the fake's `fail_branch` reaches this coordinator.
     pub(super) fn spawn_actor_with_reaper(
         pipeline: TestPipeline,
         config: CoordinatorConfig,
         branch_failures: mpsc::Receiver<BranchId>,
-    ) -> mpsc::Sender<Command> {
-        let (tx, rx) = mpsc::channel(16);
-        tokio::spawn(Coordinator::new(pipeline, config, rx, branch_failures).run());
-        tx
+    ) -> SignalHandle {
+        spawn_coordinator(pipeline, config, branch_failures)
     }
 
     /// Drive a full WHEP<->WHIP handshake so the connection reaches Established.
-    async fn establish(tx: &mpsc::Sender<Command>, id: &str) {
-        let (whep_tx, whep_rx) = oneshot::channel();
-        tx.send(Command::CreateConnection {
-            id: id.into(),
-            reply: whep_tx,
-        })
-        .await
-        .unwrap();
-        let (whip_tx, whip_rx) = oneshot::channel();
-        tx.send(Command::OfferReceived {
-            id: id.into(),
-            sdp: offer(),
-            reply: whip_tx,
-        })
-        .await
-        .unwrap();
-        whep_rx.await.unwrap().unwrap();
-        let (patch_tx, patch_rx) = oneshot::channel();
-        tx.send(Command::AnswerReceived {
-            id: id.into(),
-            sdp: answer(),
-            reply: patch_tx,
-        })
-        .await
-        .unwrap();
-        patch_rx.await.unwrap().unwrap();
-        whip_rx.await.unwrap().unwrap();
-    }
-
-    async fn list_ids(tx: &mpsc::Sender<Command>) -> Vec<String> {
-        let (list_tx, list_rx) = oneshot::channel();
-        tx.send(Command::ListConnections { reply: list_tx })
+    async fn establish(handle: &SignalHandle, id: &str) {
+        let whep = {
+            let handle = handle.clone();
+            let id = id.to_string();
+            tokio::spawn(async move { handle.create_connection(id).await })
+        };
+        tokio::task::yield_now().await; // connection registered
+        let whip = {
+            let handle = handle.clone();
+            let id = id.to_string();
+            tokio::spawn(async move { handle.offer_received(id, offer()).await })
+        };
+        tokio::task::yield_now().await; // offer delivered
+        handle
+            .answer_received(id.to_string(), answer())
             .await
             .unwrap();
-        list_rx.await.unwrap().into_iter().map(|c| c.id).collect()
+        whep.await.unwrap().unwrap();
+        whip.await.unwrap().unwrap();
+    }
+
+    async fn list_ids(handle: &SignalHandle) -> Vec<String> {
+        handle
+            .list_connections()
+            .await
+            .unwrap()
+            .into_iter()
+            .map(|c| c.id)
+            .collect()
     }
 
     #[tokio::test(start_paused = true)]
     async fn happy_path_create_offer_answer() {
         let pipeline = ready_pipeline();
-        let tx = spawn_actor(pipeline.clone(), test_config());
+        let handle = spawn_actor(pipeline.clone(), test_config());
 
-        // Browser connects.
-        let (whep_tx, whep_rx) = oneshot::channel();
-        tx.send(Command::CreateConnection {
-            id: "a".into(),
-            reply: whep_tx,
-        })
-        .await
-        .unwrap();
-        tokio::task::yield_now().await;
+        // Browser connects; create stays in-flight until the offer arrives.
+        let whep = {
+            let handle = handle.clone();
+            tokio::spawn(async move { handle.create_connection("a".to_string()).await })
+        };
+        for _ in 0..5 {
+            tokio::task::yield_now().await; // let the actor register + add the branch
+        }
         assert_eq!(vec!["a".to_string()], pipeline.snapshot().added);
 
-        // Whipsink posts its offer; browser's waiter receives it.
-        let (whip_tx, whip_rx) = oneshot::channel();
-        tx.send(Command::OfferReceived {
-            id: "a".into(),
-            sdp: offer(),
-            reply: whip_tx,
-        })
-        .await
-        .unwrap();
-        let delivered = whep_rx.await.unwrap().unwrap();
+        // Whipsink posts its offer; the browser's waiter receives it.
+        let whip = {
+            let handle = handle.clone();
+            tokio::spawn(async move { handle.offer_received("a".to_string(), offer()).await })
+        };
+        let delivered = whep.await.unwrap().unwrap();
         assert!(delivered.is_sendonly());
 
-        // Browser PATCHes the answer; whipsink's waiter receives it.
-        let (patch_tx, patch_rx) = oneshot::channel();
-        tx.send(Command::AnswerReceived {
-            id: "a".into(),
-            sdp: answer(),
-            reply: patch_tx,
-        })
-        .await
-        .unwrap();
-        assert!(patch_rx.await.unwrap().is_ok());
-        let delivered = whip_rx.await.unwrap().unwrap();
+        // Browser PATCHes the answer; the whipsink's waiter receives it.
+        handle
+            .answer_received("a".to_string(), answer())
+            .await
+            .unwrap();
+        let delivered = whip.await.unwrap().unwrap();
         assert!(!delivered.is_sendonly());
 
         // Nothing was torn down.
@@ -643,19 +620,11 @@ mod tests {
     #[tokio::test(start_paused = true)]
     async fn offer_timeout_fails_only_that_connection() {
         let pipeline = ready_pipeline();
-        let tx = spawn_actor(pipeline.clone(), test_config());
+        let handle = spawn_actor(pipeline.clone(), test_config());
 
-        let (whep_tx, whep_rx) = oneshot::channel();
-        tx.send(Command::CreateConnection {
-            id: "a".into(),
-            reply: whep_tx,
-        })
-        .await
-        .unwrap();
-
-        // Awaiting the reply parks every task on timers; the paused clock
-        // auto-advances through sweep ticks until the deadline fires.
-        let result = whep_rx.await.unwrap();
+        // Awaiting create parks on its reply; the paused clock auto-advances
+        // through sweep ticks until the offer deadline fires.
+        let result = handle.create_connection("a".to_string()).await;
         assert!(matches!(result, Err(SignalError::Timeout("SDP offer"))));
         tokio::task::yield_now().await; // let the actor finish branch cleanup
 
@@ -667,28 +636,21 @@ mod tests {
     #[tokio::test(start_paused = true)]
     async fn answer_timeout_fails_the_whip_waiter() {
         let pipeline = ready_pipeline();
-        let tx = spawn_actor(pipeline.clone(), test_config());
+        let handle = spawn_actor(pipeline.clone(), test_config());
 
-        let (whep_tx, whep_rx) = oneshot::channel();
-        tx.send(Command::CreateConnection {
-            id: "a".into(),
-            reply: whep_tx,
-        })
-        .await
-        .unwrap();
-
-        let (whip_tx, whip_rx) = oneshot::channel();
-        tx.send(Command::OfferReceived {
-            id: "a".into(),
-            sdp: offer(),
-            reply: whip_tx,
-        })
-        .await
-        .unwrap();
-        assert!(whep_rx.await.unwrap().is_ok()); // offer delivered
+        let whep = {
+            let handle = handle.clone();
+            tokio::spawn(async move { handle.create_connection("a".to_string()).await })
+        };
+        tokio::task::yield_now().await;
+        let whip = {
+            let handle = handle.clone();
+            tokio::spawn(async move { handle.offer_received("a".to_string(), offer()).await })
+        };
+        assert!(whep.await.unwrap().is_ok()); // offer delivered to the create waiter
 
         // No PATCH arrives; the answer deadline fires.
-        let result = whip_rx.await.unwrap();
+        let result = whip.await.unwrap();
         assert!(matches!(result, Err(SignalError::Timeout("SDP answer"))));
         tokio::task::yield_now().await; // let the actor finish branch cleanup
         assert_eq!(vec!["a".to_string()], pipeline.snapshot().removed);
@@ -697,17 +659,17 @@ mod tests {
     #[tokio::test(start_paused = true)]
     async fn abandoned_whep_client_is_reaped_by_the_sweep() {
         let pipeline = ready_pipeline();
-        let tx = spawn_actor(pipeline.clone(), test_config());
+        let handle = spawn_actor(pipeline.clone(), test_config());
 
-        let (whep_tx, whep_rx) = oneshot::channel();
-        tx.send(Command::CreateConnection {
-            id: "a".into(),
-            reply: whep_tx,
-        })
-        .await
-        .unwrap();
-        tokio::task::yield_now().await; // let the actor register the connection
-        drop(whep_rx); // browser disconnected; actix dropped the handler future
+        let whep = {
+            let handle = handle.clone();
+            tokio::spawn(async move { handle.create_connection("a".to_string()).await })
+        };
+        for _ in 0..5 {
+            tokio::task::yield_now().await; // let the actor register the connection
+        }
+        whep.abort(); // browser disconnected; the in-flight request future is dropped
+        tokio::task::yield_now().await; // let the abort drop the reply receiver
 
         tokio::time::advance(Duration::from_secs(6)).await; // past offer_timeout (5s)
         tokio::task::yield_now().await; // let the sweep run
@@ -724,17 +686,9 @@ mod tests {
 
         let pipeline = ready_pipeline();
         pipeline.fail_next_add_branch(PipelineError::Transient("state lock timed out".into()));
-        let tx = spawn_actor(pipeline.clone(), test_config());
+        let handle = spawn_actor(pipeline.clone(), test_config());
 
-        let (whep_tx, whep_rx) = oneshot::channel();
-        tx.send(Command::CreateConnection {
-            id: "a".into(),
-            reply: whep_tx,
-        })
-        .await
-        .unwrap();
-
-        let err = whep_rx.await.unwrap().unwrap_err();
+        let err = handle.create_connection("a".to_string()).await.unwrap_err();
         // Retryable at the seam stays retryable on the wire: 503 + Retry-After.
         assert_eq!(503, err.status_code().as_u16());
         assert!(err.error_response().headers().get("Retry-After").is_some());
@@ -743,60 +697,30 @@ mod tests {
     #[tokio::test(start_paused = true)]
     async fn not_ready_pipeline_rejects_creation() {
         let pipeline = TestPipeline::default(); // ready = false
-        let tx = spawn_actor(pipeline.clone(), test_config());
+        let handle = spawn_actor(pipeline.clone(), test_config());
 
-        let (whep_tx, whep_rx) = oneshot::channel();
-        tx.send(Command::CreateConnection {
-            id: "a".into(),
-            reply: whep_tx,
-        })
-        .await
-        .unwrap();
-
-        assert!(matches!(whep_rx.await.unwrap(), Err(SignalError::NotReady)));
+        assert!(matches!(
+            handle.create_connection("a".to_string()).await,
+            Err(SignalError::NotReady)
+        ));
         assert!(pipeline.snapshot().added.is_empty());
     }
 
     #[tokio::test(start_paused = true)]
     async fn unknown_id_is_not_found_for_every_command() {
         let pipeline = ready_pipeline();
-        let tx = spawn_actor(pipeline.clone(), test_config());
+        let handle = spawn_actor(pipeline.clone(), test_config());
 
-        let (whip_tx, whip_rx) = oneshot::channel();
-        tx.send(Command::OfferReceived {
-            id: "ghost".into(),
-            sdp: offer(),
-            reply: whip_tx,
-        })
-        .await
-        .unwrap();
         assert!(matches!(
-            whip_rx.await.unwrap(),
+            handle.offer_received("ghost".to_string(), offer()).await,
             Err(SignalError::NotFound(_))
         ));
-
-        let (patch_tx, patch_rx) = oneshot::channel();
-        tx.send(Command::AnswerReceived {
-            id: "ghost".into(),
-            sdp: answer(),
-            reply: patch_tx,
-        })
-        .await
-        .unwrap();
         assert!(matches!(
-            patch_rx.await.unwrap(),
+            handle.answer_received("ghost".to_string(), answer()).await,
             Err(SignalError::NotFound(_))
         ));
-
-        let (rm_tx, rm_rx) = oneshot::channel();
-        tx.send(Command::RemoveConnection {
-            id: "ghost".into(),
-            reply: rm_tx,
-        })
-        .await
-        .unwrap();
         assert!(matches!(
-            rm_rx.await.unwrap(),
+            handle.remove_connection("ghost".to_string()).await,
             Err(SignalError::NotFound(_))
         ));
     }
@@ -804,76 +728,50 @@ mod tests {
     #[tokio::test(start_paused = true)]
     async fn wrong_state_commands_are_rejected_without_corruption() {
         let pipeline = ready_pipeline();
-        let tx = spawn_actor(pipeline.clone(), test_config());
+        let handle = spawn_actor(pipeline.clone(), test_config());
 
-        // Duplicate create.
-        let (t1, r1) = oneshot::channel();
-        tx.send(Command::CreateConnection {
-            id: "a".into(),
-            reply: t1,
-        })
-        .await
-        .unwrap();
-        let (t2, r2) = oneshot::channel();
-        tx.send(Command::CreateConnection {
-            id: "a".into(),
-            reply: t2,
-        })
-        .await
-        .unwrap();
-        assert!(matches!(r2.await.unwrap(), Err(SignalError::WrongState(_))));
+        // First create stays in-flight (awaiting its offer).
+        let whep = {
+            let handle = handle.clone();
+            tokio::spawn(async move { handle.create_connection("a".to_string()).await })
+        };
+        tokio::task::yield_now().await; // register "a"
 
+        // Duplicate create is rejected.
+        assert!(matches!(
+            handle.create_connection("a".to_string()).await,
+            Err(SignalError::WrongState(_))
+        ));
         // PATCH before the offer exists is a wrong-state command.
-        let (t3, r3) = oneshot::channel();
-        tx.send(Command::AnswerReceived {
-            id: "a".into(),
-            sdp: answer(),
-            reply: t3,
-        })
-        .await
-        .unwrap();
-        assert!(matches!(r3.await.unwrap(), Err(SignalError::WrongState(_))));
+        assert!(matches!(
+            handle.answer_received("a".to_string(), answer()).await,
+            Err(SignalError::WrongState(_))
+        ));
 
         // The original handshake still works after both rejections.
-        let (t4, r4) = oneshot::channel();
-        tx.send(Command::OfferReceived {
-            id: "a".into(),
-            sdp: offer(),
-            reply: t4,
-        })
-        .await
-        .unwrap();
-        assert!(r1.await.unwrap().is_ok());
+        let whip = {
+            let handle = handle.clone();
+            tokio::spawn(async move { handle.offer_received("a".to_string(), offer()).await })
+        };
+        assert!(whep.await.unwrap().is_ok()); // offer delivered to the first create
 
-        let (t5, r5) = oneshot::channel();
-        tx.send(Command::AnswerReceived {
-            id: "a".into(),
-            sdp: answer(),
-            reply: t5,
-        })
-        .await
-        .unwrap();
-        assert!(r5.await.unwrap().is_ok());
-        assert!(r4.await.unwrap().is_ok());
+        handle
+            .answer_received("a".to_string(), answer())
+            .await
+            .unwrap();
+        assert!(whip.await.unwrap().is_ok());
         assert_eq!(1, pipeline.snapshot().added.len()); // no duplicate branch
     }
 
     #[tokio::test(start_paused = true)]
     async fn watchdog_trips_after_three_consecutive_failures() {
         let pipeline = ready_pipeline();
-        let tx = spawn_actor(pipeline.clone(), test_config()); // threshold 3
+        let handle = spawn_actor(pipeline.clone(), test_config()); // threshold 3
 
         for i in 0..3 {
-            let (whep_tx, whep_rx) = oneshot::channel();
-            tx.send(Command::CreateConnection {
-                id: format!("conn-{}", i),
-                reply: whep_tx,
-            })
-            .await
-            .unwrap();
             // Each handshake times out via auto-advance.
             assert!(matches!(
-                whep_rx.await.unwrap(),
+                handle.create_connection(format!("conn-{}", i)).await,
                 Err(SignalError::Timeout(_))
             ));
         }
@@ -885,58 +783,33 @@ mod tests {
     #[tokio::test(start_paused = true)]
     async fn success_between_failures_prevents_the_trip() {
         let pipeline = ready_pipeline();
-        let tx = spawn_actor(pipeline.clone(), test_config());
+        let handle = spawn_actor(pipeline.clone(), test_config());
 
         // Two failures.
         for i in 0..2 {
-            let (whep_tx, whep_rx) = oneshot::channel();
-            tx.send(Command::CreateConnection {
-                id: format!("fail-{}", i),
-                reply: whep_tx,
-            })
-            .await
-            .unwrap();
-            let _ = whep_rx.await.unwrap();
+            let _ = handle.create_connection(format!("fail-{}", i)).await;
         }
 
         // One success resets the counter.
-        let (whep_tx, whep_rx) = oneshot::channel();
-        tx.send(Command::CreateConnection {
-            id: "ok".into(),
-            reply: whep_tx,
-        })
-        .await
-        .unwrap();
-        let (whip_tx, whip_rx) = oneshot::channel();
-        tx.send(Command::OfferReceived {
-            id: "ok".into(),
-            sdp: offer(),
-            reply: whip_tx,
-        })
-        .await
-        .unwrap();
-        assert!(whep_rx.await.unwrap().is_ok());
-        let (patch_tx, patch_rx) = oneshot::channel();
-        tx.send(Command::AnswerReceived {
-            id: "ok".into(),
-            sdp: answer(),
-            reply: patch_tx,
-        })
-        .await
-        .unwrap();
-        assert!(patch_rx.await.unwrap().is_ok());
-        assert!(whip_rx.await.unwrap().is_ok());
+        let whep = {
+            let handle = handle.clone();
+            tokio::spawn(async move { handle.create_connection("ok".to_string()).await })
+        };
+        tokio::task::yield_now().await;
+        let whip = {
+            let handle = handle.clone();
+            tokio::spawn(async move { handle.offer_received("ok".to_string(), offer()).await })
+        };
+        assert!(whep.await.unwrap().is_ok());
+        handle
+            .answer_received("ok".to_string(), answer())
+            .await
+            .unwrap();
+        assert!(whip.await.unwrap().is_ok());
 
         // Two more failures: still below threshold thanks to the reset.
         for i in 2..4 {
-            let (whep_tx, whep_rx) = oneshot::channel();
-            tx.send(Command::CreateConnection {
-                id: format!("fail-{}", i),
-                reply: whep_tx,
-            })
-            .await
-            .unwrap();
-            let _ = whep_rx.await.unwrap();
+            let _ = handle.create_connection(format!("fail-{}", i)).await;
         }
 
         tokio::task::yield_now().await;
@@ -946,35 +819,19 @@ mod tests {
     #[tokio::test(start_paused = true)]
     async fn reset_clears_the_watchdog_counter() {
         let pipeline = ready_pipeline();
-        let tx = spawn_actor(pipeline.clone(), test_config()); // threshold 3
+        let handle = spawn_actor(pipeline.clone(), test_config()); // threshold 3
 
         // Two consecutive timeout failures.
         for i in 0..2 {
-            let (whep_tx, whep_rx) = oneshot::channel();
-            tx.send(Command::CreateConnection {
-                id: format!("fail-{}", i),
-                reply: whep_tx,
-            })
-            .await
-            .unwrap();
-            let _ = whep_rx.await.unwrap();
+            let _ = handle.create_connection(format!("fail-{}", i)).await;
         }
 
         // Pipeline restarted: supervisor sends Reset.
-        let (reset_tx, reset_rx) = oneshot::channel();
-        tx.send(Command::Reset { reply: reset_tx }).await.unwrap();
-        reset_rx.await.unwrap();
+        handle.reset().await.unwrap();
 
         // Two more failures on the fresh pipeline: still below threshold.
         for i in 2..4 {
-            let (whep_tx, whep_rx) = oneshot::channel();
-            tx.send(Command::CreateConnection {
-                id: format!("fail-{}", i),
-                reply: whep_tx,
-            })
-            .await
-            .unwrap();
-            let _ = whep_rx.await.unwrap();
+            let _ = handle.create_connection(format!("fail-{}", i)).await;
         }
 
         tokio::task::yield_now().await;
@@ -984,56 +841,39 @@ mod tests {
     #[tokio::test(start_paused = true)]
     async fn reset_fails_all_waiters_and_clears_state() {
         let pipeline = ready_pipeline();
-        let tx = spawn_actor(pipeline.clone(), test_config());
+        let handle = spawn_actor(pipeline.clone(), test_config());
 
-        let (whep_tx, whep_rx) = oneshot::channel();
-        tx.send(Command::CreateConnection {
-            id: "a".into(),
-            reply: whep_tx,
-        })
-        .await
-        .unwrap();
+        let whep = {
+            let handle = handle.clone();
+            tokio::spawn(async move { handle.create_connection("a".to_string()).await })
+        };
+        tokio::task::yield_now().await; // register the in-flight waiter
 
-        let (reset_tx, reset_rx) = oneshot::channel();
-        tx.send(Command::Reset { reply: reset_tx }).await.unwrap();
-        reset_rx.await.unwrap();
+        handle.reset().await.unwrap();
 
-        assert!(matches!(
-            whep_rx.await.unwrap(),
-            Err(SignalError::Unavailable)
-        ));
-
-        let (list_tx, list_rx) = oneshot::channel();
-        tx.send(Command::ListConnections { reply: list_tx })
-            .await
-            .unwrap();
-        assert!(list_rx.await.unwrap().is_empty());
+        assert!(matches!(whep.await.unwrap(), Err(SignalError::Unavailable)));
+        assert!(list_ids(&handle).await.is_empty());
     }
 
     #[tokio::test(start_paused = true)]
     async fn list_reports_ids_and_state_names() {
         let pipeline = ready_pipeline();
-        let tx = spawn_actor(pipeline.clone(), test_config());
+        let handle = spawn_actor(pipeline.clone(), test_config());
 
-        let (whep_tx, whep_rx) = oneshot::channel();
-        tx.send(Command::CreateConnection {
-            id: "a".into(),
-            reply: whep_tx,
-        })
-        .await
-        .unwrap();
-        tokio::task::yield_now().await;
+        let whep = {
+            let handle = handle.clone();
+            tokio::spawn(async move { handle.create_connection("a".to_string()).await })
+        };
+        for _ in 0..5 {
+            tokio::task::yield_now().await; // register the connection
+        }
 
-        let (list_tx, list_rx) = oneshot::channel();
-        tx.send(Command::ListConnections { reply: list_tx })
-            .await
-            .unwrap();
-        let list = list_rx.await.unwrap();
+        let list = handle.list_connections().await.unwrap();
         assert_eq!(1, list.len());
         assert_eq!("a", list[0].id);
         assert_eq!("awaiting_offer", list[0].state);
 
-        drop(whep_rx); // silence unused warning; connection will be swept later
+        whep.abort(); // in-flight create no longer needed
     }
 
     #[tokio::test(start_paused = true)]
@@ -1042,25 +882,17 @@ mod tests {
 
         let pipeline = ready_pipeline();
         pipeline.fail_next_add_branch(PipelineError::Fatal("attach blew up".into()));
-        let tx = spawn_actor(pipeline.clone(), test_config());
-
-        let (whep_tx, whep_rx) = oneshot::channel();
-        tx.send(Command::CreateConnection {
-            id: "a".into(),
-            reply: whep_tx,
-        })
-        .await
-        .unwrap();
+        let handle = spawn_actor(pipeline.clone(), test_config());
 
         // The create fails and the id is never registered...
-        assert!(whep_rx.await.unwrap().is_err());
+        assert!(handle.create_connection("a".to_string()).await.is_err());
         tokio::task::yield_now().await;
 
         // ...and the coordinator issues NO cleanup: add_branch owns detaching
         // its own half-attached branch now, so a spurious remove_branch here
         // would be a bug (and today's matches!(Fatal) block causes exactly one).
         assert!(pipeline.snapshot().removed.is_empty());
-        assert!(list_ids(&tx).await.is_empty());
+        assert!(list_ids(&handle).await.is_empty());
     }
 
     #[tokio::test(start_paused = true)]
@@ -1068,37 +900,23 @@ mod tests {
         use crate::stream::PipelineError;
 
         let pipeline = ready_pipeline();
-        let tx = spawn_actor(pipeline.clone(), test_config());
-        establish(&tx, "a").await;
+        let handle = spawn_actor(pipeline.clone(), test_config());
+        establish(&handle, "a").await;
 
         // First DELETE: the branch teardown fails transiently.
         pipeline.fail_next_remove_branch(PipelineError::Transient("lock timed out".into()));
-        let (d1_tx, d1_rx) = oneshot::channel();
-        tx.send(Command::RemoveConnection {
-            id: "a".into(),
-            reply: d1_tx,
-        })
-        .await
-        .unwrap();
         assert!(matches!(
-            d1_rx.await.unwrap(),
+            handle.remove_connection("a".to_string()).await,
             Err(SignalError::PipelineBusy(_))
         ));
 
         // The connection is kept, so a retried DELETE still finds it (no 404).
-        assert_eq!(vec!["a".to_string()], list_ids(&tx).await);
+        assert_eq!(vec!["a".to_string()], list_ids(&handle).await);
 
         // Retried DELETE succeeds, removes the branch, and clears the entry.
-        let (d2_tx, d2_rx) = oneshot::channel();
-        tx.send(Command::RemoveConnection {
-            id: "a".into(),
-            reply: d2_tx,
-        })
-        .await
-        .unwrap();
-        assert!(d2_rx.await.unwrap().is_ok());
+        handle.remove_connection("a".to_string()).await.unwrap();
         assert!(pipeline.snapshot().removed.contains(&"a".to_string()));
-        assert!(list_ids(&tx).await.is_empty());
+        assert!(list_ids(&handle).await.is_empty());
     }
 
     #[tokio::test(start_paused = true)]
@@ -1108,8 +926,8 @@ mod tests {
         let (fail_tx, fail_rx) = mpsc::channel(64);
         let pipeline = TestPipeline::new(fail_tx);
         pipeline.set_ready(true);
-        let tx = spawn_actor_with_reaper(pipeline.clone(), test_config(), fail_rx);
-        establish(&tx, "a").await;
+        let handle = spawn_actor_with_reaper(pipeline.clone(), test_config(), fail_rx);
+        establish(&handle, "a").await;
 
         // The pipeline's bus watch reports the branch errored at runtime.
         pipeline.fail_branch("a");
@@ -1119,7 +937,7 @@ mod tests {
 
         // The established connection is reaped: branch detached, entry gone.
         assert!(pipeline.snapshot().removed.contains(&"a".to_string()));
-        assert!(list_ids(&tx).await.is_empty());
+        assert!(list_ids(&handle).await.is_empty());
         // A dead peer is not a pipeline-health failure: no restart.
         assert_eq!(0, pipeline.snapshot().quit_count);
     }
@@ -1127,28 +945,18 @@ mod tests {
     #[tokio::test(start_paused = true)]
     async fn wedged_teardown_does_not_stall_the_actor() {
         let pipeline = ready_pipeline();
-        let tx = spawn_actor(pipeline.clone(), test_config()); // teardown_timeout 5s
-        establish(&tx, "a").await;
+        let handle = spawn_actor(pipeline.clone(), test_config()); // teardown_timeout 5s
+        establish(&handle, "a").await;
 
         // Its teardown wedges and never completes.
         pipeline.block_remove_branch();
-        let (d_tx, d_rx) = oneshot::channel();
-        tx.send(Command::RemoveConnection {
-            id: "a".into(),
-            reply: d_tx,
-        })
-        .await
-        .unwrap();
-
-        // The teardown timeout fires (auto-advanced paused clock) and the actor
-        // recovers with a retryable error instead of hanging forever.
         assert!(matches!(
-            d_rx.await.unwrap(),
+            handle.remove_connection("a".to_string()).await,
             Err(SignalError::PipelineBusy(_))
         ));
 
         // The actor is still responsive, and the connection stayed retryable.
-        assert_eq!(vec!["a".to_string()], list_ids(&tx).await);
+        assert_eq!(vec!["a".to_string()], list_ids(&handle).await);
     }
 
     #[tokio::test(start_paused = true)]
@@ -1157,19 +965,11 @@ mod tests {
 
         let pipeline = ready_pipeline();
         pipeline.block_add_branch(); // simulates a wedged cleanup detach
-        let tx = spawn_actor(pipeline.clone(), test_config()); // teardown_timeout 5s
+        let handle = spawn_actor(pipeline.clone(), test_config()); // teardown_timeout 5s
 
-        let (whep_tx, whep_rx) = oneshot::channel();
-        tx.send(Command::CreateConnection {
-            id: "a".into(),
-            reply: whep_tx,
-        })
-        .await
-        .unwrap();
-
+        let err = handle.create_connection("a".to_string()).await.unwrap_err();
         // The bound fires (auto-advanced paused clock) and the actor recovers
         // with a retryable error instead of hanging forever.
-        let err = whep_rx.await.unwrap().unwrap_err();
         assert_eq!(503, err.status_code().as_u16());
         assert!(err.error_response().headers().get("Retry-After").is_some());
     }
