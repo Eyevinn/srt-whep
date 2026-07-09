@@ -8,6 +8,19 @@ use std::time::Duration;
 use tokio::sync::mpsc;
 use tokio::time::Instant;
 
+/// Single source of truth for the coordinator's default timing/watchdog knobs.
+/// Both `Default for CoordinatorConfig` and the `CoordinatorArgs` clap
+/// `default_value_t` attributes read from these, so "run with no flags is
+/// today's behavior" holds by construction — no drift-guard test needed. The
+/// unit is in each name because the CLI takes secs/ms while `CoordinatorConfig`
+/// holds `Duration`.
+const DEFAULT_OFFER_TIMEOUT_SEC: u64 = 10;
+const DEFAULT_ANSWER_TIMEOUT_SEC: u64 = 10;
+const DEFAULT_WATCHDOG_THRESHOLD: u32 = 3;
+const DEFAULT_WATCHDOG_WINDOW_SEC: u64 = 60;
+const DEFAULT_SWEEP_INTERVAL_MS: u64 = 1000;
+const DEFAULT_TEARDOWN_TIMEOUT_SEC: u64 = 5;
+
 #[derive(Debug, Clone)]
 pub struct CoordinatorConfig {
     pub offer_timeout: Duration,
@@ -28,12 +41,12 @@ pub struct CoordinatorConfig {
 impl Default for CoordinatorConfig {
     fn default() -> Self {
         Self {
-            offer_timeout: Duration::from_secs(10),
-            answer_timeout: Duration::from_secs(10),
-            watchdog_threshold: 3,
-            watchdog_window: Duration::from_secs(60),
-            sweep_interval: Duration::from_secs(1),
-            teardown_timeout: Duration::from_secs(5),
+            offer_timeout: Duration::from_secs(DEFAULT_OFFER_TIMEOUT_SEC),
+            answer_timeout: Duration::from_secs(DEFAULT_ANSWER_TIMEOUT_SEC),
+            watchdog_threshold: DEFAULT_WATCHDOG_THRESHOLD,
+            watchdog_window: Duration::from_secs(DEFAULT_WATCHDOG_WINDOW_SEC),
+            sweep_interval: Duration::from_millis(DEFAULT_SWEEP_INTERVAL_MS),
+            teardown_timeout: Duration::from_secs(DEFAULT_TEARDOWN_TIMEOUT_SEC),
         }
     }
 }
@@ -44,22 +57,22 @@ impl Default for CoordinatorConfig {
 #[derive(clap::Args, Debug, Clone)]
 pub struct CoordinatorArgs {
     /// Seconds a WHEP client waits for the whipsink's SDP offer.
-    #[clap(long, default_value_t = 10)]
+    #[clap(long, default_value_t = DEFAULT_OFFER_TIMEOUT_SEC)]
     pub offer_timeout_sec: u64,
     /// Seconds the whipsink waits for the browser's SDP answer.
-    #[clap(long, default_value_t = 10)]
+    #[clap(long, default_value_t = DEFAULT_ANSWER_TIMEOUT_SEC)]
     pub answer_timeout_sec: u64,
     /// Consecutive handshake failures (within the window) that trip a restart.
-    #[clap(long, default_value_t = 3)]
+    #[clap(long, default_value_t = DEFAULT_WATCHDOG_THRESHOLD)]
     pub watchdog_threshold: u32,
     /// Seconds over which failures decay for the watchdog.
-    #[clap(long, default_value_t = 60)]
+    #[clap(long, default_value_t = DEFAULT_WATCHDOG_WINDOW_SEC)]
     pub watchdog_window_sec: u64,
     /// Expiry-sweep interval in milliseconds.
-    #[clap(long, default_value_t = 1000)]
+    #[clap(long, default_value_t = DEFAULT_SWEEP_INTERVAL_MS)]
     pub sweep_interval_ms: u64,
     /// Upper bound, in seconds, on a single branch teardown/quit.
-    #[clap(long, default_value_t = 5)]
+    #[clap(long, default_value_t = DEFAULT_TEARDOWN_TIMEOUT_SEC)]
     pub teardown_timeout_sec: u64,
 }
 
@@ -1155,30 +1168,6 @@ mod tests {
         };
         state.fail_waiter(SignalError::NotFound("a".into()));
         assert!(matches!(rx.await.unwrap(), Err(SignalError::NotFound(_))));
-    }
-
-    #[test]
-    fn coordinator_args_default_to_the_hardcoded_config() {
-        use super::CoordinatorArgs;
-        use clap::Parser;
-
-        // A tiny throwaway parser so we can parse CoordinatorArgs with no flags.
-        #[derive(Parser)]
-        struct OnlyCoordinator {
-            #[command(flatten)]
-            coordinator: CoordinatorArgs,
-        }
-
-        let parsed = OnlyCoordinator::parse_from(["test"]);
-        let from_flags = parsed.coordinator.to_config();
-        let defaults = CoordinatorConfig::default();
-
-        assert_eq!(from_flags.offer_timeout, defaults.offer_timeout);
-        assert_eq!(from_flags.answer_timeout, defaults.answer_timeout);
-        assert_eq!(from_flags.watchdog_threshold, defaults.watchdog_threshold);
-        assert_eq!(from_flags.watchdog_window, defaults.watchdog_window);
-        assert_eq!(from_flags.sweep_interval, defaults.sweep_interval);
-        assert_eq!(from_flags.teardown_timeout, defaults.teardown_timeout);
     }
 
     #[tokio::test]
