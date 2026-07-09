@@ -7,8 +7,9 @@ use std::time::Duration;
 use timed_locks::Mutex;
 use tokio::sync::mpsc;
 
-use crate::stream::branch::{branch_id_from_name, Branch};
+use crate::stream::branch::Branch;
 use crate::stream::errors::{PipelineError, StreamError};
+use crate::stream::naming;
 use crate::stream::pipeline::{Args, BranchControl, PipelineLifecycle, SRTMode};
 use crate::stream::utils::run_discoverer;
 
@@ -207,7 +208,7 @@ impl PipelineLifecycle for SharablePipeline {
         }
 
         let src = gst::ElementFactory::make("srtsrc")
-            .name("srt_source")
+            .name(naming::SRT_SOURCE)
             .property("uri", uri)
             .property("latency", args.srt_latency as i32)
             .build()?;
@@ -496,7 +497,7 @@ impl PipelineLifecycle for SharablePipeline {
                     let mut branch_id: Option<String> = None;
                     let mut cursor = src.cloned();
                     while let Some(obj) = cursor {
-                        if let Some(id) = branch_id_from_name(obj.name().as_str()) {
+                        if let Some(id) = naming::branch_id_from_name(obj.name().as_str()) {
                             branch_id = Some(id.to_string());
                             break;
                         }

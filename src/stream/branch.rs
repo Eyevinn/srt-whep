@@ -21,6 +21,7 @@ use gst::prelude::*;
 use gstreamer as gst;
 
 use crate::stream::errors::StreamError;
+use crate::stream::naming;
 
 /// The actix route template for the loopback WHIP endpoint — the single
 /// definition shared by the HTTP route table, the WHIP Location header,
@@ -37,29 +38,6 @@ fn whip_endpoint(port: u16, id: &str) -> String {
     format!("http://localhost:{}{}", port, whip_sink_path(id))
 }
 
-const WHIP_SINK_PREFIX: &str = "whip-sink-";
-const VIDEO_QUEUE_PREFIX: &str = "video-queue-";
-const AUDIO_QUEUE_PREFIX: &str = "audio-queue-";
-/// Optional per-viewer H264 decoder, present only under `--decode-video`.
-const VIDEO_DECODER_PREFIX: &str = "avdec-h264-";
-
-/// If `name` is a per-viewer branch element, return the connection id it
-/// belongs to. Recognizes the whip sink, the per-media queues, and the
-/// optional `--decode-video` H264 decoder. The core demux→tee chain's queues
-/// are named exactly `video-queue`/`audio-queue` (no id suffix), so the
-/// trailing dash in the prefixes keeps their errors out — a core-queue error
-/// must stay fatal.
-///
-/// The bus watch uses this to contain a dying branch's errors to that branch
-/// (reaping just that connection) instead of quitting the whole pipeline,
-/// which would drop the SRT ingest and every other viewer.
-pub(crate) fn branch_id_from_name(name: &str) -> Option<&str> {
-    name.strip_prefix(WHIP_SINK_PREFIX)
-        .or_else(|| name.strip_prefix(VIDEO_QUEUE_PREFIX))
-        .or_else(|| name.strip_prefix(AUDIO_QUEUE_PREFIX))
-        .or_else(|| name.strip_prefix(VIDEO_DECODER_PREFIX))
-}
-
 /// Handle on one connection's branch, keyed by connection id. Cheap to
 /// construct; element lookups happen by derived name so a branch can be
 /// detached even when its attach half-failed.
@@ -73,19 +51,19 @@ impl Branch {
     }
 
     fn whip_sink_name(&self) -> String {
-        format!("{}{}", WHIP_SINK_PREFIX, self.id)
+        naming::whip_sink_name(&self.id)
     }
 
     fn video_queue_name(&self) -> String {
-        format!("{}{}", VIDEO_QUEUE_PREFIX, self.id)
+        naming::video_queue_name(&self.id)
     }
 
     fn audio_queue_name(&self) -> String {
-        format!("{}{}", AUDIO_QUEUE_PREFIX, self.id)
+        naming::audio_queue_name(&self.id)
     }
 
     fn video_decoder_name(&self) -> String {
-        format!("{}{}", VIDEO_DECODER_PREFIX, self.id)
+        naming::video_decoder_name(&self.id)
     }
 
     /// Create this viewer's whipclientsink and per-media queues, link them
@@ -106,8 +84,8 @@ impl Branch {
         decode_video: bool,
     ) -> Result<(), Error> {
         let demux = pipeline
-            .by_name("demux")
-            .ok_or(StreamError::MissingElement("demux".to_string()))?;
+            .by_name(naming::DEMUX)
+            .ok_or(StreamError::MissingElement(naming::DEMUX.to_string()))?;
         // WhipWebRTCSink is renamed as 'whipclientsink' since gst-plugin-webrtc version 0.13.0
         let whipsink = gst::ElementFactory::make("whipclientsink")
             .name(self.whip_sink_name())
@@ -131,9 +109,12 @@ impl Branch {
             .into_iter()
             .any(|pad| pad.name().starts_with("video"))
         {
-            let output_tee_video = pipeline
-                .by_name("output_tee_video")
-                .ok_or(StreamError::MissingElement("output_tee_video".to_string()))?;
+            let output_tee_video =
+                pipeline
+                    .by_name(naming::OUTPUT_TEE_VIDEO)
+                    .ok_or(StreamError::MissingElement(
+                        naming::OUTPUT_TEE_VIDEO.to_string(),
+                    ))?;
             let queue_video: gst::Element = gst::ElementFactory::make("queue")
                 .name(self.video_queue_name())
                 .build()?;
@@ -167,9 +148,12 @@ impl Branch {
             .into_iter()
             .any(|pad| pad.name().starts_with("audio"))
         {
-            let output_tee_audio = pipeline
-                .by_name("output_tee_audio")
-                .ok_or(StreamError::MissingElement("output_tee_audio".to_string()))?;
+            let output_tee_audio =
+                pipeline
+                    .by_name(naming::OUTPUT_TEE_AUDIO)
+                    .ok_or(StreamError::MissingElement(
+                        naming::OUTPUT_TEE_AUDIO.to_string(),
+                    ))?;
             let queue_audio: gst::Element = gst::ElementFactory::make("queue")
                 .name(self.audio_queue_name())
                 .build()?;
@@ -329,42 +313,11 @@ mod tests {
     use super::*;
 
     #[test]
-    fn names_and_paths_derive_from_one_convention() {
-        let branch = Branch::for_id("abc");
-        assert_eq!("whip-sink-abc", branch.whip_sink_name());
-        assert_eq!("video-queue-abc", branch.video_queue_name());
-        assert_eq!("audio-queue-abc", branch.audio_queue_name());
-
+    fn loopback_paths_derive_from_the_route_template() {
         assert_eq!("/whip_sink/abc", whip_sink_path("abc"));
         assert_eq!(
             "http://localhost:8000/whip_sink/abc",
             whip_endpoint(8000, "abc")
         );
-    }
-
-    #[test]
-    fn every_branch_element_is_contained_and_maps_back_to_its_id() {
-        let branch = Branch::for_id("abc");
-        // ALL of a viewer's elements — the whip sink AND its per-media
-        // queues — are recognized as branch-owned, so an error from any of
-        // them is contained to that branch instead of restarting the pipeline.
-        for name in [
-            branch.whip_sink_name(),
-            branch.video_queue_name(),
-            branch.audio_queue_name(),
-            branch.video_decoder_name(),
-        ] {
-            assert_eq!(
-                Some("abc"),
-                branch_id_from_name(&name),
-                "{name} not contained"
-            );
-        }
-
-        // The core (non-branch) elements stay fatal: their errors must still
-        // quit the pipeline and trigger a supervisor restart.
-        for name in ["video-queue", "audio-queue", "demux", "srt_source"] {
-            assert_eq!(None, branch_id_from_name(name), "{name} wrongly contained");
-        }
     }
 }

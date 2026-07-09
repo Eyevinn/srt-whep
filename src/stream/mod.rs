@@ -1,6 +1,7 @@
 mod branch;
 mod errors;
 mod gst_pipeline;
+mod naming;
 mod pipeline;
 mod utils;
 
