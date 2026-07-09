@@ -1,6 +1,6 @@
 # Architecture Deepening Candidates — Handover
 
-**Status:** C1 + C2a **landed on main** (2026-07-09, commits `b7184ad`…`55e4cd8`); C2b and C3–C7 not started
+**Status:** C1 + C2a + C5 **landed on main** (2026-07-09, commits `b7184ad`…`04f464b`); C2b, C3, C4, C6, C7 not started
 **Date:** 2026-07-09
 **Base commit:** c93f9b4 (line numbers below refer to this commit). ⚠ **Now partly stale:**
 main is at `55e4cd8` after C1+C2a. Those two landed touched `src/stream/naming.rs`
@@ -26,7 +26,19 @@ main is at `55e4cd8` after C1+C2a. Those two landed touched `src/stream/naming.r
     fixed in `f78a3d4` (coordinator now bounds `add_branch`; ADR 0002 row updated).
   - Verified: `cargo test --all-targets` green (53 lib + 12 integration, 0
     warnings); the ignored GStreamer e2e passed once in isolation.
-  - **Remaining:** C2b, C3, C4, C5, C6, C7 (see suggested order below).
+  - **Remaining after this entry:** C2b, C3, C4, C5, C6, C7 (see suggested order below).
+
+- **2026-07-09 — C5 landed** (`04f464b`). Named `DEFAULT_*` consts (unit in
+  the name) are now the single source for the coordinator's six defaults;
+  both `Default for CoordinatorConfig` and the `CoordinatorArgs` clap
+  `default_value_t` attributes read from them. The drift-guard test
+  (`coordinator_args_default_to_the_hardcoded_config`) is deleted — the
+  property it pinned now holds by construction. `sweep_interval`'s
+  secs-vs-ms representation drift is resolved (both ms). No behavior change;
+  `cargo test --all-targets` green (52 lib + 12 integration), clippy
+  `-D warnings` + fmt clean. Done directly (no subagent flow — pure
+  mechanical refactor, card was already the spec).
+  - **Remaining:** C2b, C3, C4, C6, C7.
 
 Seven independent refactor candidates, each sized for one agent to pick up
 solo. Read this whole preamble before starting any candidate — it exists so
@@ -80,14 +92,15 @@ you don't re-litigate closed decisions or break pinned semantics.
 | C2b retire `ready()` | after C2a (landed); contradicts a recorded decision — read its card | low | S |
 | C3 constructor-inject reap channel | — | low–medium | S–M |
 | C4 test through SignalHandle | — | low (tests only) | M |
-| C5 config defaults single-source | — | trivial | XS |
+| ~~C5 config defaults single-source~~ | — | ✅ **landed** (`04f464b`) | XS |
 | C6 watchdog restart via supervisor | needs ADR discussion FIRST | high (pinned semantics) | M |
 | C7 SDP newtype dedup | — | low, one verification gate | S |
 
-C1+C2a landed together (2026-07-09) — see the Progress log. Of what remains,
-C5 and C7 are safe warm-up tasks; C2b is the natural follow-on to the landed C2a
-(but read its ⚠ card — it contradicts a recorded decision); C6 must not be started
-without a design conversation and a new/amended ADR.
+C1+C2a+C5 landed (2026-07-09) — see the Progress log. Of what remains,
+C7 is the safe warm-up task; C2b is the natural follow-on to the landed C2a
+(but read its ⚠ card — it contradicts a recorded decision); C3 and C4 are
+low-risk standalones; C6 must not be started without a design conversation
+and a new/amended ADR.
 
 ---
 
@@ -284,7 +297,7 @@ as before (renames fine, semantics identical).
 
 ---
 
-## C5 — One source of truth for the coordinator's six knobs  · **Worth exploring**
+## C5 — One source of truth for the coordinator's six knobs  · ✅ **LANDED** (`04f464b`)
 
 **Files:** `src/signal/coordinator.rs:11–77` (`CoordinatorConfig`, its
 `Default`, `CoordinatorArgs` clap defaults, `to_config()`) and
