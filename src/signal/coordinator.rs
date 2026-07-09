@@ -265,12 +265,12 @@ impl<P: BranchControl> Coordinator<P> {
                         state: state.name().to_string(),
                     })
                     .collect();
-                let _ = reply.send(list);
+                let _ = reply.send(Ok(list));
             }
             Command::Reset { reply } => {
                 self.reset_all();
                 self.watchdog.record_success();
-                let _ = reply.send(());
+                let _ = reply.send(Ok(()));
             }
         }
     }

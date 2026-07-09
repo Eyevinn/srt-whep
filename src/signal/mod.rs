@@ -5,7 +5,8 @@ mod watchdog;
 
 pub use coordinator::{Coordinator, CoordinatorArgs, CoordinatorConfig};
 pub use errors::SignalError;
-pub use messages::{Command, ConnectionId, ConnectionInfo};
+use messages::Command;
+pub use messages::{ConnectionId, ConnectionInfo};
 
 use crate::domain::{SdpAnswer, SdpOffer};
 use crate::stream::{BranchControl, BranchId};
@@ -85,12 +86,8 @@ impl SignalHandle {
     /// `ListConnections` and awaits the reply carrying the snapshot; errors
     /// only if the coordinator is unavailable.
     pub async fn list_connections(&self) -> Result<Vec<ConnectionInfo>, SignalError> {
-        let (reply_tx, reply_rx) = oneshot::channel();
-        self.tx
-            .send(Command::ListConnections { reply: reply_tx })
+        self.request(|reply| Command::ListConnections { reply })
             .await
-            .map_err(|_| SignalError::Unavailable)?;
-        reply_rx.await.map_err(|_| SignalError::Unavailable)
     }
 
     /// Reset the coordinator after a pipeline restart (supervisor only).
@@ -98,12 +95,7 @@ impl SignalHandle {
     /// connection map; the reply is `Ok(())` once done, or an error if the
     /// coordinator is unavailable.
     pub async fn reset(&self) -> Result<(), SignalError> {
-        let (reply_tx, reply_rx) = oneshot::channel();
-        self.tx
-            .send(Command::Reset { reply: reply_tx })
-            .await
-            .map_err(|_| SignalError::Unavailable)?;
-        reply_rx.await.map_err(|_| SignalError::Unavailable)
+        self.request(|reply| Command::Reset { reply }).await
     }
 }
 
