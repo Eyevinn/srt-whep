@@ -40,18 +40,18 @@ trap teardown EXIT
 
 # 1. dependency
 if [ ! -d "$DIR/node_modules" ]; then
-  echo ">>> installing puppeteer-core…"
+  echo ">>> installing puppeteer-core..."
   ( cd "$DIR" && npm install --silent )
 fi
 
 # 2. bring up source + srt-whep (retries the tsdemux race)
 if [ "$SKIP_BRINGUP" -eq 0 ]; then
-  echo ">>> bringing up srt-whep + x264 source (profile=$PROFILE)…"
+  echo ">>> bringing up srt-whep + x264 source (profile=$PROFILE)..."
   "$DIR/lib/bringup.sh" "$PROFILE"
 fi
 
 # 3. serve the player
-echo ">>> serving player on 127.0.0.1:$PLAYER_PORT…"
+echo ">>> serving player on 127.0.0.1:$PLAYER_PORT..."
 ( cd "$DIR/player" && exec python3 -m http.server "$PLAYER_PORT" --bind 127.0.0.1 ) >/dev/null 2>&1 &
 HTTP_PID=$!
 for _ in $(seq 1 10); do
@@ -60,7 +60,7 @@ for _ in $(seq 1 10); do
 done
 
 # 4. drive Chrome and check the stages (its exit code is this script's verdict)
-echo ">>> driving Chrome…"
+echo ">>> driving Chrome..."
 node "$DIR/drive-chrome.mjs" \
   --url "http://localhost:$PLAYER_PORT/" \
   --endpoint "$ENDPOINT" \
