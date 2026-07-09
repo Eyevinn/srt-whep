@@ -3,6 +3,28 @@ use std::fmt::{Debug, Display};
 
 use super::SdpError;
 
+/// Generates the two delegating string traits every SDP newtype shares
+/// (`AsRef<str>` + `Display`) — each forwards to the wrapped inner value
+/// (`String` for [`SessionDescription`], a `SessionDescription` for the
+/// direction newtypes). Boilerplate-only by design: each type's `parse` and
+/// direction stay hand-written so the offer-vs-answer distinction the file
+/// exists to enforce stays explicit and greppable.
+macro_rules! impl_sdp_string_traits {
+    ($t:ty) => {
+        impl AsRef<str> for $t {
+            fn as_ref(&self) -> &str {
+                self.0.as_ref()
+            }
+        }
+
+        impl Display for $t {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                write!(f, "{}", self.0)
+            }
+        }
+    };
+}
+
 #[derive(Debug, Clone)]
 pub struct SessionDescription(String);
 
@@ -49,17 +71,7 @@ impl TryFrom<String> for SessionDescription {
     }
 }
 
-impl AsRef<str> for SessionDescription {
-    fn as_ref(&self) -> &str {
-        &self.0
-    }
-}
-
-impl Display for SessionDescription {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.0)
-    }
-}
+impl_sdp_string_traits!(SessionDescription);
 
 /// A WHIP/WHEP **offer**: an SDP proven to advertise `a=sendonly`. Distinct
 /// from [`SdpAnswer`] so an offer and an answer can never be swapped by type.
@@ -78,23 +90,14 @@ impl SdpOffer {
         Ok(SdpOffer(sdp))
     }
 
-    /// Always `true` — an offer is sendonly by construction.
+    /// Always `true`: `parse` rejects any non-sendonly SDP, so an `SdpOffer`
+    /// is sendonly by construction — no runtime scan needed.
     pub fn is_sendonly(&self) -> bool {
-        self.0.is_sendonly()
+        true
     }
 }
 
-impl AsRef<str> for SdpOffer {
-    fn as_ref(&self) -> &str {
-        self.0.as_ref()
-    }
-}
-
-impl Display for SdpOffer {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.0)
-    }
-}
+impl_sdp_string_traits!(SdpOffer);
 
 /// A WHEP **answer**: an SDP proven to advertise the recvonly direction.
 #[derive(Debug, Clone)]
@@ -112,23 +115,14 @@ impl SdpAnswer {
         Ok(SdpAnswer(sdp))
     }
 
-    /// Always `false` — an answer is recvonly by construction.
+    /// Always `false`: `parse` rejects any sendonly SDP, so an `SdpAnswer`
+    /// is recvonly by construction — no runtime scan needed.
     pub fn is_sendonly(&self) -> bool {
-        self.0.is_sendonly()
+        false
     }
 }
 
-impl AsRef<str> for SdpAnswer {
-    fn as_ref(&self) -> &str {
-        self.0.as_ref()
-    }
-}
-
-impl Display for SdpAnswer {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.0)
-    }
-}
+impl_sdp_string_traits!(SdpAnswer);
 
 pub const VALID_WHIP_OFFER: &str = "v=0
     o=- 8119464979627461093 0 IN IP4 0.0.0.0
@@ -230,14 +224,18 @@ mod tests {
 
     #[test]
     fn offer_requires_sendonly() {
-        assert_ok!(SdpOffer::parse(VALID_WHIP_OFFER.to_string()));
+        let offer = SdpOffer::parse(VALID_WHIP_OFFER.to_string()).unwrap();
+        // The `is_sendonly` constant must match the direction `parse` enforced.
+        assert!(offer.is_sendonly());
         // A recvonly answer is not a valid offer.
         assert_err!(SdpOffer::parse(VALID_WHEP_ANSWER.to_string()));
     }
 
     #[test]
     fn answer_requires_recvonly() {
-        assert_ok!(SdpAnswer::parse(VALID_WHEP_ANSWER.to_string()));
+        let answer = SdpAnswer::parse(VALID_WHEP_ANSWER.to_string()).unwrap();
+        // The `is_sendonly` constant must match the direction `parse` enforced.
+        assert!(!answer.is_sendonly());
         // A sendonly offer is not a valid answer.
         assert_err!(SdpAnswer::parse(VALID_WHIP_OFFER.to_string()));
     }
