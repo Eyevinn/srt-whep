@@ -1,0 +1,13 @@
+{
+  "name": "srt-whep-browser-test",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Automated browser-driven WHEP connection test (Chrome via Puppeteer).",
+  "scripts": {
+    "test": "node --test"
+  },
+  "dependencies": {
+    "puppeteer-core": "^23.0.0"
+  }
+}
