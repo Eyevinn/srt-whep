@@ -96,29 +96,54 @@ impl BranchControl for SharablePipeline {
     /// For whipsink to work, the branch must be linked to the output tee element and synced in state
     /// Return NoSRTStream error if no input stream is available
     async fn add_branch(&self, id: String) -> Result<(), PipelineError> {
-        // One lock acquisition: check readiness and attach under the same guard,
-        // so a supervisor restart cannot slip between a separate ready() check
-        // and the attach.
-        let pipeline_state = self.state.lock_err().await?;
-        // No pipeline means we are between supervisor restarts: retryable.
-        let pipeline = pipeline_state
-            .pipeline
-            .as_ref()
-            .ok_or(PipelineError::NotReady)?;
+        // Attach under the state lock (attach is synchronous and may hold it).
+        // Clone the pipeline handle so that, if attach fails, we can detach the
+        // half-built branch AFTER releasing the lock -- detach awaits GStreamer
+        // state changes and must not run under the 1s timed state lock.
+        let (pipeline, attach_result) = {
+            let pipeline_state = self.state.lock_err().await?;
+            // No pipeline means we are between supervisor restarts: retryable.
+            let pipeline = pipeline_state
+                .pipeline
+                .as_ref()
+                .ok_or(PipelineError::NotReady)?;
 
-        if !Self::input_ready(pipeline)? {
-            tracing::error!("Demux has no pad available. No connection can be added.");
-            return Err(PipelineError::NotReady);
-        }
+            if !Self::input_ready(pipeline)? {
+                tracing::error!("Demux has no pad available. No connection can be added.");
+                return Err(PipelineError::NotReady); // pre-attach: nothing to clean up
+            }
 
-        tracing::debug!("Add connection {} to pipeline", id);
-        Branch::for_id(&id)
-            .attach(
+            tracing::debug!("Add connection {} to pipeline", id);
+            let attach_result = Branch::for_id(&id).attach(
                 pipeline,
                 pipeline_state.args.port,
                 pipeline_state.args.decode_video,
-            )
-            .map_err(|e| PipelineError::Fatal(e.to_string()))
+            );
+            (pipeline.clone(), attach_result)
+        };
+
+        if let Err(attach_err) = attach_result {
+            // Attach ran partway: detach our own half-built branch so the caller
+            // never has to reason about stream-plane cleanup (ADR 0002 -- the
+            // semantic is unchanged; only the location moved here from the
+            // coordinator). detach tolerates a half-built branch (missing
+            // elements are skipped). Best-effort: the original attach error is
+            // what we report.
+            tracing::warn!(
+                "attach for {} failed ({}); detaching half-built branch",
+                id,
+                attach_err
+            );
+            if let Err(cleanup_err) = Branch::for_id(&id).detach(&pipeline).await {
+                tracing::error!(
+                    "cleanup after failed attach for {} also failed: {}",
+                    id,
+                    cleanup_err
+                );
+            }
+            return Err(PipelineError::Fatal(attach_err.to_string()));
+        }
+        Ok(())
     }
 
     /// Remove a viewer's branch from the pipeline

@@ -264,19 +264,9 @@ impl<P: BranchControl> Coordinator<P> {
             return;
         }
         if let Err(add_err) = self.pipeline.add_branch(id.clone()).await {
-            // Only a Fatal error can leave a half-attached branch (attach ran and
-            // failed partway). NotReady/Transient fail before attaching, so there
-            // is nothing to detach — and detaching then would be a spurious
-            // teardown on a branch that was never added.
-            if matches!(add_err, crate::stream::PipelineError::Fatal(_)) {
-                if let Err(cleanup_err) = self.remove_branch_bounded(id.clone()).await {
-                    tracing::error!(
-                        "Failed to detach half-attached branch for {}: {}",
-                        id,
-                        cleanup_err
-                    );
-                }
-            }
+            // add_branch owns detaching a half-attached branch (ADR 0002); the
+            // coordinator just maps the error. Error variants mean retry policy
+            // only again -- no matching on stream error variants here.
             let _ = reply.send(Err(add_err.into()));
             return;
         }
@@ -989,7 +979,7 @@ mod tests {
     }
 
     #[tokio::test(start_paused = true)]
-    async fn add_branch_failure_detaches_the_half_attached_branch() {
+    async fn failed_add_registers_nothing_and_needs_no_coordinator_cleanup() {
         use crate::stream::PipelineError;
 
         let pipeline = ready_pipeline();
@@ -1008,8 +998,10 @@ mod tests {
         assert!(whep_rx.await.unwrap().is_err());
         tokio::task::yield_now().await;
 
-        // ...but the half-attached branch is detached, not orphaned.
-        assert_eq!(vec!["a".to_string()], pipeline.snapshot().removed);
+        // ...and the coordinator issues NO cleanup: add_branch owns detaching
+        // its own half-attached branch now, so a spurious remove_branch here
+        // would be a bug (and today's matches!(Fatal) block causes exactly one).
+        assert!(pipeline.snapshot().removed.is_empty());
         assert!(list_ids(&tx).await.is_empty());
     }
 

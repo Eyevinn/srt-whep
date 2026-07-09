@@ -273,6 +273,21 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn failed_add_branch_leaves_nothing_attached_on_the_fake() {
+        let pipeline = TestPipeline::default();
+        pipeline.set_ready(true);
+        pipeline.fail_next_add_branch(PipelineError::Fatal("attach blew up".into()));
+
+        assert!(matches!(
+            pipeline.add_branch("a".to_string()).await,
+            Err(PipelineError::Fatal(_))
+        ));
+        // Same observable contract as the real adapter: a failed add attaches
+        // nothing, so no external cleanup is ever needed.
+        assert!(pipeline.snapshot().added.is_empty());
+    }
+
+    #[tokio::test]
     async fn test_pipeline_records_calls() {
         let pipeline = TestPipeline::default();
         assert!(!pipeline.ready().await.unwrap());
