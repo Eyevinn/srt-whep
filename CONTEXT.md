@@ -4,6 +4,11 @@ srt-whep ingests one MPEG-TS-over-SRT stream and re-serves it to WebRTC
 viewers over WHEP (server-initiated signaling), fanning it out to each
 viewer through a loopback WHIP bridge inside the same process.
 
+> **New to the code?** [`docs/connection-lifecycle.md`](docs/connection-lifecycle.md)
+> walks one viewer through the handshake step by step. This file is the
+> reference map; [`docs/architecture-evolution-shared-lock-to-actor.md`](docs/architecture-evolution-shared-lock-to-actor.md)
+> is the *why* behind the coordinator-actor design.
+
 ## Domain glossary
 
 - **Connection** — one WHEP viewer's signaling lifecycle: offer, answer,
@@ -19,6 +24,12 @@ viewer through a loopback WHIP bridge inside the same process.
 - **Coordinator** — the signaling actor (`src/signal/coordinator.rs`): a
   single tokio task that owns all connection state and every branch
   add/remove call, serialized through its mailbox.
+- **Parked waiter** — a oneshot reply sender held *inside* a connection's
+  state instead of being answered right away. The WHEP `POST /channel` reply
+  parks in `AwaitingOffer` until the whipsink's offer arrives; the loopback
+  WHIP `POST` reply parks in `AwaitingAnswer` until the browser's answer
+  arrives. Delivering the SDP later completes the long-held HTTP request. See
+  [`docs/connection-lifecycle.md`](docs/connection-lifecycle.md).
 - **Supervisor** — the restart loop (`src/supervisor.rs`) that runs the
   pipeline and, when it stops — on EOS, on error, or on a watchdog restart
   request — cleans up, resets signaling, and reruns it with backoff, until
@@ -35,6 +46,11 @@ viewer through a loopback WHIP bridge inside the same process.
   to a waiting handler if one is still attached, removes the branch, and
   drops the entry — including for abandoned clients whose HTTP handler
   future was already dropped.
+- **Reap** — cleanup triggered by the pipeline's bus watch reporting a
+  branch's *runtime* failure (`reap_branch`): the connection is dropped and its
+  branch detached. Unlike the sweep, a reap deliberately does **not** feed the
+  watchdog — a dead peer is a fact about one viewer, not a pipeline-health
+  signal.
 
 ## Terminology map: one lifecycle, three vantage points
 
