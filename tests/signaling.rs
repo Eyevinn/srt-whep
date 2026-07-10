@@ -3,7 +3,7 @@ use reqwest::StatusCode;
 use srt_whep::domain::{VALID_WHEP_ANSWER, VALID_WHIP_OFFER};
 use srt_whep::signal::CoordinatorConfig;
 use srt_whep::startup::Application;
-use srt_whep::stream::TestPipeline;
+use srt_whep::stream::{PipelineError, TestPipeline};
 use srt_whep::telemetry::{get_subscriber, init_subscriber};
 use std::net::TcpListener;
 use std::time::Duration;
@@ -227,12 +227,59 @@ async fn unknown_ids_return_404() {
         .unwrap();
     assert_eq!(404, response.status());
 
-    let response = client
-        .delete(format!("{}/channel/ghost", address))
+    // DELETE of an unknown id is idempotent (204), covered by delete_is_idempotent.
+}
+
+#[tokio::test]
+async fn delete_is_idempotent() {
+    let (address, pipeline) = spawn_app(functional_config());
+    let client = http_client();
+
+    let id = complete_exchange(&address, &pipeline, 0).await;
+
+    // First DELETE terminates a live session: 200, branch torn down.
+    let first = client
+        .delete(format!("{}/channel/{}", address, id))
         .send()
         .await
         .unwrap();
-    assert_eq!(404, response.status());
+    assert_eq!(StatusCode::OK, first.status());
+    assert!(pipeline.snapshot().removed.contains(&id));
+
+    // Repeat DELETE of the same id: already gone -> 204 no-op, not 404.
+    let repeat = client
+        .delete(format!("{}/channel/{}", address, id))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(StatusCode::NO_CONTENT, repeat.status());
+
+    // DELETE of an id that never existed -> 204.
+    let ghost = client
+        .delete(format!("{}/channel/never-existed", address))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(StatusCode::NO_CONTENT, ghost.status());
+}
+
+#[tokio::test]
+async fn delete_with_transient_teardown_failure_returns_503() {
+    let (address, pipeline) = spawn_app(functional_config());
+    let client = http_client();
+
+    let id = complete_exchange(&address, &pipeline, 0).await;
+
+    // The next branch teardown fails transiently: DELETE must surface a
+    // retryable 503 (+ Retry-After), NOT collapse into a success code.
+    pipeline.fail_next_remove_branch(PipelineError::Transient("lock timed out".into()));
+    let response = client
+        .delete(format!("{}/channel/{}", address, id))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(503, response.status().as_u16());
+    assert_eq!("3", response.headers()["Retry-After"].to_str().unwrap());
 }
 
 #[tokio::test]
