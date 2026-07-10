@@ -177,9 +177,14 @@ Four distinct failure paths, each scoped as narrowly as it can be:
   `reap_branch` drops just that connection. Crucially it does **not** touch the
   watchdog — a dead peer is not a pipeline-health signal.
 - **Pipeline actually wedged** → the **watchdog** counts *consecutive* failures
-  within a time window (`src/signal/watchdog.rs`); only at threshold does it
-  escalate to the old sledgehammer — `pipeline.quit()` and fail all waiters.
-  A single success resets the counter.
+  within a time window (`src/signal/watchdog.rs`); only at threshold does the
+  coordinator fail all waiters and send a restart *request* to the supervisor
+  over an mpsc channel (symmetric with the branch-failure reap channel). The
+  supervisor force-quits the run (`pipeline.quit()`) and reruns it at base
+  delay — the old global sledgehammer, but now owned by the lifecycle seam and
+  fired only behind the threshold. A single success resets the counter. (The
+  coordinator no longer calls `quit()` itself — see
+  [ADR 0005](adr/0005-watchdog-restart-through-supervisor.md).)
 
 So the global restart still exists, but it's the *last* resort behind a
 threshold, not the *first* response to any hiccup. That's the single biggest
@@ -194,6 +199,15 @@ ordering (EOS → bounded join) all live in this one visible place instead of
 being smeared across a `Drop` impl. Everything that can wedge is **bounded** by
 a timeout (`teardown_timeout`, `SHUTDOWN_JOIN_TIMEOUT`, `RESET_TIMEOUT`) so no
 single stuck GStreamer call can hang the actor or process exit.
+
+The supervisor's `select!` has a third arm besides *run finished* and
+*shutdown*: a **watchdog restart request** (the mpsc above) force-quits the
+current run and reruns it at base delay. The forced teardown is `pipeline.quit()`,
+which lives on `PipelineLifecycle` — the supervisor's own whole-pipeline seam,
+not the coordinator's per-connection one ([ADR 0005](adr/0005-watchdog-restart-through-supervisor.md)).
+That keeps the "who may end a run" authority in the one place that owns run
+lifecycle, and makes the coordinator's trip path non-blocking (`try_send`): a
+wedged quit can never stall the mailbox.
 
 ---
 
@@ -337,12 +351,12 @@ not a quiet patch.
 | The actor, the state machine, all the failure paths | `src/signal/coordinator.rs` |
 | The command / reply message types | `src/signal/messages.rs` |
 | The consecutive-failure counter with decay | `src/signal/watchdog.rs` |
-| The restart loop, backoff, shutdown ordering | `src/supervisor.rs` |
+| The restart loop, backoff, shutdown ordering, watchdog restart arm | `src/supervisor.rs` |
 | How the coordinator/supervisor/HTTP server are wired together | `src/startup.rs` |
 | The two pipeline seams (`BranchControl`, `PipelineLifecycle`) + the test fake | `src/stream/pipeline.rs` |
 | The per-viewer GStreamer elements + loopback WHIP bridge | `src/stream/branch.rs` |
 | The current map and vocabulary | `CONTEXT.md` |
-| Why each decision was made | `docs/adr/0001-signaling-plane-rebuild.md` … `0004` |
+| Why each decision was made | `docs/adr/0001-signaling-plane-rebuild.md` … `0005` |
 | The old design (for contrast) | `git show v1.3.0:src/domain/app_state.rs` and `…:src/routes/whep_handler.rs` |
 
 **One exercise for the new maintainer:** open `coordinator.rs`, read the six
