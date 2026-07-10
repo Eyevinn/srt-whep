@@ -1,6 +1,6 @@
 # Architecture Deepening Candidates — Handover
 
-**Status:** C1 + C2a + C5 + C7 + C3 **landed on main** (2026-07-09, commits `b7184ad`…`57b2703`); C2b, C4, C6 not started
+**Status:** ✅ **PASS COMPLETE (2026-07-10).** C1, C2a, C3, C5, C7 landed 2026-07-09; C4 + C6 landed 2026-07-10 (see their § cards + ADR-0005). C2b **declined** — `ready()` retained (see its card). All work on local `main`, not pushed to origin.
 **Date:** 2026-07-09
 **Base commit:** c93f9b4 (line numbers below refer to this commit). ⚠ **Now partly stale:**
 main is at `55e4cd8` after C1+C2a. Those two landed touched `src/stream/naming.rs`
@@ -227,7 +227,7 @@ green; one manual e2e run.
 
 ---
 
-## C2b — Retire `BranchControl::ready()`  · **Worth exploring** ⚠ contradicts a recorded decision
+## C2b — Retire `BranchControl::ready()`  · 🚫 **DECLINED** (2026-07-10)
 
 **Files:** `src/stream/pipeline.rs:88–114` (trait) ·
 `src/stream/gst_pipeline.rs:79–88` (impl) · callers: only
@@ -250,6 +250,20 @@ doc or an ADR note) so the next architecture pass doesn't re-suggest it.
 **Done when:** either `ready()` is gone from `BranchControl` (interface: 4
 methods → 3, counting `set_branch_failure_sink` — see C3) and e2e still
 passes, or the retention is re-recorded with its reason.
+
+**Decision (2026-07-10) — DECLINED; `ready()` retained.** Reviewed at the end
+of the arch-deepening pass (after C4 + C6 landed). Kept the 2026-07-08
+readiness-contract decision: `ready()` stays on `BranchControl` solely for the
+e2e test's startup poll. It is harmless — zero production callers, off every
+production connection path (readiness is enforced atomically inside
+`add_branch`, pinned by `not_ready_pipeline_returns_503_with_retry_after`). The
+marginal deepening (trait 3 → 2 methods; note the "4 → 3" count above is stale —
+C3 removed `set_branch_failure_sink` and C6 moved `quit` to `PipelineLifecycle`,
+so `BranchControl` is already 3 methods) did not justify overriding a deliberate
+two-day-old decision and rewriting the e2e startup wait. **Do not re-suggest**
+unless a future change already needs to migrate the e2e poll onto the
+503 + `Retry-After` contract for another reason. This closes the
+2026-07-09 arch-deepening pass: C1, C2a, C3, C4, C5, C6, C7 landed; C2b declined.
 
 ---
 
