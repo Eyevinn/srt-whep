@@ -36,8 +36,7 @@ routes talk to it via SignalHandle; the connection lifecycle advances
 AwaitingOffer → AwaitingAnswer → Established, with the sweep reaping timeouts
 and the watchdog escalating to a supervisor restart](docs/srt-whep-coordinator-actor.gif)
 
-For the module map and domain glossary see [`CONTEXT.md`](./CONTEXT.md); the
-design decisions behind this shape are recorded in [`docs/adr/`](./docs/adr/).
+New to the code? [`docs/connection-lifecycle.md`](./docs/connection-lifecycle.md) walks one viewer through the handshake. For the module map and domain glossary see [`CONTEXT.md`](./CONTEXT.md); the *why* behind the coordinator-actor design is in [`docs/architecture-evolution-shared-lock-to-actor.md`](./docs/architecture-evolution-shared-lock-to-actor.md), and the decisions in [`docs/adr/`](./docs/adr/).
 
 ## Design Principles
 When conceiving this project, we made deliberate design choices to shape its functionality and behavior in alignment with our vision:
@@ -126,6 +125,12 @@ export DYLD_FALLBACK_LIBRARY_PATH=$GST_PLUGIN_PATH
 > `rswebrtc` it wins the plugin registry and replaces the installation's
 > matched one, which can break the WebRTC media path (see
 > [`docs/adr/0003`](./docs/adr/0003-webrtc-plugin-from-installation.md)).
+
+To run a local SRT **test source** on macOS (for example the ffmpeg/GStreamer commands in [`docs/useful_commands.md`](./docs/useful_commands.md)), also export `GIO_EXTRA_MODULES` so GStreamer's gio TLS modules resolve:
+
+```
+export GIO_EXTRA_MODULES=/Library/Frameworks/GStreamer.framework/Libraries/gio/modules/
+```
 
 Build with Cargo
 
@@ -294,6 +299,8 @@ When working with SRT streams, there are several important considerations that c
 6. **Keyframe Interval (GOP) for Late-Joining Viewers:**
 - A WebRTC viewer's branch is hot-plugged into the running pipeline, so it starts receiving mid-stream. A decoder needs an IDR keyframe (with its SPS/PPS) before it can render video, and srt-whep does not transcode, so it cannot force the source to emit one — it can only forward the next keyframe the source sends.
 - Configure the source with a short keyframe interval so viewers get video quickly. In `x264enc` set `key-int-max=30` (≈1s at 30fps); in FFmpeg use `-g 30`. With a long/infinite GOP, audio (Opus) plays immediately while video stays black until the next keyframe arrives.
+
+See also: [test-stream commands](./docs/useful_commands.md), the [OBS → Twitch streaming guide](./docs/LiveStreaming.md), and [known issues and solutions](./docs/known_limitations.md).
 
 ## Discussion and Issues
 All relevant discussions are tracked in [issues](https://github.com/Eyevinn/srt-whep/issues/). Please feel free to open a new issue if you have any questions.
