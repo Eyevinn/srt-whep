@@ -115,6 +115,31 @@ def arrow(x0, y0, x1, y1, color, dashed=False, both=False):
     return e
 
 
+def curve_arrow(pts, color):
+    """Multi-point curved arrow (roundness 2), arrowhead at the last point.
+    Used for the two cross-canvas flows that arc around the coordinator."""
+    x0, y0 = pts[0]
+    xs = [p[0] for p in pts]
+    ys = [p[1] for p in pts]
+    return base(
+        dict(
+            type="arrow",
+            x=x0,
+            y=y0,
+            width=max(xs) - min(xs),
+            height=max(ys) - min(ys),
+            strokeColor=color,
+            points=[[p[0] - x0, p[1] - y0] for p in pts],
+            lastCommittedPoint=None,
+            startBinding=None,
+            endBinding=None,
+            startArrowhead=None,
+            endArrowhead="arrow",
+            roundness={"type": 2},
+        )
+    )
+
+
 def main():
     els = []
     # title / subtitle
@@ -236,8 +261,12 @@ def main():
     els.append(arrow(1568, 616, 1882, 616, WHITE))
     els.append(arrow(1884, 760, 1568, 786, RED, dashed=True))  # reap chan (C3)
     els.append(arrow(2256, 396, 2256, 474, CYAN))
-    els.append(arrow(2380, 812, 2380, 892, PURPLE))  # run/quit/clean_up
+    els.append(arrow(2380, 892, 2380, 812, PURPLE))  # supervisor drives pipeline: run/quit/clean_up
     els.append(arrow(2252, 1512, 2210, 1202, RED, dashed=True))  # restart req (C6)
+    # cross-canvas flows: media over the top into WHEP VIEWERS; loopback-WHIP
+    # offer under the coordinator into HTTP ROUTES (/whip_sink)
+    els.append(curve_arrow([(1884, 508), (1200, 300), (472, 400)], BLUE))
+    els.append(curve_arrow([(1884, 792), (1200, 1200), (472, 850)], GREEN))
     # lifecycle arrows
     els.append(arrow(170, 1413, 250, 1413, GREEN))
     els.append(arrow(578, 1413, 700, 1413, GREEN))
@@ -254,13 +283,13 @@ def main():
         (2278, 414, "media in", DIM),
         (2050, 846, "run / quit / clean_up", DIM),
         (2276, 1356, "restart request (mpsc)", RED),
+        (1010, 210, "WebRTC media -> each viewer", DIM),
         (
-            560,
-            200,
+            716,
+            1096,
             "loopback WHIP · whipclientsink POSTs its SDP offer -> " "/whip_sink/{id}",
             DIM,
         ),
-        (790, 1092, "WebRTC media -> each viewer", DIM),
         (300, 470, "signaling HTTP", DIM),
     ]:
         els.append(txt(x, y, s, c, 26))
@@ -273,8 +302,10 @@ def main():
         appState=dict(gridSize=None, viewBackgroundColor="#0d1117"),
         files={},
     )
+    # Write to docs/ (one level up from this docs/diagram/ script) so it lands
+    # on the tracked, README-referenced path (docs/srt-whep-coordinator-actor.excalidraw).
     out = os.path.join(
-        os.path.dirname(os.path.abspath(__file__)),
+        os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
         "srt-whep-coordinator-actor.excalidraw",
     )
     with open(out, "w") as f:

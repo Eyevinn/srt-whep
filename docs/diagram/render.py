@@ -523,22 +523,28 @@ def build_base():
     draw_edge(d, [(2256, 398), (2256, 470)], CYAN, lw=5, seed=55)
     text(d, (2278, 414), "media in", ll, DIM)
 
-    draw_edge(d, [(2380, 890), (2380, 814)], PURPLE, lw=5, seed=56, arrow="start")
+    draw_edge(d, [(2380, 890), (2380, 814)], PURPLE, lw=5, seed=56, arrow="end")
     text(d, (2050, 846), "run / quit / clean_up", ll, DIM, anchor="la")
 
-    upper = bezier((476, 540), (1200, 210), (1900, 508))
-    draw_edge(d, upper, GREEN, lw=4, seed=61, arrow="none", amp=1.6)
+    # Both cross-canvas flows originate at the GStreamer pipeline (right) and
+    # land on the box they actually reach. Media (blue) arcs over the top into
+    # the WHEP VIEWERS box; the loopback-WHIP offer (green) dips under the
+    # coordinator into the HTTP ROUTES box (the /whip_sink route). Paths run
+    # right->left so the arrowhead and the moving particles both read
+    # GStreamer -> destination.
+    media = bezier((1900, 508), (1200, 210), (472, 400))
+    draw_edge(d, media, BLUE, lw=4, seed=61, arrow="end", amp=1.6)
+    text(d, (1200, 258), "WebRTC media -> each viewer", ll, DIM, anchor="ma")
+    whip = bezier((1900, 792), (1200, 1288), (472, 850))
+    draw_edge(d, whip, GREEN, lw=4, seed=62, arrow="end", amp=1.6)
     text(
         d,
-        (1200, 250),
+        (1200, 1120),
         "loopback WHIP  ·  whipclientsink POSTs its SDP offer -> /whip_sink/{id}",
         ll,
         DIM,
         anchor="ma",
     )
-    lower = bezier((476, 792), (1200, 1288), (1900, 792))
-    draw_edge(d, lower, BLUE, lw=4, seed=62, arrow="none", amp=1.6)
-    text(d, (1200, 1150), "WebRTC media -> each viewer", ll, DIM, anchor="ma")
 
     particles = [
         {"path": [(278, 496), (278, 584)], "color": ORANGE, "loops": 1, "phase": 0.0},
@@ -547,10 +553,10 @@ def build_base():
         {"path": reap_path, "color": RED, "loops": 1, "phase": 0.5},
         {"path": [(2256, 398), (2256, 470)], "color": CYAN, "loops": 1, "phase": 0.6},
         {"path": [(2380, 890), (2380, 814)], "color": PURPLE, "loops": 1, "phase": 0.2},
-        {"path": upper, "color": GREEN, "loops": 1, "phase": 0.0},
-        {"path": upper, "color": GREEN, "loops": 1, "phase": 0.5},
-        {"path": lower, "color": BLUE, "loops": 1, "phase": 0.25},
-        {"path": lower, "color": BLUE, "loops": 1, "phase": 0.75},
+        {"path": media, "color": BLUE, "loops": 1, "phase": 0.0},
+        {"path": media, "color": BLUE, "loops": 1, "phase": 0.5},
+        {"path": whip, "color": GREEN, "loops": 1, "phase": 0.25},
+        {"path": whip, "color": GREEN, "loops": 1, "phase": 0.75},
         {"path": [(171, scy), (248, scy)], "color": GREEN, "loops": 1, "phase": 0.0},
         {"path": [(580, scy), (698, scy)], "color": GREEN, "loops": 1, "phase": 0.15},
         {"path": [(1030, scy), (1148, scy)], "color": GREEN, "loops": 1, "phase": 0.3},
