@@ -82,13 +82,22 @@ impl<P: PipelineLifecycle + 'static> Supervisor<P> {
     /// (EOS or error) or, on shutdown, after asking it to stop and joining
     /// it (bounded — a wedged element must not hang process exit).
     async fn run_pipeline_until_stopped(&mut self) -> RunOutcome {
+        // Drop any restart request left buffered by the previous run before
+        // starting a fresh one. No legitimate request can be pending here: the
+        // watchdog only trips against a ready, running pipeline, and between
+        // runs the pipeline is Null/re-initializing — so this only clears a
+        // stale `()` that raced a natural EOS/error on the prior run's final
+        // tick, which would otherwise force-quit this fresh run for nothing.
+        while self.restart_rx.try_recv().is_ok() {}
+
         if let Err(e) = self.pipeline.init().await {
             return RunOutcome::Completed(Err(e));
         }
 
-        // The real pipeline's run() parks its worker thread in the GLib
-        // main loop, so it must live on its own task; only an EOS/quit from
-        // outside (end() below, or the coordinator's watchdog) unblocks it.
+        // The real pipeline's run() parks its worker thread in the GLib main
+        // loop, so it must live on its own task; only something from outside
+        // unblocks it: an EOS (end() below), a fatal bus error, or the
+        // supervisor's forced quit() in the restart arm (on a watchdog request).
         let mut run_task = tokio::spawn({
             let pipeline = self.pipeline.clone();
             async move { pipeline.run().await }
