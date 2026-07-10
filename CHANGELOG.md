@@ -5,6 +5,46 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.0] - 2026-07-10
+
+Internal hardening, new test tooling, and documentation. No CLI or API
+changes — every invocation from 2.0.0 keeps working. This release continues the
+architecture-deepening pass from 2.0.0 with behaviour-preserving refactors, adds
+an automated browser-driven WHEP media check, and refreshes the architecture
+documentation.
+
+### Added
+
+- Automated browser-driven WHEP test (`tests/browser/`): a one-shot orchestrator
+  drives real Chrome through the WHEP handshake via Puppeteer and asserts that
+  decoded video frames climb, guarding against the connected-but-silent version
+  skew regression fixed in 2.0.0. Always emits a pass/fail verdict plus JSON,
+  even when Chrome can't launch or the player page fails to load. Documented in
+  the README Testing section.
+- ADR-0005 documenting that watchdog-triggered pipeline restarts are routed
+  through the supervisor.
+- Regenerated animated architecture diagram
+  (`docs/srt-whep-coordinator-actor.gif`) with its editable Excalidraw source and
+  the renderer that produces it.
+
+### Changed
+
+- Watchdog restarts now flow through the pipeline supervisor rather than being
+  driven from inside the coordinator, and pipeline `quit`/lifecycle control lives
+  behind the `PipelineLifecycle` seam (ADR 0005).
+- Tests exercise the signal plane through the public `SignalHandle`; the internal
+  command enum is now private, with list/reset unified through one request path.
+- The stream bus-reap channel is constructor-injected and typed by branch id
+  rather than a bare string.
+- `add_branch` now cleans up its own half-attached branch on failure, on the
+  coordinator's critical path, restoring the teardown bound from ADR 0002.
+- Core GStreamer element names are single-sourced from a `stream::naming` module,
+  and the coordinator's configuration defaults are single-sourced as constants.
+- Folded the shared string-conversion boilerplate on the SDP newtypes behind a
+  macro.
+- Refreshed `CONTEXT.md` and the shared-lock → coordinator-actor architecture
+  narrative for the supervisor-owned restart.
+
 ## [2.0.0] - 2026-07-08
 
 A ground-up rewrite of the signaling and streaming internals, plus fixes that
@@ -54,4 +94,5 @@ the prior behavior, so no configuration migration is required.
   whole pipeline and drops every other viewer (ADR 0002).
 - Hardened the signaling plane against teardown races and test-environment leaks.
 
+[2.1.0]: https://github.com/Eyevinn/srt-whep/releases/tag/v2.1.0
 [2.0.0]: https://github.com/Eyevinn/srt-whep/releases/tag/v2.0.0

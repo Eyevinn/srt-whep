@@ -1,6 +1,6 @@
 # Refactor Proposal: Signal-Plane Legibility & Config Hygiene
 
-**Status:** Proposed (no code changed yet)
+**Status:** Implemented (landed on main, commits 1bcb05c…e44005c)
 **Date:** 2026-07-08
 **Scope agreed with:** Kun Wu
 

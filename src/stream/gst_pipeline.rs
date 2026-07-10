@@ -182,19 +182,6 @@ impl BranchControl for SharablePipeline {
             .await
             .map_err(|e| PipelineError::Fatal(e.to_string()))
     }
-
-    /// Quit pipeline by sending a quit message to the main loop
-    /// This function is used to restart the pipeline in case of
-    /// unrecoverable errors
-    async fn quit(&self) -> Result<(), PipelineError> {
-        let pipeline_state = self.state.lock_err().await?;
-        if let Some(main_loop) = pipeline_state.main_loop.as_ref() {
-            tracing::debug!("Force-quit pipeline");
-            main_loop.quit();
-        }
-
-        Ok(())
-    }
 }
 
 #[async_trait]
@@ -622,6 +609,19 @@ impl PipelineLifecycle for SharablePipeline {
                     });
                 })
                 .await;
+        }
+
+        Ok(())
+    }
+
+    /// Quit pipeline by sending a quit message to the main loop
+    /// This function is used to restart the pipeline in case of
+    /// unrecoverable errors
+    async fn quit(&self) -> Result<(), PipelineError> {
+        let pipeline_state = self.state.lock_err().await?;
+        if let Some(main_loop) = pipeline_state.main_loop.as_ref() {
+            tracing::debug!("Force-quit pipeline");
+            main_loop.quit();
         }
 
         Ok(())

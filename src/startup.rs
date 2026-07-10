@@ -75,9 +75,14 @@ impl Application {
                 ));
             }
         }
-        let signal = spawn_coordinator(pipeline.clone(), config, branch_failures);
+        // The watchdog restart channel: the coordinator holds the sender (it
+        // requests a restart on a trip), the supervisor the receiver (it owns
+        // the force-quit + rerun). Created here so both ends exist before
+        // either task is spawned — symmetric with the bus-reap channel.
+        let (restart_tx, restart_rx) = mpsc::channel(1);
+        let signal = spawn_coordinator(pipeline.clone(), config, branch_failures, restart_tx);
         let (shutdown_tx, shutdown_rx) = watch::channel(false);
-        let supervisor = Supervisor::spawn(pipeline, signal.clone(), shutdown_rx);
+        let supervisor = Supervisor::spawn(pipeline, signal.clone(), shutdown_rx, restart_rx);
         let server = run(listener, signal.clone())?;
         Ok(Self {
             server,

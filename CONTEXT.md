@@ -20,11 +20,16 @@ viewer through a loopback WHIP bridge inside the same process.
   single tokio task that owns all connection state and every branch
   add/remove call, serialized through its mailbox.
 - **Supervisor** — the restart loop (`src/supervisor.rs`) that runs the
-  pipeline, and on EOS or error cleans up, resets signaling, and reruns it
-  with backoff, until told to shut down.
+  pipeline and, when it stops — on EOS, on error, or on a watchdog restart
+  request — cleans up, resets signaling, and reruns it with backoff, until
+  told to shut down. It owns `pipeline.quit()`, the forceful teardown used to
+  end a run on a watchdog restart.
 - **Watchdog** — a consecutive-failure counter inside the coordinator; N
-  handshake failures in a row trip it and force a full pipeline restart
-  (`pipeline.quit()`), on the assumption the pipeline itself is wedged.
+  handshake failures in a row trip it. On a trip the coordinator fails all
+  waiters and sends a restart request to the supervisor over an mpsc channel
+  (it does not quit the pipeline itself); the supervisor force-quits and
+  reruns, on the assumption the pipeline itself is wedged. See
+  [`docs/adr/0005`](docs/adr/0005-watchdog-restart-through-supervisor.md).
 - **Sweep** — the coordinator's periodic (1s) deadline reaper: on each tick
   it expires any connection past its offer/answer deadline, replies `Err`
   to a waiting handler if one is still attached, removes the branch, and
@@ -58,14 +63,17 @@ elements. Do not introduce a fourth term.
   `SignalHandle` (mpsc + oneshot replies), never touching pipeline state
   directly.
 - `src/stream` — the GStreamer pipeline. Two seams split by caller:
-  `BranchControl` (the coordinator's view: `ready`, `add_branch`,
-  `remove_branch`, `quit`) and `PipelineLifecycle` (the supervisor's view:
-  `init`, `run`, `end`, `clean_up`). `src/stream/gst_pipeline.rs` holds the
-  real implementation; `TestPipeline` in `src/stream/pipeline.rs` is the
-  recording fake both traits share for tests.
+  `BranchControl` (the coordinator's per-connection view: `ready`,
+  `add_branch`, `remove_branch`) and `PipelineLifecycle` (the supervisor's
+  whole-pipeline view: `init`, `run`, `end`, `clean_up`, `quit`).
+  `src/stream/gst_pipeline.rs` holds the real implementation; `TestPipeline`
+  in `src/stream/pipeline.rs` is the recording fake both traits share for
+  tests.
 - `src/supervisor.rs` — the restart loop: `init` → `run` → `cleanup` (pipeline
   `clean_up` + `signal.reset()`) → backoff → repeat, until a `watch`
-  channel signals shutdown.
+  channel signals shutdown. Its `select!` also carries a restart arm: a
+  watchdog request (a separate mpsc) force-quits the current run
+  (`pipeline.quit()`) and reruns it through the same path at base delay.
 - `src/startup.rs` — the actix route table and `Application::assemble`,
   which wires the coordinator, the supervisor, and the HTTP server together
   in one place; used by `main`, the HTTP integration tests, and the
