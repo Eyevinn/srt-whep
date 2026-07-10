@@ -147,7 +147,7 @@ def main():
             86,
             586,
             470,
-            912,
+            968,
             WHITE,
             "HTTP ROUTES (actix)",
             "POST   /channel\nPATCH  /channel/{id}\nDELETE /channel/{id}\n"

@@ -8,8 +8,10 @@ generated alongside it.
 ## Files
 
 - `render.py` — draws the diagram (dark canvas, hand-drawn wobble boxes, moving
-  glow particles) and dumps 48 PNG frames at 2520×1725. Requires Comic Sans MS
-  (macOS ships it at `/System/Library/Fonts/Supplemental/`).
+  glow particles) and dumps 48 PNG frames. The layout is authored in a fixed
+  `2520×1725` base space and supersampled by `SCALE` (default `1.5` →
+  `3780×2588`); bump `SCALE` for a larger raster without touching coordinates.
+  Requires Comic Sans MS (macOS ships it at `/System/Library/Fonts/Supplemental/`).
 - `make_excalidraw.py` — emits `docs/srt-whep-coordinator-actor.excalidraw`, an
   editable static source mirroring the same layout (`fontFamily: 5`).
 - `docs/srt-whep-coordinator-actor.excalidraw` — open in [excalidraw.com](https://excalidraw.com)
@@ -34,7 +36,7 @@ ffmpeg -y -framerate 25/2 -i frames/f%03d.png -i palette.png \
 # 3. refresh the editable source
 uv run python make_excalidraw.py                   # writes ../srt-whep-coordinator-actor.excalidraw
 
-# 4. verify it is 2520×1725, 12.5fps, 48 frames, and actually animates
+# 4. verify it is 3780×2588 (SCALE 1.5), 12.5fps, 48 frames, and actually animates
 ffprobe -v error -select_streams v:0 -count_frames \
   -show_entries stream=width,height,r_frame_rate,nb_read_frames \
   -show_entries format=duration -of default=noprint_wrappers=1 \

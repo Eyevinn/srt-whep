@@ -21,7 +21,12 @@ import sys
 
 from PIL import Image, ImageDraw, ImageFont, ImageFilter
 
-W, H = 2520, 1725
+# Author the layout in a fixed base space (BW x BH) and supersample the raster
+# by SCALE for a higher-resolution GIF. All build_base coords/fonts are in base
+# space; ScaledDraw applies SCALE at draw time.
+SCALE = 1.5
+BW, BH = 2520, 1725
+W, H = round(BW * SCALE), round(BH * SCALE)
 FPS = 12.5
 NFRAMES = 48
 
@@ -43,7 +48,55 @@ CSB = os.path.join(FONT_DIR, "Comic Sans MS Bold.ttf")
 
 
 def font(size, bold=False):
-    return ImageFont.truetype(CSB if bold else CS, size)
+    return ImageFont.truetype(CSB if bold else CS, max(1, round(size * SCALE)))
+
+
+def _sc(v):
+    """Scale a coordinate structure by SCALE. Handles a scalar, a flat coord/
+    bbox tuple, or a list of point tuples. Colours are kwargs, never touched."""
+    if isinstance(v, (int, float)):
+        return v * SCALE
+    if isinstance(v, (list, tuple)):
+        if v and isinstance(v[0], (int, float)):
+            return type(v)(x * SCALE for x in v)
+        return [_sc(e) for e in v]
+    return v
+
+
+class ScaledDraw:
+    """Wrap ImageDraw so build_base authors in base (BW x BH) coords while the
+    raster is SCALE larger. Positional coords + width/radius/spacing kwargs are
+    scaled; fill/outline colours pass through. Fonts are pre-scaled by font()."""
+
+    def __init__(self, d):
+        self._d = d
+
+    def _kw(self, kw):
+        if "width" in kw:
+            kw["width"] = max(1, round(kw["width"] * SCALE))
+        if "radius" in kw:
+            kw["radius"] = kw["radius"] * SCALE
+        if "spacing" in kw:
+            kw["spacing"] = kw["spacing"] * SCALE
+        return kw
+
+    def line(self, xy, **kw):
+        self._d.line(_sc(xy), **self._kw(kw))
+
+    def polygon(self, xy, **kw):
+        self._d.polygon(_sc(xy), **self._kw(kw))
+
+    def ellipse(self, xy, **kw):
+        self._d.ellipse(_sc(xy), **self._kw(kw))
+
+    def rounded_rectangle(self, xy, **kw):
+        self._d.rounded_rectangle(_sc(xy), **self._kw(kw))
+
+    def multiline_text(self, xy, text, **kw):
+        self._d.multiline_text(_sc(xy), text, **self._kw(kw))
+
+    def textlength(self, text, **kw):
+        return self._d.textlength(text, **kw) / SCALE
 
 
 # ----- hand-drawn helpers -------------------------------------------------
@@ -199,9 +252,9 @@ def capsule(d, box, fill, r=None):
 
 def build_base():
     img = Image.new("RGB", (W, H), BG)
-    d = ImageDraw.Draw(img)
+    d = ScaledDraw(ImageDraw.Draw(img))
 
-    draw_hand_rect(d, (34, 34, W - 34, H - 34), FRAME, lw=4, r=46, amp=2.4, seed=99)
+    draw_hand_rect(d, (34, 34, BW - 34, BH - 34), FRAME, lw=4, r=46, amp=2.4, seed=99)
 
     # --- title + capsule + signature ---
     tfont = font(50, bold=True)
@@ -226,7 +279,7 @@ def build_base():
     sfont = font(32, bold=True)
     sig = "Kun Wu · Eyevinn"
     sw = d.textlength(sig, font=sfont)
-    sig_box = (W - 70 - sw - 56, 62, W - 70, 128)
+    sig_box = (BW - 70 - sw - 56, 62, BW - 70, 128)
     d.rounded_rectangle(sig_box, radius=33, outline=DIM, width=3)
     text(
         d,
@@ -279,7 +332,7 @@ def build_base():
     box_title(VIEW, "WHEP VIEWERS", WHITE)
     body(VIEW, ["browsers · N sessions"], dy=94, col=DIM)
 
-    ROUTES = (86, 586, 470, 912)
+    ROUTES = (86, 586, 470, 968)
     draw_hand_rect(d, ROUTES, WHITE, seed=12)
     text(
         d,
@@ -296,7 +349,7 @@ def build_base():
             "DELETE /channel/{id}",
             "POST   /whip_sink/{id}",
         ],
-        dy=92,
+        dy=96,
         sp=18,
     )
     tag(ROUTES, "thin adapters · no state")
@@ -540,26 +593,26 @@ def point_at(path, cum, u):
 
 
 def render_frame(base, particles, t):
+    # particle paths are in base space; scale positions/sizes to the raster.
     halo = Image.new("RGBA", (W, H), (0, 0, 0, 0))
     hd = ImageDraw.Draw(halo)
     cores = []
+    R = 34 * SCALE
     for p in particles:
         u = t * p["loops"] + p["phase"]
-        pos = point_at(p["path"], p["_cum"], u)
+        bx, by = point_at(p["path"], p["_cum"], u)
+        x, y = bx * SCALE, by * SCALE
         col = p["color"]
-        R = 34
-        hd.ellipse((pos[0] - R, pos[1] - R, pos[0] + R, pos[1] + R), fill=col + (120,))
-        cores.append((pos, col))
-    halo = halo.filter(ImageFilter.GaussianBlur(16))
+        hd.ellipse((x - R, y - R, x + R, y + R), fill=col + (120,))
+        cores.append((x, y, col))
+    halo = halo.filter(ImageFilter.GaussianBlur(16 * SCALE))
     frame = base.convert("RGBA")
     frame.alpha_composite(halo)
     fd = ImageDraw.Draw(frame)
-    for pos, col in cores:
-        r = 11
-        fd.ellipse((pos[0] - r, pos[1] - r, pos[0] + r, pos[1] + r), fill=col + (255,))
-        fd.ellipse(
-            (pos[0] - 5, pos[1] - 5, pos[0] + 5, pos[1] + 5), fill=(255, 255, 255, 255)
-        )
+    r, rc = 11 * SCALE, 5 * SCALE
+    for x, y, col in cores:
+        fd.ellipse((x - r, y - r, x + r, y + r), fill=col + (255,))
+        fd.ellipse((x - rc, y - rc, x + rc, y + rc), fill=(255, 255, 255, 255))
     return frame.convert("RGB")
 
 
