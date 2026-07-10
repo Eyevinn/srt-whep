@@ -31,8 +31,8 @@ pub struct CoordinatorConfig {
     /// force a pipeline restart that would drop established viewers.
     pub watchdog_window: Duration,
     pub sweep_interval: Duration,
-    /// Upper bound on a single branch teardown (`remove_branch`/`quit`). These
-    /// run inline in the actor's select loop; bounding them keeps one wedged
+    /// Upper bound on a single branch teardown (`remove_branch`). This runs
+    /// inline in the actor's select loop; bounding it keeps one wedged
     /// GStreamer teardown from stalling every other signaling command, the
     /// expiry sweep, and the watchdog.
     pub teardown_timeout: Duration,
@@ -71,7 +71,7 @@ pub struct CoordinatorArgs {
     /// Expiry-sweep interval in milliseconds.
     #[clap(long, default_value_t = DEFAULT_SWEEP_INTERVAL_MS)]
     pub sweep_interval_ms: u64,
-    /// Upper bound, in seconds, on a single branch teardown/quit.
+    /// Upper bound, in seconds, on a single branch teardown.
     #[clap(long, default_value_t = DEFAULT_TEARDOWN_TIMEOUT_SEC)]
     pub teardown_timeout_sec: u64,
 }
@@ -210,6 +210,11 @@ pub struct Coordinator<P: BranchControl> {
     // (from its own construction). This is a separate channel from `rx`, so it
     // never gates shutdown — the actor still stops when every SignalHandle drops.
     branch_failures: mpsc::Receiver<BranchId>,
+    /// Watchdog restart requests to the supervisor. On a trip the coordinator
+    /// fails all waiters and sends `()` here; the supervisor owns the actual
+    /// force-quit + rerun. A non-blocking `try_send` (coalescing) so a wedged
+    /// pipeline can never stall this mailbox.
+    restart_tx: mpsc::Sender<()>,
 }
 
 impl<P: BranchControl> Coordinator<P> {
@@ -218,6 +223,7 @@ impl<P: BranchControl> Coordinator<P> {
         config: CoordinatorConfig,
         rx: mpsc::Receiver<Command>,
         branch_failures: mpsc::Receiver<BranchId>,
+        restart_tx: mpsc::Sender<()>,
     ) -> Self {
         let watchdog = Watchdog::new(config.watchdog_threshold, config.watchdog_window);
         Self {
@@ -227,6 +233,7 @@ impl<P: BranchControl> Coordinator<P> {
             watchdog,
             rx,
             branch_failures,
+            restart_tx,
         }
     }
 
@@ -429,9 +436,12 @@ impl<P: BranchControl> Coordinator<P> {
             tracing::error!("Failed to remove branch for {}: {}", id, e);
         }
         if self.watchdog.record_failure() {
-            tracing::error!("Watchdog tripped: restarting the pipeline");
+            tracing::error!("Watchdog tripped: requesting a pipeline restart");
             self.reset_all();
-            self.quit_bounded().await;
+            // Non-blocking: the supervisor owns the force-quit + rerun. A full
+            // buffer means a restart is already pending, so dropping the extra
+            // request is correct.
+            let _ = self.restart_tx.try_send(());
         }
     }
 
@@ -473,15 +483,6 @@ impl<P: BranchControl> Coordinator<P> {
                     "branch teardown timed out".into(),
                 ))
             }
-        }
-    }
-
-    /// Force-restart the pipeline, bounded so a wedged quit can't stall the actor.
-    async fn quit_bounded(&self) {
-        match tokio::time::timeout(self.config.teardown_timeout, self.pipeline.quit()).await {
-            Ok(Ok(())) => {}
-            Ok(Err(e)) => tracing::error!("Failed to quit pipeline: {}", e),
-            Err(_) => tracing::error!("Pipeline quit exceeded {:?}", self.config.teardown_timeout),
         }
     }
 
@@ -528,14 +529,19 @@ mod tests {
         pipeline
     }
 
-    /// Spawn the coordinator and return its `SignalHandle` -- the exact facade
-    /// the HTTP routes use. No reaper wired: a disconnected failure receiver
-    /// (its sender dropped) so `branch_failures.recv()` yields `None` and that
-    /// select arm stays idle. Tests that exercise reaping use
-    /// `spawn_actor_with_reaper`.
-    pub(super) fn spawn_actor(pipeline: TestPipeline, config: CoordinatorConfig) -> SignalHandle {
+    /// Spawn the coordinator and return its `SignalHandle` plus the receiving
+    /// end of the watchdog restart channel. No reaper wired (disconnected
+    /// failure receiver). Tests that trip the watchdog assert on `restart_rx`.
+    pub(super) fn spawn_actor(
+        pipeline: TestPipeline,
+        config: CoordinatorConfig,
+    ) -> (SignalHandle, mpsc::Receiver<()>) {
         let (_fail_tx, fail_rx) = mpsc::channel(1);
-        spawn_coordinator(pipeline, config, fail_rx)
+        let (restart_tx, restart_rx) = mpsc::channel(1);
+        (
+            spawn_coordinator(pipeline, config, fail_rx, restart_tx),
+            restart_rx,
+        )
     }
 
     /// Spawn the coordinator sharing `branch_failures` with a pipeline built via
@@ -544,8 +550,12 @@ mod tests {
         pipeline: TestPipeline,
         config: CoordinatorConfig,
         branch_failures: mpsc::Receiver<BranchId>,
-    ) -> SignalHandle {
-        spawn_coordinator(pipeline, config, branch_failures)
+    ) -> (SignalHandle, mpsc::Receiver<()>) {
+        let (restart_tx, restart_rx) = mpsc::channel(1);
+        (
+            spawn_coordinator(pipeline, config, branch_failures, restart_tx),
+            restart_rx,
+        )
     }
 
     /// Drive a full WHEP<->WHIP handshake so the connection reaches Established.
@@ -583,7 +593,7 @@ mod tests {
     #[tokio::test(start_paused = true)]
     async fn happy_path_create_offer_answer() {
         let pipeline = ready_pipeline();
-        let handle = spawn_actor(pipeline.clone(), test_config());
+        let (handle, mut restart_rx) = spawn_actor(pipeline.clone(), test_config());
 
         // Browser connects; create stays in-flight until the offer arrives.
         let whep = {
@@ -614,13 +624,13 @@ mod tests {
         // Nothing was torn down.
         let snap = pipeline.snapshot();
         assert!(snap.removed.is_empty());
-        assert_eq!(0, snap.quit_count);
+        assert!(restart_rx.try_recv().is_err());
     }
 
     #[tokio::test(start_paused = true)]
     async fn offer_timeout_fails_only_that_connection() {
         let pipeline = ready_pipeline();
-        let handle = spawn_actor(pipeline.clone(), test_config());
+        let (handle, mut restart_rx) = spawn_actor(pipeline.clone(), test_config());
 
         // Awaiting create parks on its reply; the paused clock auto-advances
         // through sweep ticks until the offer deadline fires.
@@ -630,13 +640,13 @@ mod tests {
 
         let snap = pipeline.snapshot();
         assert_eq!(vec!["a".to_string()], snap.removed);
-        assert_eq!(0, snap.quit_count); // one failure: watchdog not tripped
+        assert!(restart_rx.try_recv().is_err()); // one failure: watchdog not tripped
     }
 
     #[tokio::test(start_paused = true)]
     async fn answer_timeout_fails_the_whip_waiter() {
         let pipeline = ready_pipeline();
-        let handle = spawn_actor(pipeline.clone(), test_config());
+        let (handle, _restart_rx) = spawn_actor(pipeline.clone(), test_config());
 
         let whep = {
             let handle = handle.clone();
@@ -659,7 +669,7 @@ mod tests {
     #[tokio::test(start_paused = true)]
     async fn abandoned_whep_client_is_reaped_by_the_sweep() {
         let pipeline = ready_pipeline();
-        let handle = spawn_actor(pipeline.clone(), test_config());
+        let (handle, _restart_rx) = spawn_actor(pipeline.clone(), test_config());
 
         let whep = {
             let handle = handle.clone();
@@ -686,7 +696,7 @@ mod tests {
 
         let pipeline = ready_pipeline();
         pipeline.fail_next_add_branch(PipelineError::Transient("state lock timed out".into()));
-        let handle = spawn_actor(pipeline.clone(), test_config());
+        let (handle, _restart_rx) = spawn_actor(pipeline.clone(), test_config());
 
         let err = handle.create_connection("a".to_string()).await.unwrap_err();
         // Retryable at the seam stays retryable on the wire: 503 + Retry-After.
@@ -697,7 +707,7 @@ mod tests {
     #[tokio::test(start_paused = true)]
     async fn not_ready_pipeline_rejects_creation() {
         let pipeline = TestPipeline::default(); // ready = false
-        let handle = spawn_actor(pipeline.clone(), test_config());
+        let (handle, _restart_rx) = spawn_actor(pipeline.clone(), test_config());
 
         assert!(matches!(
             handle.create_connection("a".to_string()).await,
@@ -709,7 +719,7 @@ mod tests {
     #[tokio::test(start_paused = true)]
     async fn unknown_id_is_not_found_for_every_command() {
         let pipeline = ready_pipeline();
-        let handle = spawn_actor(pipeline.clone(), test_config());
+        let (handle, _restart_rx) = spawn_actor(pipeline.clone(), test_config());
 
         assert!(matches!(
             handle.offer_received("ghost".to_string(), offer()).await,
@@ -728,7 +738,7 @@ mod tests {
     #[tokio::test(start_paused = true)]
     async fn wrong_state_commands_are_rejected_without_corruption() {
         let pipeline = ready_pipeline();
-        let handle = spawn_actor(pipeline.clone(), test_config());
+        let (handle, _restart_rx) = spawn_actor(pipeline.clone(), test_config());
 
         // First create stays in-flight (awaiting its offer).
         let whep = {
@@ -766,7 +776,7 @@ mod tests {
     #[tokio::test(start_paused = true)]
     async fn watchdog_trips_after_three_consecutive_failures() {
         let pipeline = ready_pipeline();
-        let handle = spawn_actor(pipeline.clone(), test_config()); // threshold 3
+        let (handle, mut restart_rx) = spawn_actor(pipeline.clone(), test_config()); // threshold 3
 
         for i in 0..3 {
             // Each handshake times out via auto-advance.
@@ -777,13 +787,13 @@ mod tests {
         }
 
         tokio::task::yield_now().await; // let the actor finish the trip handling
-        assert_eq!(1, pipeline.snapshot().quit_count);
+        assert!(restart_rx.try_recv().is_ok()); // one restart requested
     }
 
     #[tokio::test(start_paused = true)]
     async fn success_between_failures_prevents_the_trip() {
         let pipeline = ready_pipeline();
-        let handle = spawn_actor(pipeline.clone(), test_config());
+        let (handle, mut restart_rx) = spawn_actor(pipeline.clone(), test_config());
 
         // Two failures.
         for i in 0..2 {
@@ -813,13 +823,13 @@ mod tests {
         }
 
         tokio::task::yield_now().await;
-        assert_eq!(0, pipeline.snapshot().quit_count);
+        assert!(restart_rx.try_recv().is_err()); // no restart requested
     }
 
     #[tokio::test(start_paused = true)]
     async fn reset_clears_the_watchdog_counter() {
         let pipeline = ready_pipeline();
-        let handle = spawn_actor(pipeline.clone(), test_config()); // threshold 3
+        let (handle, mut restart_rx) = spawn_actor(pipeline.clone(), test_config()); // threshold 3
 
         // Two consecutive timeout failures.
         for i in 0..2 {
@@ -835,13 +845,13 @@ mod tests {
         }
 
         tokio::task::yield_now().await;
-        assert_eq!(0, pipeline.snapshot().quit_count);
+        assert!(restart_rx.try_recv().is_err()); // no restart requested
     }
 
     #[tokio::test(start_paused = true)]
     async fn reset_fails_all_waiters_and_clears_state() {
         let pipeline = ready_pipeline();
-        let handle = spawn_actor(pipeline.clone(), test_config());
+        let (handle, _restart_rx) = spawn_actor(pipeline.clone(), test_config());
 
         let whep = {
             let handle = handle.clone();
@@ -858,7 +868,7 @@ mod tests {
     #[tokio::test(start_paused = true)]
     async fn list_reports_ids_and_state_names() {
         let pipeline = ready_pipeline();
-        let handle = spawn_actor(pipeline.clone(), test_config());
+        let (handle, _restart_rx) = spawn_actor(pipeline.clone(), test_config());
 
         let whep = {
             let handle = handle.clone();
@@ -882,7 +892,7 @@ mod tests {
 
         let pipeline = ready_pipeline();
         pipeline.fail_next_add_branch(PipelineError::Fatal("attach blew up".into()));
-        let handle = spawn_actor(pipeline.clone(), test_config());
+        let (handle, _restart_rx) = spawn_actor(pipeline.clone(), test_config());
 
         // The create fails and the id is never registered...
         assert!(handle.create_connection("a".to_string()).await.is_err());
@@ -900,7 +910,7 @@ mod tests {
         use crate::stream::PipelineError;
 
         let pipeline = ready_pipeline();
-        let handle = spawn_actor(pipeline.clone(), test_config());
+        let (handle, _restart_rx) = spawn_actor(pipeline.clone(), test_config());
         establish(&handle, "a").await;
 
         // First DELETE: the branch teardown fails transiently.
@@ -926,7 +936,8 @@ mod tests {
         let (fail_tx, fail_rx) = mpsc::channel(64);
         let pipeline = TestPipeline::new(fail_tx);
         pipeline.set_ready(true);
-        let handle = spawn_actor_with_reaper(pipeline.clone(), test_config(), fail_rx);
+        let (handle, mut restart_rx) =
+            spawn_actor_with_reaper(pipeline.clone(), test_config(), fail_rx);
         establish(&handle, "a").await;
 
         // The pipeline's bus watch reports the branch errored at runtime.
@@ -939,13 +950,13 @@ mod tests {
         assert!(pipeline.snapshot().removed.contains(&"a".to_string()));
         assert!(list_ids(&handle).await.is_empty());
         // A dead peer is not a pipeline-health failure: no restart.
-        assert_eq!(0, pipeline.snapshot().quit_count);
+        assert!(restart_rx.try_recv().is_err());
     }
 
     #[tokio::test(start_paused = true)]
     async fn wedged_teardown_does_not_stall_the_actor() {
         let pipeline = ready_pipeline();
-        let handle = spawn_actor(pipeline.clone(), test_config()); // teardown_timeout 5s
+        let (handle, _restart_rx) = spawn_actor(pipeline.clone(), test_config()); // teardown_timeout 5s
         establish(&handle, "a").await;
 
         // Its teardown wedges and never completes.
@@ -965,7 +976,7 @@ mod tests {
 
         let pipeline = ready_pipeline();
         pipeline.block_add_branch(); // simulates a wedged cleanup detach
-        let handle = spawn_actor(pipeline.clone(), test_config()); // teardown_timeout 5s
+        let (handle, _restart_rx) = spawn_actor(pipeline.clone(), test_config()); // teardown_timeout 5s
 
         let err = handle.create_connection("a".to_string()).await.unwrap_err();
         // The bound fires (auto-advanced paused clock) and the actor recovers

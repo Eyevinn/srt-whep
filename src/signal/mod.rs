@@ -22,14 +22,16 @@ pub struct SignalHandle {
 /// Spawn the coordinator actor and return the handle for it. `branch_failures`
 /// is the receiving end of the pipeline's bus-reap channel (its sender was
 /// handed to the pipeline at construction), so the sink is present from birth
-/// and no post-construction installer is needed.
+/// and no post-construction installer is needed. The watchdog trip sends a
+/// `()` restart request to the supervisor over `restart_tx`.
 pub fn spawn_coordinator<P: BranchControl + 'static>(
     pipeline: P,
     config: CoordinatorConfig,
     branch_failures: mpsc::Receiver<BranchId>,
+    restart_tx: mpsc::Sender<()>,
 ) -> SignalHandle {
     let (tx, rx) = mpsc::channel(64);
-    tokio::spawn(Coordinator::new(pipeline, config, rx, branch_failures).run());
+    tokio::spawn(Coordinator::new(pipeline, config, rx, branch_failures, restart_tx).run());
     SignalHandle { tx }
 }
 
@@ -112,7 +114,14 @@ mod tests {
         pipeline.set_ready(true);
         // This test never reaps: a disconnected failure receiver.
         let (_fail_tx, fail_rx) = mpsc::channel(1);
-        let handle = spawn_coordinator(pipeline.clone(), CoordinatorConfig::default(), fail_rx);
+        // This test never trips the watchdog: nothing consumes restarts.
+        let (restart_tx, _restart_rx) = mpsc::channel::<()>(1);
+        let handle = spawn_coordinator(
+            pipeline.clone(),
+            CoordinatorConfig::default(),
+            fail_rx,
+            restart_tx,
+        );
 
         // The three legs run concurrently, exactly like the HTTP handlers do.
         let whep = {

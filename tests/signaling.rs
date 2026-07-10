@@ -289,7 +289,15 @@ async fn watchdog_restarts_pipeline_after_consecutive_failures() {
         assert_eq!(StatusCode::SERVICE_UNAVAILABLE, response.status());
     }
 
-    // Threshold 2: the second consecutive failure quits the pipeline.
+    // Threshold 2: the second consecutive failure requests a restart; the
+    // supervisor force-quits the pipeline. That hop is async (coordinator ->
+    // channel -> supervisor), so poll rather than assert immediately.
+    for _ in 0..200 {
+        if pipeline.snapshot().quit_count == 1 {
+            break;
+        }
+        tokio::time::sleep(Duration::from_millis(5)).await;
+    }
     assert_eq!(1, pipeline.snapshot().quit_count);
 }
 

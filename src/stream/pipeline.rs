@@ -80,8 +80,6 @@ impl SRTMode {
 /// `ready` gates branch creation: `add_branch` may only succeed once the
 /// input stream is demuxed and the output tees exist. `add_branch` /
 /// `remove_branch` attach and detach one viewer's WHEP output branch.
-/// `quit` force-restarts the whole pipeline; the coordinator's watchdog
-/// calls it when consecutive handshake failures suggest a wedge.
 ///
 /// Errors are typed for policy: [`PipelineError::NotReady`] and
 /// [`PipelineError::Transient`] are worth a retry, [`PipelineError::Fatal`]
@@ -91,20 +89,21 @@ pub trait BranchControl: Clone + Send + Sync {
     async fn ready(&self) -> Result<bool, PipelineError>;
     async fn add_branch(&self, id: String) -> Result<(), PipelineError>;
     async fn remove_branch(&self, id: String) -> Result<(), PipelineError>;
-    async fn quit(&self) -> Result<(), PipelineError>;
 }
 
 /// The supervisor's view of the pipeline: whole-pipeline lifecycle.
 ///
-/// Call order: `init` → `run` (resolves only at EOS or a fatal error) →
-/// `clean_up`, after which `init` may be called again. `end` requests EOS
-/// from outside that loop for a graceful shutdown.
+/// Call order: `init` → `run` (resolves only at EOS, a fatal error, or a
+/// forced `quit`) → `clean_up`, after which `init` may be called again. `end`
+/// requests EOS from outside that loop for a graceful shutdown; `quit` forces
+/// the run down immediately (used by the supervisor on a watchdog restart).
 #[async_trait]
 pub trait PipelineLifecycle: Clone + Send + Sync {
     async fn init(&self) -> Result<(), Error>;
     async fn run(&self) -> Result<(), Error>;
     async fn end(&self) -> Result<(), Error>;
     async fn clean_up(&self) -> Result<(), Error>;
+    async fn quit(&self) -> Result<(), PipelineError>;
 }
 
 /// Snapshot of everything a test pipeline has recorded.
@@ -253,12 +252,6 @@ impl BranchControl for TestPipeline {
         self.state.lock().unwrap().removed.push(id);
         Ok(())
     }
-
-    async fn quit(&self) -> Result<(), PipelineError> {
-        self.state.lock().unwrap().quit_count += 1;
-        self.run_gate.notify_one();
-        Ok(())
-    }
 }
 
 #[async_trait]
@@ -285,6 +278,12 @@ impl PipelineLifecycle for TestPipeline {
 
     async fn clean_up(&self) -> Result<(), Error> {
         self.state.lock().unwrap().cleanup_count += 1;
+        Ok(())
+    }
+
+    async fn quit(&self) -> Result<(), PipelineError> {
+        self.state.lock().unwrap().quit_count += 1;
+        self.run_gate.notify_one();
         Ok(())
     }
 }
