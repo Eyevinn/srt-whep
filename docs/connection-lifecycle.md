@@ -33,8 +33,8 @@ sequenceDiagram
 ## The one non-obvious idea: parked waiters
 
 Legs ① and ② cannot be answered when they arrive. When the browser POSTs
-(leg ①), the SDP offer does not exist yet — the whipsink produces it only after
-its branch is attached. So the coordinator does not reply; it **parks** the
+(leg ①), the SDP offer does not exist yet — the whipsink (the in-pipeline
+`whipclientsink`) produces it only after its branch is attached. So the coordinator does not reply; it **parks** the
 reply channel inside the connection's state and returns to its loop:
 
 ```rust
