@@ -227,12 +227,40 @@ async fn unknown_ids_return_404() {
         .unwrap();
     assert_eq!(404, response.status());
 
-    let response = client
-        .delete(format!("{}/channel/ghost", address))
+    // DELETE of an unknown id is idempotent (204), covered by delete_is_idempotent.
+}
+
+#[tokio::test]
+async fn delete_is_idempotent() {
+    let (address, pipeline) = spawn_app(functional_config());
+    let client = http_client();
+
+    let id = complete_exchange(&address, &pipeline, 0).await;
+
+    // First DELETE terminates a live session: 200, branch torn down.
+    let first = client
+        .delete(format!("{}/channel/{}", address, id))
         .send()
         .await
         .unwrap();
-    assert_eq!(404, response.status());
+    assert_eq!(StatusCode::OK, first.status());
+    assert!(pipeline.snapshot().removed.contains(&id));
+
+    // Repeat DELETE of the same id: already gone -> 204 no-op, not 404.
+    let repeat = client
+        .delete(format!("{}/channel/{}", address, id))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(StatusCode::NO_CONTENT, repeat.status());
+
+    // DELETE of an id that never existed -> 204.
+    let ghost = client
+        .delete(format!("{}/channel/never-existed", address))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(StatusCode::NO_CONTENT, ghost.status());
 }
 
 #[tokio::test]
