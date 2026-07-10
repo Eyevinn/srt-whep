@@ -129,3 +129,39 @@ The `whipclientsink` is **not** compiled into this binary — it comes from the
 `GST_PLUGIN_PATH` at runtime. Keep that path pointed at one GStreamer install:
 a second, higher-versioned `rswebrtc` there wins the registry and can break the
 WebRTC media path. See [`docs/adr/0003`](docs/adr/0003-webrtc-plugin-from-installation.md).
+
+## Parallel sessions — use an isolated worktree when possible
+
+This repo is one shared working directory with one git HEAD and one index.
+When more than one Claude session (or a dispatched subagent) acts on it at
+once, that shared state collides: a broad `git add` sweeps another session's
+uncommitted work into the wrong commit, and a branch switch ping-pongs HEAD
+between agents. This has happened here more than once, so whenever a session
+may overlap with another actor, isolate the work.
+
+- **Commit or stash WIP promptly first** — a commit lives on your branch ref
+  and survives HEAD moving under you.
+- **Adopting an existing branch:** `git worktree add .claude/worktrees/<branch>
+  <existing-branch>` checks that branch out into its own directory and locks
+  it (no other agent can move a branch that is checked out in a worktree).
+  `.claude/worktrees/` is already git-ignored here — no `.gitignore` change
+  needed. Then switch the session in with the `EnterWorktree` tool
+  (`path=<absolute worktree path>`).
+- **Fresh work:** `EnterWorktree name=<branch>`, or the
+  `superpowers:using-git-worktrees` skill, creates a new branch in its own
+  worktree. Note `EnterWorktree name=...` branches off origin/main or HEAD, so
+  use `git worktree add <path> <existing-branch>` when you need to adopt work
+  that already exists on a branch.
+- **Dispatched subagents / SDD:** run implementers with the Agent tool's
+  `isolation: "worktree"` so they work on an isolated copy and cannot touch the
+  main working tree.
+
+**Git discipline (even without a worktree):** never `git add -A`, `git add .`,
+or `git commit -a` — stage only the explicit paths you changed. Avoid branch
+ops (`checkout`/`switch`/`reset`/`rebase`/`stash`) on a shared checkout you do
+not own. If `git status` shows changes you did not make, STOP and report —
+another session may be working here. Commit or push only when the user asks.
+
+**Finishing while another agent holds the shared checkout:** do not "merge
+locally" — a local merge runs `git checkout main` and yanks the shared checkout
+out from under the other agent. Push your branch and open a PR instead.
