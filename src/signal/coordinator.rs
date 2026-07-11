@@ -146,6 +146,14 @@ impl ConnectionState {
         }
     }
 
+    /// Project this connection into its GET /list entry.
+    fn info(&self, id: &ConnectionId) -> ConnectionInfo {
+        ConnectionInfo {
+            id: id.clone(),
+            state: self.name().to_string(),
+        }
+    }
+
     /// Fail whichever reply waiter is parked on this connection, if any.
     /// Shared by the DELETE, reap, and reset paths: the connection is going
     /// away, so a client still awaiting a reply must learn it now. An
@@ -264,22 +272,29 @@ impl<P: BranchControl> Coordinator<P> {
             }
             Command::RemoveConnection { id, reply } => self.remove_connection(id, reply).await,
             Command::ListConnections { reply } => {
-                let list = self
-                    .connections
-                    .iter()
-                    .map(|(id, state)| ConnectionInfo {
-                        id: id.clone(),
-                        state: state.name().to_string(),
-                    })
-                    .collect();
-                let _ = reply.send(Ok(list));
+                let _ = reply.send(Ok(self.list_connections()));
             }
             Command::Reset { reply } => {
-                self.reset_all();
-                self.watchdog.record_success();
+                self.reset();
                 let _ = reply.send(Ok(()));
             }
         }
+    }
+
+    /// Snapshot every connection for GET /list.
+    fn list_connections(&self) -> Vec<ConnectionInfo> {
+        self.connections
+            .iter()
+            .map(|(id, state)| state.info(id))
+            .collect()
+    }
+
+    /// The supervisor restarted the pipeline: fail every waiter, clear the
+    /// map, and clear the watchdog — the fresh pipeline starts with a clean
+    /// bill of health, so stale failures must not count toward its trip.
+    fn reset(&mut self) {
+        self.reset_all();
+        self.watchdog.record_success();
     }
 
     // Entry API can't be held across the pipeline awaits below.
