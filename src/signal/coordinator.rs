@@ -864,6 +864,75 @@ mod tests {
     }
 
     #[tokio::test(start_paused = true)]
+    async fn vanished_whep_client_fails_the_handshake_and_feeds_the_watchdog() {
+        let pipeline = ready_pipeline();
+        let (handle, mut restart_rx) = spawn_actor(pipeline.clone(), test_config()); // threshold 3
+
+        // Three times over: the browser vanishes before the whipsink's offer
+        // arrives, so delivering the offer finds the parked waiter gone.
+        for i in 0..3 {
+            let id = format!("conn-{}", i);
+            let whep = {
+                let handle = handle.clone();
+                let id = id.clone();
+                tokio::spawn(async move { handle.create_connection(id).await })
+            };
+            for _ in 0..5 {
+                tokio::task::yield_now().await; // register + add the branch
+            }
+            whep.abort(); // browser disconnected; its reply receiver drops
+            tokio::task::yield_now().await;
+
+            // The handshake fails now: the whipsink's surviving leg learns
+            // the connection is gone...
+            assert!(matches!(
+                handle.offer_received(id.clone(), offer()).await,
+                Err(SignalError::NotFound(_))
+            ));
+            // ...and, once the actor finishes cleanup, the branch is detached.
+            tokio::task::yield_now().await;
+            assert!(pipeline.snapshot().removed.contains(&id));
+        }
+
+        // Three abandoned handshakes in a row are a pipeline-health signal:
+        // the watchdog trips — unlike the reap path, which never feeds it.
+        tokio::task::yield_now().await;
+        assert!(restart_rx.try_recv().is_ok());
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn vanished_whip_waiter_fails_the_answer_delivery() {
+        let pipeline = ready_pipeline();
+        let (handle, mut restart_rx) = spawn_actor(pipeline.clone(), test_config());
+
+        let whep = {
+            let handle = handle.clone();
+            tokio::spawn(async move { handle.create_connection("a".to_string()).await })
+        };
+        tokio::task::yield_now().await; // connection registered
+        let whip = {
+            let handle = handle.clone();
+            tokio::spawn(async move { handle.offer_received("a".to_string(), offer()).await })
+        };
+        assert!(whep.await.unwrap().is_ok()); // offer delivered; whip now parked
+
+        whip.abort(); // the whipsink's HTTP request died mid-wait
+        tokio::task::yield_now().await;
+
+        // The browser's PATCH finds the whipsink's waiter gone: the
+        // handshake fails, the entry is dropped, the branch is detached.
+        assert!(matches!(
+            handle.answer_received("a".to_string(), answer()).await,
+            Err(SignalError::NotFound(_))
+        ));
+        tokio::task::yield_now().await; // let the actor finish branch cleanup
+        assert_eq!(vec!["a".to_string()], pipeline.snapshot().removed);
+        assert!(list_ids(&handle).await.is_empty());
+        // One vanished peer is below the trip threshold: no restart.
+        assert!(restart_rx.try_recv().is_err());
+    }
+
+    #[tokio::test(start_paused = true)]
     async fn transient_pipeline_failure_stays_retryable() {
         use crate::stream::PipelineError;
         use actix_web::ResponseError;
