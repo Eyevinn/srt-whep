@@ -37,6 +37,24 @@ _(append an entry per landed/declined candidate, same discipline as round 1)_
   are now pinned through `SignalHandle`, including the watchdog-feeding
   row; `Termination` added to the CONTEXT.md glossary.
 
+- **D2 — landed (2026-07-12, PR #117).** `classify_bus_message(&gst::Message)
+  -> BusAction {Quit | ReapBranch(BranchId) | Ignore}` extracted from the
+  `bus_watch` closure; the closure is now a thin dispatch that executes the
+  action and logs. Two placements decided in design review (approved by
+  Kun): the classifier lives in a **new `stream::bus` module** rather than
+  in `naming` — `naming`'s "pure string logic, no GStreamer types" doc
+  property was worth keeping, so `bus` sits on top of it — and **EOS moved
+  into the classifier** as a `Quit` classification, so the closure retains
+  no match on message shape beyond log formatting. Unit tests (7) cover
+  EOS, direct and nested branch errors, core-element errors, source-less
+  errors (fatal — previously an untested edge), and non-lifecycle messages;
+  the C1 const-based naming-invariant test now has its hierarchy-level
+  completion (`containment_scope_holds_at_the_hierarchy_level`). Same
+  location-not-behavior discipline as D1: ADR-0002's containment scope is
+  concentrated, not changed. Verified: 61 lib + 14 integration green, the
+  manual `--ignored` e2e (`pipeline_survives_repeated_handshake_failures`)
+  passed, and the browser media guard passed (frames 0→95 climbing).
+
 ---
 
 ## Required reading before touching code
