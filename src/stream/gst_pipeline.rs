@@ -8,6 +8,7 @@ use timed_locks::Mutex;
 use tokio::sync::mpsc;
 
 use crate::stream::branch::Branch;
+use crate::stream::bus::{classify_bus_message, BusAction};
 use crate::stream::errors::{PipelineError, StreamError};
 use crate::stream::naming::{self, BranchId};
 use crate::stream::pipeline::{Args, BranchControl, PipelineLifecycle, SRTMode};
@@ -491,59 +492,44 @@ impl PipelineLifecycle for SharablePipeline {
             use gst::MessageView;
 
             let main_loop = &main_loop_clone;
-            match msg.view() {
-                MessageView::Eos(..) => {
-                    tracing::info!("received eos");
-                    // An EndOfStream event was sent to the pipeline, so we tell our main loop
-                    // to stop execution here.
+            // The quit-vs-reap-vs-ignore decision (ADR 0002's containment
+            // scope) lives in `bus::classify_bus_message`; this closure only
+            // executes the chosen action and logs the message it holds.
+            match classify_bus_message(msg) {
+                BusAction::Quit => {
+                    match msg.view() {
+                        MessageView::Eos(..) => tracing::info!("received eos"),
+                        MessageView::Error(err) => tracing::error!(
+                            "{:?} runs into error : {} ({:?})",
+                            err.src().map(|s| s.path_string()),
+                            err.error(),
+                            err.debug()
+                        ),
+                        _ => (),
+                    }
                     main_loop.quit();
                 }
-                MessageView::Error(err) => {
-                    // An error from a WHEP output branch (a `whip-sink-*`/`*-queue-*`
-                    // element or anything nested inside it — e.g. its signaller timing
-                    // out or its peer going away) must not be fatal. Quitting the main
-                    // loop here would drop the SRT ingest and every other viewer, and
-                    // the ensuing supervisor restart would reset all in-flight
-                    // handshakes — the "wedge" a single bad peer must never be able to
-                    // cause. Instead we walk the error source's ancestry to find which
-                    // viewer's branch it belongs to and ask the coordinator to reap
-                    // that one connection, leaving the pipeline running.
-                    let src = err.src();
-                    let mut branch_id: Option<String> = None;
-                    let mut cursor = src.cloned();
-                    while let Some(obj) = cursor {
-                        if let Some(id) = naming::branch_id_from_name(obj.name().as_str()) {
-                            branch_id = Some(id.to_string());
-                            break;
-                        }
-                        cursor = obj.parent();
-                    }
-
-                    if let Some(id) = branch_id {
+                BusAction::ReapBranch(id) => {
+                    if let MessageView::Error(err) = msg.view() {
                         tracing::warn!(
                             "Branch for {} errored; reaping it, pipeline stays up: {} ({:?})",
-                            id,
+                            id.as_str(),
                             err.error(),
                             err.debug()
                         );
-                        // Fire-and-forget: the coordinator removes the branch and
-                        // drops the connection. `try_send` never blocks the GLib
-                        // loop thread; a full/closed channel just means the reap is
-                        // dropped (the sweep/DELETE remain a backstop).
-                        if branch_failures.try_send(BranchId::new(id.clone())).is_err() {
-                            tracing::warn!("Could not signal coordinator to reap branch {}", id);
-                        }
-                    } else {
-                        tracing::error!(
-                            "{:?} runs into error : {} ({:?})",
-                            src.as_ref().map(|s| s.path_string()),
-                            err.error(),
-                            err.debug()
+                    }
+                    // Fire-and-forget: the coordinator removes the branch and
+                    // drops the connection. `try_send` never blocks the GLib
+                    // loop thread; a full/closed channel just means the reap is
+                    // dropped (the sweep/DELETE remain a backstop).
+                    if branch_failures.try_send(id.clone()).is_err() {
+                        tracing::warn!(
+                            "Could not signal coordinator to reap branch {}",
+                            id.as_str()
                         );
-                        main_loop.quit();
                     }
                 }
-                _ => (),
+                BusAction::Ignore => (),
             };
 
             // Tell the mainloop to continue executing this callback.
