@@ -2118,7 +2118,7 @@ dependencies = [
 
 [[package]]
 name = "srt_whep"
-version = "2.1.0"
+version = "2.1.1"
 dependencies = [
  "actix-cors",
  "actix-web",
