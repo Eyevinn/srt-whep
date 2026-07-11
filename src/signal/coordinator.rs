@@ -146,10 +146,18 @@ impl ConnectionState {
         }
     }
 
-    /// Fail whichever reply waiter is parked on this connection, if any.
-    /// Shared by the DELETE, reap, and reset paths: the connection is going
-    /// away, so a client still awaiting a reply must learn it now. An
-    /// `Established` connection has no parked waiter, so this is a no-op.
+    /// Project this connection into its GET /list entry.
+    fn info(&self, id: &ConnectionId) -> ConnectionInfo {
+        ConnectionInfo {
+            id: id.clone(),
+            state: self.name().to_string(),
+        }
+    }
+
+    /// Fail whichever reply waiter is parked on this connection, if any:
+    /// the connection is going away, so a client still awaiting a reply
+    /// must learn it now. An `Established` connection has no parked waiter,
+    /// so this is a no-op.
     fn fail_waiter(self, err: SignalError) {
         match self {
             ConnectionState::AwaitingOffer { whep_reply, .. } => {
@@ -159,6 +167,41 @@ impl ConnectionState {
                 let _ = whip_reply.send(Err(err));
             }
             ConnectionState::Established { .. } => {}
+        }
+    }
+
+    /// Deadline for the handshake leg this connection is parked on, if any;
+    /// the sweep expires the connection once it passes. `Established` has
+    /// no deadline and never expires.
+    fn deadline(&self) -> Option<Instant> {
+        match self {
+            ConnectionState::AwaitingOffer { deadline, .. }
+            | ConnectionState::AwaitingAnswer { deadline, .. } => Some(*deadline),
+            ConnectionState::Established { .. } => None,
+        }
+    }
+
+    /// Fail the parked waiter with its own leg's expiry error: the WHEP
+    /// client was waiting for the SDP offer, the whipsink for the answer.
+    fn expire(self) {
+        match self {
+            ConnectionState::AwaitingOffer { whep_reply, .. } => {
+                let _ = whep_reply.send(Err(SignalError::Timeout("SDP offer")));
+            }
+            ConnectionState::AwaitingAnswer { whip_reply, .. } => {
+                let _ = whip_reply.send(Err(SignalError::Timeout("SDP answer")));
+            }
+            ConnectionState::Established { .. } => {}
+        }
+    }
+
+    /// Apply a `WaiterNotice` from the termination policy table: turn the
+    /// notice into the concrete error the parked waiter receives.
+    fn notify(self, notice: WaiterNotice, id: &ConnectionId) {
+        match notice {
+            WaiterNotice::Gone => self.fail_waiter(SignalError::NotFound(id.clone())),
+            WaiterNotice::ExpiredLeg => self.expire(),
+            WaiterNotice::Unavailable => self.fail_waiter(SignalError::Unavailable),
         }
     }
 
@@ -193,6 +236,113 @@ impl ConnectionState {
                 }
             }
             other => Err(other),
+        }
+    }
+}
+
+/// Why a connection is ending. Every death path in the coordinator names
+/// one of these, and `policy` maps it to the single table saying what
+/// termination does. A new way to die means a new variant and a new row —
+/// there is no default.
+#[derive(Clone, Copy, Debug)]
+enum TerminateReason {
+    /// A client DELETE (WHEP or loopback WHIP).
+    Deleted,
+    /// The sweep found the offer/answer deadline passed.
+    Expired,
+    /// The parked waiter's request died mid-handshake (actix dropped its
+    /// handler future); the failed SDP delivery already consumed the entry.
+    PeerGone,
+    /// The pipeline's bus watch reported the branch failed at runtime.
+    Reaped,
+    /// The supervisor restarted the pipeline, or the watchdog tripped.
+    Reset,
+}
+
+/// One row of the termination policy table.
+struct TerminationPolicy {
+    on_missing: MissingEntry,
+    waiter: WaiterNotice,
+    teardown: Teardown,
+    feeds_watchdog: bool,
+}
+
+/// What `terminate` does when the id is no longer in the connection map.
+#[derive(Clone, Copy)]
+enum MissingEntry {
+    /// The caller named an unknown connection: reply `NotFound`.
+    Reject,
+    /// The death raced another termination; everything is already done.
+    Skip,
+    /// Expected absence — the branch/watchdog consequences still apply.
+    Proceed,
+}
+
+/// How a parked waiter learns its connection is terminating.
+#[derive(Clone, Copy)]
+enum WaiterNotice {
+    /// The connection no longer exists: `NotFound`. (For `PeerGone` the
+    /// waiter itself vanished, so there is nobody left to notify; the
+    /// surviving leg's reply is the calling handler's to answer.)
+    Gone,
+    /// The handshake deadline passed: the waiter gets its leg's `Timeout`.
+    ExpiredLeg,
+    /// The signaling plane is resetting: `Unavailable`.
+    Unavailable,
+}
+
+/// Whether termination detaches the connection's pipeline branch.
+#[derive(Clone, Copy)]
+enum Teardown {
+    /// Teardown gates the death: on failure the entry is restored and the
+    /// error propagates, so a retried DELETE still finds the connection.
+    Required,
+    /// The connection dies regardless; a teardown failure is only logged.
+    BestEffort,
+    /// Leave the branch alone: the supervisor is about to tear down or
+    /// rebuild the whole pipeline around this reset.
+    Keep,
+}
+
+impl TerminateReason {
+    /// THE termination policy table (ADR-0001/0002 pin these semantics).
+    /// Rows that used to live as prose comments in five separate death
+    /// paths are values here — most notably that `Reaped` does NOT feed
+    /// the watchdog (a dead peer is a fact about one viewer, not a
+    /// pipeline-health signal), while an expired or abandoned handshake
+    /// (`Expired`, `PeerGone`) counts toward a restart.
+    fn policy(self) -> TerminationPolicy {
+        match self {
+            TerminateReason::Deleted => TerminationPolicy {
+                on_missing: MissingEntry::Reject,
+                waiter: WaiterNotice::Gone,
+                teardown: Teardown::Required,
+                feeds_watchdog: false,
+            },
+            TerminateReason::Expired => TerminationPolicy {
+                on_missing: MissingEntry::Skip,
+                waiter: WaiterNotice::ExpiredLeg,
+                teardown: Teardown::BestEffort,
+                feeds_watchdog: true,
+            },
+            TerminateReason::PeerGone => TerminationPolicy {
+                on_missing: MissingEntry::Proceed,
+                waiter: WaiterNotice::Gone,
+                teardown: Teardown::BestEffort,
+                feeds_watchdog: true,
+            },
+            TerminateReason::Reaped => TerminationPolicy {
+                on_missing: MissingEntry::Skip,
+                waiter: WaiterNotice::Gone,
+                teardown: Teardown::BestEffort,
+                feeds_watchdog: false,
+            },
+            TerminateReason::Reset => TerminationPolicy {
+                on_missing: MissingEntry::Skip,
+                waiter: WaiterNotice::Unavailable,
+                teardown: Teardown::Keep,
+                feeds_watchdog: false,
+            },
         }
     }
 }
@@ -264,22 +414,29 @@ impl<P: BranchControl> Coordinator<P> {
             }
             Command::RemoveConnection { id, reply } => self.remove_connection(id, reply).await,
             Command::ListConnections { reply } => {
-                let list = self
-                    .connections
-                    .iter()
-                    .map(|(id, state)| ConnectionInfo {
-                        id: id.clone(),
-                        state: state.name().to_string(),
-                    })
-                    .collect();
-                let _ = reply.send(Ok(list));
+                let _ = reply.send(Ok(self.list_connections()));
             }
             Command::Reset { reply } => {
-                self.reset_all();
-                self.watchdog.record_success();
+                self.reset();
                 let _ = reply.send(Ok(()));
             }
         }
+    }
+
+    /// Snapshot every connection for GET /list.
+    fn list_connections(&self) -> Vec<ConnectionInfo> {
+        self.connections
+            .iter()
+            .map(|(id, state)| state.info(id))
+            .collect()
+    }
+
+    /// The supervisor restarted the pipeline: fail every waiter, clear the
+    /// map, and clear the watchdog — the fresh pipeline starts with a clean
+    /// bill of health, so stale failures must not count toward its trip.
+    fn reset(&mut self) {
+        self.reset_all();
+        self.watchdog.record_success();
     }
 
     // Entry API can't be held across the pipeline awaits below.
@@ -340,7 +497,7 @@ impl<P: BranchControl> Coordinator<P> {
                 // handler future). Fail this handshake now.
                 tracing::warn!("WHEP waiter for {} is gone; failing handshake", id);
                 let _ = reply.send(Err(SignalError::NotFound(id.clone())));
-                self.fail_connection(id).await;
+                let _ = self.terminate(id, TerminateReason::PeerGone).await;
             }
             Err(other) => {
                 // Wrong state: restore untouched, reject the command.
@@ -367,7 +524,7 @@ impl<P: BranchControl> Coordinator<P> {
                 // answer, so the handshake is failed.
                 tracing::warn!("WHIP waiter for {} is gone; failing handshake", id);
                 let _ = reply.send(Err(SignalError::NotFound(id.clone())));
-                self.fail_connection(id).await;
+                let _ = self.terminate(id, TerminateReason::PeerGone).await;
             }
             Err(other) => {
                 self.connections.insert(id.clone(), other);
@@ -377,25 +534,7 @@ impl<P: BranchControl> Coordinator<P> {
     }
 
     async fn remove_connection(&mut self, id: ConnectionId, reply: UnitReply) {
-        let Some(state) = self.connections.remove(&id) else {
-            let _ = reply.send(Err(SignalError::NotFound(id)));
-            return;
-        };
-        // Remove the branch FIRST; only drop the map entry once teardown
-        // succeeds. On failure we re-insert the connection so a retried DELETE
-        // can try again — dropping it first would return 404 on retry while
-        // leaking the branch.
-        match self.remove_branch_bounded(id.clone()).await {
-            Ok(()) => {
-                // The connection is really gone now; let any pending waiter learn it.
-                state.fail_waiter(SignalError::NotFound(id.clone()));
-                let _ = reply.send(Ok(()));
-            }
-            Err(e) => {
-                self.connections.insert(id, state);
-                let _ = reply.send(Err(e));
-            }
-        }
+        let _ = reply.send(self.terminate(id, TerminateReason::Deleted).await);
     }
 
     async fn sweep_expired(&mut self) {
@@ -403,39 +542,71 @@ impl<P: BranchControl> Coordinator<P> {
         let expired: Vec<ConnectionId> = self
             .connections
             .iter()
-            .filter_map(|(id, state)| match state {
-                ConnectionState::AwaitingOffer { deadline, .. }
-                | ConnectionState::AwaitingAnswer { deadline, .. }
-                    if *deadline <= now =>
-                {
-                    Some(id.clone())
-                }
-                _ => None,
-            })
+            .filter(|(_, state)| state.deadline().is_some_and(|d| d <= now))
+            .map(|(id, _)| id.clone())
             .collect();
 
         for id in expired {
             tracing::warn!("Handshake for {} timed out", id);
-            match self.connections.remove(&id) {
-                Some(ConnectionState::AwaitingOffer { whep_reply, .. }) => {
-                    let _ = whep_reply.send(Err(SignalError::Timeout("SDP offer")));
-                }
-                Some(ConnectionState::AwaitingAnswer { whip_reply, .. }) => {
-                    let _ = whip_reply.send(Err(SignalError::Timeout("SDP answer")));
-                }
-                _ => continue,
-            }
-            self.fail_connection(id).await;
+            let _ = self.terminate(id, TerminateReason::Expired).await;
         }
     }
 
-    /// Clean up a failed handshake: remove its pipeline branch, record the
-    /// failure, and restart the pipeline when the watchdog trips.
-    async fn fail_connection(&mut self, id: ConnectionId) {
-        if let Err(e) = self.remove_branch_bounded(id.clone()).await {
-            tracing::error!("Failed to remove branch for {}: {}", id, e);
+    /// The single owner of "a connection is ending". Every death path names
+    /// its `TerminateReason`; the policy row for that reason decides what
+    /// actually happens — how a parked waiter is failed, whether the branch
+    /// teardown gates the death, and whether the failure feeds the
+    /// watchdog. Only `Deleted` can return an error: its failed teardown
+    /// restores the entry so a retried DELETE still finds the connection.
+    async fn terminate(
+        &mut self,
+        id: ConnectionId,
+        reason: TerminateReason,
+    ) -> Result<(), SignalError> {
+        let policy = reason.policy();
+
+        let state = match (self.connections.remove(&id), policy.on_missing) {
+            (Some(state), _) => Some(state),
+            (None, MissingEntry::Reject) => return Err(SignalError::NotFound(id)),
+            (None, MissingEntry::Skip) => return Ok(()),
+            (None, MissingEntry::Proceed) => None,
+        };
+
+        match policy.teardown {
+            // Teardown first; the waiter learns the connection is gone only
+            // once it really is. On failure the entry is restored and the
+            // (retryable) error surfaces instead — dropping it here would
+            // 404 a retried DELETE while leaking the branch.
+            Teardown::Required => {
+                if let Err(e) = self.remove_branch_bounded(id.clone()).await {
+                    if let Some(state) = state {
+                        self.connections.insert(id, state);
+                    }
+                    return Err(e);
+                }
+                if let Some(state) = state {
+                    state.notify(policy.waiter, &id);
+                }
+            }
+            // The connection dies regardless of what the detach says:
+            // notify the waiter immediately, then detach, only logging a
+            // teardown failure.
+            Teardown::BestEffort => {
+                if let Some(state) = state {
+                    state.notify(policy.waiter, &id);
+                }
+                if let Err(e) = self.remove_branch_bounded(id.clone()).await {
+                    tracing::error!("Failed to remove branch for {}: {}", id, e);
+                }
+            }
+            Teardown::Keep => {
+                if let Some(state) = state {
+                    state.notify(policy.waiter, &id);
+                }
+            }
         }
-        if self.watchdog.record_failure() {
+
+        if policy.feeds_watchdog && self.watchdog.record_failure() {
             tracing::error!("Watchdog tripped: requesting a pipeline restart");
             self.reset_all();
             // Non-blocking: the supervisor owns the force-quit + rerun. A full
@@ -443,22 +614,18 @@ impl<P: BranchControl> Coordinator<P> {
             // request is correct.
             let _ = self.restart_tx.try_send(());
         }
+        Ok(())
     }
 
     /// A per-viewer branch failed at runtime (its whipsink errored, its peer
-    /// went away), reported by the pipeline's bus watch. Drop the connection
-    /// and detach its branch so it can't linger as a ghost `/list` entry with
-    /// orphaned elements. A dead peer is not a pipeline-health signal, so the
-    /// watchdog is deliberately left untouched.
+    /// went away), reported by the pipeline's bus watch. Terminate it so it
+    /// can't linger as a ghost `/list` entry with orphaned elements.
     async fn reap_branch(&mut self, id: ConnectionId) {
-        let Some(state) = self.connections.remove(&id) else {
+        if !self.connections.contains_key(&id) {
             return; // already gone: raced a DELETE or an expiry sweep
-        };
-        tracing::warn!("Reaping branch for {} after a runtime failure", id);
-        state.fail_waiter(SignalError::NotFound(id.clone()));
-        if let Err(e) = self.remove_branch_bounded(id.clone()).await {
-            tracing::error!("Failed to remove branch for {}: {}", id, e);
         }
+        tracing::warn!("Reaping branch for {} after a runtime failure", id);
+        let _ = self.terminate(id, TerminateReason::Reaped).await;
     }
 
     /// Remove a branch, bounded by `teardown_timeout`. All teardown awaits run
@@ -486,9 +653,16 @@ impl<P: BranchControl> Coordinator<P> {
         }
     }
 
+    /// Apply the `Reset` termination row to the whole map at once: every
+    /// parked waiter learns the signaling plane is unavailable, and the
+    /// branches are deliberately kept (`Teardown::Keep`) — the supervisor
+    /// tears down or rebuilds the pipeline wholesale around this call.
+    /// `terminate` is per-connection; a reset is the one whole-map death,
+    /// so it applies the same policy row without going through it.
     fn reset_all(&mut self) {
-        for (_, state) in self.connections.drain() {
-            state.fail_waiter(SignalError::Unavailable);
+        let policy = TerminateReason::Reset.policy();
+        for (id, state) in self.connections.drain() {
+            state.notify(policy.waiter, &id);
         }
     }
 }
@@ -687,6 +861,75 @@ mod tests {
         let snap = pipeline.snapshot();
         assert_eq!(vec!["a".to_string()], snap.added);
         assert_eq!(vec!["a".to_string()], snap.removed);
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn vanished_whep_client_fails_the_handshake_and_feeds_the_watchdog() {
+        let pipeline = ready_pipeline();
+        let (handle, mut restart_rx) = spawn_actor(pipeline.clone(), test_config()); // threshold 3
+
+        // Three times over: the browser vanishes before the whipsink's offer
+        // arrives, so delivering the offer finds the parked waiter gone.
+        for i in 0..3 {
+            let id = format!("conn-{}", i);
+            let whep = {
+                let handle = handle.clone();
+                let id = id.clone();
+                tokio::spawn(async move { handle.create_connection(id).await })
+            };
+            for _ in 0..5 {
+                tokio::task::yield_now().await; // register + add the branch
+            }
+            whep.abort(); // browser disconnected; its reply receiver drops
+            tokio::task::yield_now().await;
+
+            // The handshake fails now: the whipsink's surviving leg learns
+            // the connection is gone...
+            assert!(matches!(
+                handle.offer_received(id.clone(), offer()).await,
+                Err(SignalError::NotFound(_))
+            ));
+            // ...and, once the actor finishes cleanup, the branch is detached.
+            tokio::task::yield_now().await;
+            assert!(pipeline.snapshot().removed.contains(&id));
+        }
+
+        // Three abandoned handshakes in a row are a pipeline-health signal:
+        // the watchdog trips — unlike the reap path, which never feeds it.
+        tokio::task::yield_now().await;
+        assert!(restart_rx.try_recv().is_ok());
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn vanished_whip_waiter_fails_the_answer_delivery() {
+        let pipeline = ready_pipeline();
+        let (handle, mut restart_rx) = spawn_actor(pipeline.clone(), test_config());
+
+        let whep = {
+            let handle = handle.clone();
+            tokio::spawn(async move { handle.create_connection("a".to_string()).await })
+        };
+        tokio::task::yield_now().await; // connection registered
+        let whip = {
+            let handle = handle.clone();
+            tokio::spawn(async move { handle.offer_received("a".to_string(), offer()).await })
+        };
+        assert!(whep.await.unwrap().is_ok()); // offer delivered; whip now parked
+
+        whip.abort(); // the whipsink's HTTP request died mid-wait
+        tokio::task::yield_now().await;
+
+        // The browser's PATCH finds the whipsink's waiter gone: the
+        // handshake fails, the entry is dropped, the branch is detached.
+        assert!(matches!(
+            handle.answer_received("a".to_string(), answer()).await,
+            Err(SignalError::NotFound(_))
+        ));
+        tokio::task::yield_now().await; // let the actor finish branch cleanup
+        assert_eq!(vec!["a".to_string()], pipeline.snapshot().removed);
+        assert!(list_ids(&handle).await.is_empty());
+        // One vanished peer is below the trip threshold: no restart.
+        assert!(restart_rx.try_recv().is_err());
     }
 
     #[tokio::test(start_paused = true)]

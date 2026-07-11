@@ -51,6 +51,14 @@ viewer through a loopback WHIP bridge inside the same process.
   branch detached. Unlike the sweep, a reap deliberately does **not** feed the
   watchdog — a dead peer is a fact about one viewer, not a pipeline-health
   signal.
+- **Termination** — the coordinator's single owner of "a connection is
+  ending" (`terminate(id, reason)`). Every death path — a client DELETE, a
+  sweep expiry, a peer vanishing mid-handshake, a bus reap, a reset — names
+  its reason, and one policy table maps that reason to what happens: how a
+  parked waiter is failed, whether the branch teardown gates the death, and
+  whether the watchdog is fed. The sweep and reap rows keep their pinned
+  semantics; "a reap does not feed the watchdog" is a value in that table,
+  not a comment.
 
 ## Terminology map: one lifecycle, three vantage points
 

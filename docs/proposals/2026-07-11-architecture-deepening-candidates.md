@@ -18,6 +18,25 @@ Candidates are numbered **D1–D7** to avoid collision with round 1's C-series.
 
 _(append an entry per landed/declined candidate, same discipline as round 1)_
 
+- **D1 — landed (2026-07-12, PR #116).** `terminate(id, reason)` with
+  `TerminateReason::policy()` as the single policy table; the five death
+  paths now just name their reason. The Reason enum was revised from this
+  card during design review (approved by Kun): `{Deleted, Expired, PeerGone,
+  Reaped, Reset}` — `fail_connection` dissolved into policy application
+  rather than being a reason, and `Expired` carries no leg payload because
+  the state knows its own leg (`ConnectionState::expire()` sends the
+  leg-specific `Timeout`). Two columns the card's matrix left implicit
+  became explicit policy: notification *ordering* (`Deleted` notifies only
+  after teardown succeeds; the rest notify first) and *missing-entry
+  meaning* (`Reject`/`Skip`/`Proceed` — `PeerGone` arrives with the entry
+  already consumed by the failed delivery). The optional PeerGone honesty
+  fix was deliberately deferred: the surviving leg keeps `NotFound` → 404
+  (wire-visible change; revisit as its own candidate). All companions
+  landed: `deadline()`/`expire()`, named `list_connections()`/`reset()`,
+  `ConnectionInfo` projection on `ConnectionState`. Both waiter-gone legs
+  are now pinned through `SignalHandle`, including the watchdog-feeding
+  row; `Termination` added to the CONTEXT.md glossary.
+
 ---
 
 ## Required reading before touching code
