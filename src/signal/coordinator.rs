@@ -672,7 +672,7 @@ mod tests {
     use super::ConnectionState;
     use super::CoordinatorConfig;
     use crate::domain::{SdpAnswer, SdpOffer, VALID_WHEP_ANSWER, VALID_WHIP_OFFER};
-    use crate::signal::{spawn_coordinator, SignalError, SignalHandle};
+    use crate::signal::{spawn_coordinator, ResetHandle, ResetSignal, SignalError, SignalHandle};
     use crate::stream::{BranchId, TestPipeline};
     use std::time::Duration;
     use tokio::sync::{mpsc, oneshot};
@@ -710,12 +710,20 @@ mod tests {
         pipeline: TestPipeline,
         config: CoordinatorConfig,
     ) -> (SignalHandle, mpsc::Receiver<()>) {
+        let (handle, _reset, restart_rx) = spawn_actor_with_reset(pipeline, config);
+        (handle, restart_rx)
+    }
+
+    /// Like `spawn_actor`, but also returns the supervisor-side `ResetHandle`
+    /// for tests that exercise the Reset command.
+    pub(super) fn spawn_actor_with_reset(
+        pipeline: TestPipeline,
+        config: CoordinatorConfig,
+    ) -> (SignalHandle, ResetHandle, mpsc::Receiver<()>) {
         let (_fail_tx, fail_rx) = mpsc::channel(1);
         let (restart_tx, restart_rx) = mpsc::channel(1);
-        (
-            spawn_coordinator(pipeline, config, fail_rx, restart_tx),
-            restart_rx,
-        )
+        let (handle, reset) = spawn_coordinator(pipeline, config, fail_rx, restart_tx);
+        (handle, reset, restart_rx)
     }
 
     /// Spawn the coordinator sharing `branch_failures` with a pipeline built via
@@ -726,10 +734,8 @@ mod tests {
         branch_failures: mpsc::Receiver<BranchId>,
     ) -> (SignalHandle, mpsc::Receiver<()>) {
         let (restart_tx, restart_rx) = mpsc::channel(1);
-        (
-            spawn_coordinator(pipeline, config, branch_failures, restart_tx),
-            restart_rx,
-        )
+        let (handle, _reset) = spawn_coordinator(pipeline, config, branch_failures, restart_tx);
+        (handle, restart_rx)
     }
 
     /// Drive a full WHEP<->WHIP handshake so the connection reaches Established.
@@ -1072,7 +1078,8 @@ mod tests {
     #[tokio::test(start_paused = true)]
     async fn reset_clears_the_watchdog_counter() {
         let pipeline = ready_pipeline();
-        let (handle, mut restart_rx) = spawn_actor(pipeline.clone(), test_config()); // threshold 3
+        let (handle, reset, mut restart_rx) =
+            spawn_actor_with_reset(pipeline.clone(), test_config()); // threshold 3
 
         // Two consecutive timeout failures.
         for i in 0..2 {
@@ -1080,7 +1087,7 @@ mod tests {
         }
 
         // Pipeline restarted: supervisor sends Reset.
-        handle.reset().await.unwrap();
+        reset.reset().await.unwrap();
 
         // Two more failures on the fresh pipeline: still below threshold.
         for i in 2..4 {
@@ -1094,7 +1101,7 @@ mod tests {
     #[tokio::test(start_paused = true)]
     async fn reset_fails_all_waiters_and_clears_state() {
         let pipeline = ready_pipeline();
-        let (handle, _restart_rx) = spawn_actor(pipeline.clone(), test_config());
+        let (handle, reset, _restart_rx) = spawn_actor_with_reset(pipeline.clone(), test_config());
 
         let whep = {
             let handle = handle.clone();
@@ -1102,7 +1109,7 @@ mod tests {
         };
         tokio::task::yield_now().await; // register the in-flight waiter
 
-        handle.reset().await.unwrap();
+        reset.reset().await.unwrap();
 
         assert!(matches!(whep.await.unwrap(), Err(SignalError::Unavailable)));
         assert!(list_ids(&handle).await.is_empty());
