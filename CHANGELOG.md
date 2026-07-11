@@ -5,6 +5,42 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.1] - 2026-07-11
+
+API hardening on the DELETE endpoints and a documentation rebuild. No CLI
+changes; the only API-visible change is that DELETE on an already-gone
+resource now succeeds with `204` instead of failing with `404`.
+
+### Added
+
+- `docs/connection-lifecycle.md`: a newcomer-facing walkthrough of the
+  three-leg WHEP handshake, the parked-waiter concept, and the
+  route → command → state mapping.
+
+### Changed
+
+- `DELETE /channel/{id}` and `DELETE /whip_sink/{id}` are now idempotent:
+  deleting an already-gone or never-existent resource returns `204 No Content`
+  instead of `404 Not Found`, so client retries and races with the
+  coordinator's reaper no longer surface as errors. A real termination still
+  returns `200`, and a transient teardown failure still returns `503` with
+  `Retry-After` (#111).
+- Split the shared DELETE handler into intent-named handlers with distinct
+  tracing spans: `terminate_session` (span `WHEP DELETE`) for a viewer ending
+  its playback session, and `remove_whip_sink` (span `WHIP SINK DELETE`) for
+  the internal loopback sink teardown. HTTP behavior is unchanged; the two
+  routes are now distinguishable in traces and logs (#114).
+- Rebuilt the documentation as a kernel (`README.md` for humans, `CONTEXT.md`
+  for agents) plus linked layers, with a no-orphan invariant: every retained
+  user-facing doc is reachable from the kernel. The macOS `GIO_EXTRA_MODULES`
+  notes are folded into the README (#112).
+
+### Removed
+
+- Dead documentation assets and unused SDP fixtures/scripts with no inbound
+  references (`docs/{init.svg,running.svg,Example.gif}`,
+  `scripts/{AVC-baseline,AVC-high,AVC-main,Safari-offer,gst-commands}`).
+
 ## [2.1.0] - 2026-07-10
 
 Internal hardening, new test tooling, and documentation. No CLI or API
@@ -94,5 +130,6 @@ the prior behavior, so no configuration migration is required.
   whole pipeline and drops every other viewer (ADR 0002).
 - Hardened the signaling plane against teardown races and test-environment leaks.
 
+[2.1.1]: https://github.com/Eyevinn/srt-whep/releases/tag/v2.1.1
 [2.1.0]: https://github.com/Eyevinn/srt-whep/releases/tag/v2.1.0
 [2.0.0]: https://github.com/Eyevinn/srt-whep/releases/tag/v2.0.0
