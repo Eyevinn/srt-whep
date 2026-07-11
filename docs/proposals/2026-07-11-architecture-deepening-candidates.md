@@ -55,6 +55,27 @@ _(append an entry per landed/declined candidate, same discipline as round 1)_
   manual `--ignored` e2e (`pipeline_survives_repeated_handshake_failures`)
   passed, and the browser media guard passed (frames 0→95 climbing).
 
+- **D3 — landed (2026-07-12, PR #118).** The supervisor now names a
+  one-method capability — `ResetSignal`, defined provider-side in
+  `signal/mod.rs`, matching where `BranchControl`/`PipelineLifecycle` live
+  in `stream` — instead of the whole six-method `SignalHandle`. Both wrong
+  widths fixed in one change (approved by Kun, incl. the card's optional
+  facade split): `spawn_coordinator` returns `(SignalHandle, ResetHandle)`
+  and `SignalHandle::reset()` is deleted, so the "supervisor only" doc
+  comment became structure — the routes' handle cannot reset. Two adapters
+  make the seam real: `ResetHandle` in production, a `RecordingReset` fake
+  in the supervisor tests, which no longer construct a coordinator.
+  Coverage moved to its owners: `reset_on_cleanup_fails_inflight_handshakes`
+  (a supervisor test standing up a real coordinator to prove a coordinator
+  behavior) is replaced by `reset_is_requested_after_every_stop`, which
+  pins the supervisor's side across all four stop kinds (error, EOS,
+  watchdog restart, shutdown); the waiter-failing side stays pinned by the
+  coordinator's own `reset_fails_all_waiters_and_clears_state`. The seam
+  also made the `RESET_TIMEOUT` bound testable for the first time
+  (`a_wedged_reset_does_not_hang_the_restart_loop`). `Reset` added to the
+  CONTEXT.md glossary. Verified: 62 lib + 14 integration green; signal/
+  supervisor plane only, no e2e needed (per the order table).
+
 ---
 
 ## Required reading before touching code

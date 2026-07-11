@@ -59,6 +59,14 @@ viewer through a loopback WHIP bridge inside the same process.
   whether the watchdog is fed. The sweep and reap rows keep their pinned
   semantics; "a reap does not feed the watchdog" is a value in that table,
   not a comment.
+- **Reset** — the restart contract between the supervisor and the
+  coordinator: after *every* pipeline stop (error, EOS, watchdog restart,
+  shutdown) the supervisor resets signaling, and the coordinator fails all
+  in-flight waiters and clears the connection map — no waiter outlives the
+  pipeline run it was created against. Bounded by a timeout at the call
+  site so a wedged coordinator can't hang the restart loop. The supervisor
+  holds this as a one-method capability (`ResetSignal`, carried by
+  `ResetHandle`); the route-facing `SignalHandle` cannot reset.
 
 ## Terminology map: one lifecycle, three vantage points
 
@@ -85,7 +93,8 @@ elements. Do not introduce a fourth term.
 - `src/signal` — the coordinator actor; sole owner of connection state and
   the only caller of branch add/remove. HTTP handlers talk to it through
   `SignalHandle` (mpsc + oneshot replies), never touching pipeline state
-  directly.
+  directly; the supervisor holds the separate one-method `ResetHandle`
+  (`ResetSignal`), so only it can reset.
 - `src/stream` — the GStreamer pipeline. Two seams split by caller:
   `BranchControl` (the coordinator's per-connection view: `ready`,
   `add_branch`, `remove_branch`) and `PipelineLifecycle` (the supervisor's
