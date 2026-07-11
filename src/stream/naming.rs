@@ -1,7 +1,8 @@
 //! Single source of truth for GStreamer element names in the stream plane, and
-//! the classifier that decides whether a bus error belongs to one viewer's
-//! branch (reap just that branch) or the core demux->tee chain (fatal ->
-//! supervisor restart).
+//! the name-level classifier (`branch_id_from_name`) that decides whether one
+//! element name belongs to a viewer's branch. Its hierarchy-level completion
+//! -- walking a bus error's ancestry to a reap-or-quit decision -- is
+//! `bus::classify_bus_message`, built on top of it.
 //!
 //! Branch element names are DERIVED from the core stems, so the load-bearing
 //! relationship -- a branch queue is exactly `<core-queue-name>-<id>`, and the
@@ -72,9 +73,10 @@ impl BranchId {
 /// '-'. A core queue named exactly `video-queue` strips to "" and the missing
 /// '-' makes it return `None` -- that is what keeps a core-queue error fatal.
 ///
-/// The bus watch uses this to contain a dying branch's errors to that branch
-/// (reaping just that connection) instead of quitting the whole pipeline, which
-/// would drop the SRT ingest and every other viewer.
+/// `bus::classify_bus_message` runs this on every name in an error source's
+/// ancestry to contain a dying branch's errors to that branch (reaping just
+/// that connection) instead of quitting the whole pipeline, which would drop
+/// the SRT ingest and every other viewer.
 pub(crate) fn branch_id_from_name(name: &str) -> Option<&str> {
     for stem in [WHIP_SINK_STEM, VIDEO_QUEUE, AUDIO_QUEUE, VIDEO_DECODER_STEM] {
         if let Some(id) = name
