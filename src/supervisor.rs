@@ -3,7 +3,7 @@
 //!
 //! This is the one place that knows the restart policy, the cleanup/reset
 //! contract with the coordinator, and the shutdown ordering (EOS → join).
-use crate::signal::SignalHandle;
+use crate::signal::ResetSignal;
 use crate::stream::PipelineLifecycle;
 use std::time::Duration;
 use tokio::sync::{mpsc, watch};
@@ -14,19 +14,19 @@ const MAX_RESTART_DELAY: Duration = Duration::from_secs(30);
 const SHUTDOWN_JOIN_TIMEOUT: Duration = Duration::from_secs(5);
 const RESET_TIMEOUT: Duration = Duration::from_secs(5);
 
-pub struct Supervisor<P: PipelineLifecycle> {
+pub struct Supervisor<P: PipelineLifecycle, S: ResetSignal> {
     pipeline: P,
-    signal: SignalHandle,
+    signal: S,
     shutdown: watch::Receiver<bool>,
     restart_rx: mpsc::Receiver<()>,
 }
 
-impl<P: PipelineLifecycle + 'static> Supervisor<P> {
+impl<P: PipelineLifecycle + 'static, S: ResetSignal + 'static> Supervisor<P, S> {
     /// Spawn the supervision loop. It runs until the shutdown channel reads
     /// `true` (or its sender is dropped).
     pub fn spawn(
         pipeline: P,
-        signal: SignalHandle,
+        signal: S,
         shutdown: watch::Receiver<bool>,
         restart_rx: mpsc::Receiver<()>,
     ) -> JoinHandle<()> {
@@ -194,29 +194,61 @@ fn flatten_join(
 #[cfg(test)]
 mod tests {
     use super::Supervisor;
-    use crate::signal::{spawn_coordinator, CoordinatorConfig, SignalError, SignalHandle};
+    use crate::signal::{ResetSignal, SignalError};
     use crate::stream::{TestPipeline, TestPipelineState};
+    use async_trait::async_trait;
+    use std::sync::atomic::{AtomicU32, Ordering};
+    use std::sync::Arc;
     use std::time::Duration;
     use tokio::sync::{mpsc, watch};
 
-    /// Build the coordinator + restart channel for a supervisor test. The
-    /// coordinator gets a disconnected failure receiver (never reaps); the
-    /// returned `restart_tx` lets a test drive a watchdog restart directly, and
-    /// `restart_rx` is handed to `Supervisor::spawn`.
-    fn wire(pipeline: TestPipeline) -> (SignalHandle, mpsc::Sender<()>, mpsc::Receiver<()>) {
-        let (_fail_tx, fail_rx) = mpsc::channel(1);
-        let (restart_tx, restart_rx) = mpsc::channel(1);
-        let signal = spawn_coordinator(
-            pipeline,
-            CoordinatorConfig::default(),
-            fail_rx,
-            restart_tx.clone(),
-        );
-        (signal, restart_tx, restart_rx)
+    /// Recording adapter for the supervisor's reset capability: counts the
+    /// reset calls; `wedged` makes them hang forever, standing in for a dead
+    /// coordinator. The coordinator's side of the contract is pinned by its
+    /// own tests — no coordinator is spawned here.
+    #[derive(Clone, Default)]
+    struct RecordingReset {
+        calls: Arc<AtomicU32>,
+        wedged: bool,
     }
 
+    impl RecordingReset {
+        fn wedged() -> Self {
+            Self {
+                calls: Arc::default(),
+                wedged: true,
+            }
+        }
+
+        fn count(&self) -> u32 {
+            self.calls.load(Ordering::SeqCst)
+        }
+    }
+
+    #[async_trait]
+    impl ResetSignal for RecordingReset {
+        async fn reset(&self) -> Result<(), SignalError> {
+            self.calls.fetch_add(1, Ordering::SeqCst);
+            if self.wedged {
+                std::future::pending::<()>().await;
+            }
+            Ok(())
+        }
+    }
+
+    /// Build the reset fake + restart channel for a supervisor test. The
+    /// returned `restart_tx` lets a test drive a watchdog restart directly,
+    /// and `restart_rx` is handed to `Supervisor::spawn`.
+    fn wire() -> (RecordingReset, mpsc::Sender<()>, mpsc::Receiver<()>) {
+        let (restart_tx, restart_rx) = mpsc::channel(1);
+        (RecordingReset::default(), restart_tx, restart_rx)
+    }
+
+    /// Poll under the paused clock until `f` holds. 1000 × 10ms sleeps give
+    /// a 10s virtual-time budget — enough to cross RESET_TIMEOUT (5s) plus a
+    /// restart backoff, which the wedged-reset test needs.
     async fn wait_until(pipeline: &TestPipeline, f: impl Fn(&TestPipelineState) -> bool) {
-        for _ in 0..500 {
+        for _ in 0..1000 {
             if f(&pipeline.snapshot()) {
                 return;
             }
@@ -228,9 +260,9 @@ mod tests {
     #[tokio::test(start_paused = true)]
     async fn restarts_after_a_failed_run() {
         let pipeline = TestPipeline::default();
-        let (signal, _restart_tx, restart_rx) = wire(pipeline.clone());
+        let (reset, _restart_tx, restart_rx) = wire();
         let (_shutdown_tx, shutdown_rx) = watch::channel(false);
-        let _sup = Supervisor::spawn(pipeline.clone(), signal.clone(), shutdown_rx, restart_rx);
+        let _sup = Supervisor::spawn(pipeline.clone(), reset, shutdown_rx, restart_rx);
 
         wait_until(&pipeline, |s| s.run_count == 1).await;
         pipeline.fail_run("gst blew up");
@@ -242,31 +274,61 @@ mod tests {
     }
 
     #[tokio::test(start_paused = true)]
-    async fn reset_on_cleanup_fails_inflight_handshakes() {
+    async fn reset_is_requested_after_every_stop() {
+        // The supervisor's side of the restart contract: signaling is reset
+        // after *every* stop — error, clean EOS, watchdog restart, shutdown —
+        // so no waiter outlives the run it was created against. The
+        // coordinator's side (a reset fails all in-flight waiters and clears
+        // the connection map) is pinned by
+        // `reset_fails_all_waiters_and_clears_state` in signal::coordinator.
         let pipeline = TestPipeline::default();
-        pipeline.set_ready(true);
-        let (signal, _restart_tx, restart_rx) = wire(pipeline.clone());
-        let (_shutdown_tx, shutdown_rx) = watch::channel(false);
-        let _sup = Supervisor::spawn(pipeline.clone(), signal.clone(), shutdown_rx, restart_rx);
+        let (reset, restart_tx, restart_rx) = wire();
+        let (shutdown_tx, shutdown_rx) = watch::channel(false);
+        let sup = Supervisor::spawn(pipeline.clone(), reset.clone(), shutdown_rx, restart_rx);
         wait_until(&pipeline, |s| s.run_count == 1).await;
 
-        let waiter = {
-            let signal = signal.clone();
-            tokio::spawn(async move { signal.create_connection("a".into()).await })
-        };
-        wait_until(&pipeline, |s| s.added.len() == 1).await;
+        pipeline.fail_run("gst blew up"); // stop 1: error
+        wait_until(&pipeline, |s| s.run_count == 2).await;
+        assert_eq!(1, reset.count());
+
+        pipeline.finish_run(); // stop 2: clean EOS
+        wait_until(&pipeline, |s| s.run_count == 3).await;
+        assert_eq!(2, reset.count());
+
+        restart_tx.send(()).await.unwrap(); // stop 3: watchdog restart
+        wait_until(&pipeline, |s| s.run_count == 4).await;
+        assert_eq!(3, reset.count());
+
+        shutdown_tx.send(true).unwrap(); // stop 4: shutdown
+        sup.await.unwrap();
+        assert_eq!(4, reset.count());
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn a_wedged_reset_does_not_hang_the_restart_loop() {
+        // RESET_TIMEOUT is the bound at the cleanup site: a coordinator that
+        // never answers must not wedge the supervisor. The rerun still
+        // happens once the timeout fires (paused clock — the 5s elapse
+        // virtually).
+        let pipeline = TestPipeline::default();
+        let reset = RecordingReset::wedged();
+        let (_restart_tx, restart_rx) = mpsc::channel(1);
+        let (_shutdown_tx, shutdown_rx) = watch::channel(false);
+        let _sup = Supervisor::spawn(pipeline.clone(), reset.clone(), shutdown_rx, restart_rx);
+        wait_until(&pipeline, |s| s.run_count == 1).await;
 
         pipeline.fail_run("gst blew up");
-        let result = waiter.await.unwrap();
-        assert!(matches!(result, Err(SignalError::Unavailable)));
+
+        wait_until(&pipeline, |s| s.run_count == 2).await;
+        assert_eq!(1, reset.count()); // attempted exactly once, then timed out
     }
 
     #[tokio::test(start_paused = true)]
     async fn shutdown_sends_eos_joins_and_stops_the_loop() {
         let pipeline = TestPipeline::default();
-        let (signal, _restart_tx, restart_rx) = wire(pipeline.clone());
+        let (reset, _restart_tx, restart_rx) = wire();
         let (shutdown_tx, shutdown_rx) = watch::channel(false);
-        let sup = Supervisor::spawn(pipeline.clone(), signal.clone(), shutdown_rx, restart_rx);
+        let sup = Supervisor::spawn(pipeline.clone(), reset, shutdown_rx, restart_rx);
         wait_until(&pipeline, |s| s.run_count == 1).await;
 
         shutdown_tx.send(true).unwrap();
@@ -281,9 +343,9 @@ mod tests {
     #[tokio::test(start_paused = true)]
     async fn dropped_shutdown_sender_also_stops_the_loop() {
         let pipeline = TestPipeline::default();
-        let (signal, _restart_tx, restart_rx) = wire(pipeline.clone());
+        let (reset, _restart_tx, restart_rx) = wire();
         let (shutdown_tx, shutdown_rx) = watch::channel(false);
-        let sup = Supervisor::spawn(pipeline.clone(), signal.clone(), shutdown_rx, restart_rx);
+        let sup = Supervisor::spawn(pipeline.clone(), reset, shutdown_rx, restart_rx);
         wait_until(&pipeline, |s| s.run_count == 1).await;
 
         drop(shutdown_tx);
@@ -296,9 +358,9 @@ mod tests {
         // A watchdog restart request force-quits the run and reruns, exactly
         // like EOS — cleanup runs and the pipeline is rerun at base delay.
         let pipeline = TestPipeline::default();
-        let (signal, restart_tx, restart_rx) = wire(pipeline.clone());
+        let (reset, restart_tx, restart_rx) = wire();
         let (_shutdown_tx, shutdown_rx) = watch::channel(false);
-        let _sup = Supervisor::spawn(pipeline.clone(), signal.clone(), shutdown_rx, restart_rx);
+        let _sup = Supervisor::spawn(pipeline.clone(), reset, shutdown_rx, restart_rx);
         wait_until(&pipeline, |s| s.run_count == 1).await;
 
         restart_tx.send(()).await.unwrap();
@@ -311,9 +373,9 @@ mod tests {
     #[tokio::test(start_paused = true)]
     async fn backoff_doubles_on_consecutive_failures_and_resets_on_success() {
         let pipeline = TestPipeline::default();
-        let (signal, _restart_tx, restart_rx) = wire(pipeline.clone());
+        let (reset, _restart_tx, restart_rx) = wire();
         let (_shutdown_tx, shutdown_rx) = watch::channel(false);
-        let _sup = Supervisor::spawn(pipeline.clone(), signal.clone(), shutdown_rx, restart_rx);
+        let _sup = Supervisor::spawn(pipeline.clone(), reset, shutdown_rx, restart_rx);
 
         wait_until(&pipeline, |s| s.run_count == 1).await;
         let t0 = tokio::time::Instant::now();

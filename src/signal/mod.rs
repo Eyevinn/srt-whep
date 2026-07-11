@@ -10,16 +10,45 @@ pub use messages::{ConnectionId, ConnectionInfo};
 
 use crate::domain::{SdpAnswer, SdpOffer};
 use crate::stream::{BranchControl, BranchId};
+use async_trait::async_trait;
 use tokio::sync::{mpsc, oneshot};
 
-/// Clone-able handle to the coordinator actor. HTTP handlers and the
-/// pipeline supervisor talk to the actor exclusively through this.
+/// Clone-able handle to the coordinator actor. HTTP handlers talk to the
+/// actor exclusively through this. It deliberately cannot reset the
+/// coordinator — that is the supervisor's capability, carried separately
+/// by [`ResetHandle`].
 #[derive(Clone)]
 pub struct SignalHandle {
     tx: mpsc::Sender<Command>,
 }
 
-/// Spawn the coordinator actor and return the handle for it. `branch_failures`
+/// The supervisor's view of signaling: reset after a pipeline stop. Failing
+/// all in-flight waiters and clearing the connection map is the coordinator's
+/// side of the restart contract — no waiter may outlive the pipeline run it
+/// was created against. [`ResetHandle`] is the production adapter; supervisor
+/// tests substitute a recording fake instead of standing up a coordinator.
+#[async_trait]
+pub trait ResetSignal: Send + Sync {
+    async fn reset(&self) -> Result<(), SignalError>;
+}
+
+/// The narrow handle carrying [`ResetSignal`] to the supervisor. It shares
+/// the coordinator's mailbox with [`SignalHandle`] but a reset is all it can
+/// request — the "supervisor only" guard on reset is structural, not a doc
+/// comment on a route-visible method.
+pub struct ResetHandle {
+    inner: SignalHandle,
+}
+
+#[async_trait]
+impl ResetSignal for ResetHandle {
+    async fn reset(&self) -> Result<(), SignalError> {
+        self.inner.request(|reply| Command::Reset { reply }).await
+    }
+}
+
+/// Spawn the coordinator actor and return its two handles: the route-facing
+/// [`SignalHandle`] and the supervisor's [`ResetHandle`]. `branch_failures`
 /// is the receiving end of the pipeline's bus-reap channel (its sender was
 /// handed to the pipeline at construction), so the sink is present from birth
 /// and no post-construction installer is needed. The watchdog trip sends a
@@ -29,10 +58,14 @@ pub fn spawn_coordinator<P: BranchControl + 'static>(
     config: CoordinatorConfig,
     branch_failures: mpsc::Receiver<BranchId>,
     restart_tx: mpsc::Sender<()>,
-) -> SignalHandle {
+) -> (SignalHandle, ResetHandle) {
     let (tx, rx) = mpsc::channel(64);
     tokio::spawn(Coordinator::new(pipeline, config, rx, branch_failures, restart_tx).run());
-    SignalHandle { tx }
+    let handle = SignalHandle { tx };
+    let reset = ResetHandle {
+        inner: handle.clone(),
+    };
+    (handle, reset)
 }
 
 impl SignalHandle {
@@ -91,14 +124,6 @@ impl SignalHandle {
         self.request(|reply| Command::ListConnections { reply })
             .await
     }
-
-    /// Reset the coordinator after a pipeline restart (supervisor only).
-    /// Sends `Reset`, which fails all in-flight waiters and clears the
-    /// connection map; the reply is `Ok(())` once done, or an error if the
-    /// coordinator is unavailable.
-    pub async fn reset(&self) -> Result<(), SignalError> {
-        self.request(|reply| Command::Reset { reply }).await
-    }
 }
 
 #[cfg(test)]
@@ -116,7 +141,7 @@ mod tests {
         let (_fail_tx, fail_rx) = mpsc::channel(1);
         // This test never trips the watchdog: nothing consumes restarts.
         let (restart_tx, _restart_rx) = mpsc::channel::<()>(1);
-        let handle = spawn_coordinator(
+        let (handle, _reset) = spawn_coordinator(
             pipeline.clone(),
             CoordinatorConfig::default(),
             fail_rx,
