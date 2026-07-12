@@ -36,20 +36,3 @@ impl From<TimedLockError> for PipelineError {
         PipelineError::Transient(e.to_string())
     }
 }
-
-/// Stream-internal failure detail (GStreamer plumbing). Surfaces at the
-/// `BranchControl` seam as `PipelineError::Fatal` and through
-/// `PipelineLifecycle` inside `anyhow::Error`.
-#[derive(Error)]
-pub enum StreamError {
-    #[error("Failed to find element: {0}")]
-    MissingElement(String),
-    #[error("Failed Operation: {0}")]
-    FailedOperation(String),
-}
-
-impl Debug for StreamError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        error_chain_fmt(self, f)
-    }
-}

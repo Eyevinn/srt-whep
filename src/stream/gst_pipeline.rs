@@ -1,4 +1,4 @@
-use anyhow::{Error, Result};
+use anyhow::{anyhow, Context, Error, Result};
 use async_trait::async_trait;
 use gst::{prelude::*, Pipeline};
 use gstreamer as gst;
@@ -10,7 +10,7 @@ use tokio::sync::mpsc;
 use crate::stream::branch::Branch;
 use crate::stream::bus::{classify_bus_message, BusAction};
 use crate::stream::egress;
-use crate::stream::errors::{PipelineError, StreamError};
+use crate::stream::errors::PipelineError;
 use crate::stream::naming::{self, BranchId};
 use crate::stream::pipeline::{Args, BranchControl, PipelineLifecycle, SRTMode};
 use crate::stream::utils::run_discoverer;
@@ -346,16 +346,12 @@ impl PipelineLifecycle for SharablePipeline {
                 if is_audio {
                     // Get the queue element's sink pad and link the decodebin's newly created
                     // src pad for the audio stream to it.
-                    let audio_queue = pipeline
-                        .by_name(naming::AUDIO_QUEUE)
-                        .ok_or(StreamError::MissingElement(naming::AUDIO_QUEUE.to_string()))?;
-                    let sink_pad =
-                        audio_queue
-                            .static_pad("sink")
-                            .ok_or(StreamError::MissingElement(format!(
-                                "{}'s sink pad",
-                                naming::AUDIO_QUEUE
-                            )))?;
+                    let audio_queue = pipeline.by_name(naming::AUDIO_QUEUE).with_context(|| {
+                        format!("Failed to find element: {}", naming::AUDIO_QUEUE)
+                    })?;
+                    let sink_pad = audio_queue.static_pad("sink").with_context(|| {
+                        format!("Failed to find element: {}'s sink pad", naming::AUDIO_QUEUE)
+                    })?;
                     src_pad.link(&sink_pad)?;
 
                     tracing::info!("Successfully inserted audio sink");
@@ -363,16 +359,12 @@ impl PipelineLifecycle for SharablePipeline {
                 if is_video {
                     // Get the queue element's sink pad and link the decodebin's newly created
                     // src pad for the video stream to it.
-                    let video_queue = pipeline
-                        .by_name(naming::VIDEO_QUEUE)
-                        .ok_or(StreamError::MissingElement(naming::VIDEO_QUEUE.to_string()))?;
-                    let sink_pad =
-                        video_queue
-                            .static_pad("sink")
-                            .ok_or(StreamError::MissingElement(format!(
-                                "{}'s sink pad",
-                                naming::VIDEO_QUEUE
-                            )))?;
+                    let video_queue = pipeline.by_name(naming::VIDEO_QUEUE).with_context(|| {
+                        format!("Failed to find element: {}", naming::VIDEO_QUEUE)
+                    })?;
+                    let sink_pad = video_queue.static_pad("sink").with_context(|| {
+                        format!("Failed to find element: {}'s sink pad", naming::VIDEO_QUEUE)
+                    })?;
                     src_pad.link(&sink_pad)?;
 
                     tracing::info!("Successfully inserted video sink");
@@ -402,9 +394,7 @@ impl PipelineLifecycle for SharablePipeline {
             let pipeline = pipeline_state
                 .pipeline
                 .as_ref()
-                .ok_or(StreamError::FailedOperation(
-                    "Pipeline called before initialization".to_string(),
-                ))?;
+                .context("Pipeline called before initialization")?;
             let bus = pipeline.bus().unwrap();
             let main_loop = glib::MainLoop::new(None, false);
             pipeline_state.main_loop = Some(main_loop.clone());
@@ -481,9 +471,9 @@ impl PipelineLifecycle for SharablePipeline {
                 }
             })?;
 
-        done_rx.await.map_err(|_| {
-            StreamError::FailedOperation("GLib main loop thread died unexpectedly".to_string())
-        })??;
+        done_rx
+            .await
+            .map_err(|_| anyhow!("GLib main loop thread died unexpectedly"))??;
 
         Ok(())
     }
