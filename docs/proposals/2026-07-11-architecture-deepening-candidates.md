@@ -130,6 +130,36 @@ _(append an entry per landed/declined candidate, same discipline as round 1)_
   e2e passed (18.8s), and the browser media guard passed (frames 0→148
   climbing).
 
+- **D6 — landed (2026-07-12, PR #121).** `assemble` now takes a pipeline
+  factory (`impl FnOnce(mpsc::Sender<BranchId>) -> P`) and owns the
+  bus-reap channel; the capacity moved to one `BRANCH_FAILURE_CAPACITY`
+  const in `startup.rs` whose comment records why overflow is safe (the
+  bus handler `try_send`s; the sweep is the backstop). The handle-return
+  tension resolved as the card's second option (approved by Kun):
+  `assemble` returns `(Application, P)` — both test files need the
+  constructed pipeline (`snapshot()`/`fail_branch()`/`ready()`), and the
+  factory-captures-a-clone alternative would have traded three lines of
+  channel ceremony for five of capture ceremony at exactly the sites that
+  need the handle; the one wart is `main.rs` ignoring it with
+  `let (app, _pipeline)`. Re-verification found a **fourth** call site
+  the card missed: `assemble_rejects_a_mismatched_whip_port` built a
+  throwaway `channel(1)` just to satisfy the parameter — the clearest
+  symptom of the channel not belonging in the interface. The port check
+  now runs before the factory, so on bad config the pipeline is never
+  constructed; that test pins the ordering with a
+  `|_| -> TestPipeline { unreachable!(...) }` factory and lost its
+  throwaway channel. `spawn_app`'s `set_ready(true)` moved inside the
+  factory, preserving ready-before-coordinator ordering exactly. The
+  sink-present-from-birth invariant (C3) is now unexpressible to get
+  wrong: the sender exists nowhere outside `assemble`. No new CONTEXT.md
+  term ("pipeline factory" is implementation detail, as with D5).
+  Verified: 66 lib + 14 integration green, clippy `-D warnings` clean,
+  the manual `--ignored` e2e passed (18.6s; one cold-start flake on the
+  fresh worktree's first-ever run, clean on rerun), and the browser
+  media guard passed (frames 0→148 climbing) — run deliberately because
+  it exercises the release binary through `main.rs`, the one call site
+  no test executes.
+
 ---
 
 ## Required reading before touching code
