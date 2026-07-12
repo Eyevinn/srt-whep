@@ -16,11 +16,10 @@
 //! `startup.rs` imports [`WHIP_SINK_ROUTE`] and the WHIP handler imports
 //! [`whip_sink_path`], so the HTTP contract and the whipclientsink's endpoint
 //! can never drift apart.
-use anyhow::{Error, Result};
+use anyhow::{anyhow, Context, Error, Result};
 use gst::prelude::*;
 use gstreamer as gst;
 
-use crate::stream::errors::StreamError;
 use crate::stream::naming;
 
 /// The actix route template for the loopback WHIP endpoint — the single
@@ -85,7 +84,7 @@ impl Branch {
     ) -> Result<(), Error> {
         let demux = pipeline
             .by_name(naming::DEMUX)
-            .ok_or(StreamError::MissingElement(naming::DEMUX.to_string()))?;
+            .with_context(|| format!("Failed to find element: {}", naming::DEMUX))?;
         // WhipWebRTCSink is renamed as 'whipclientsink' since gst-plugin-webrtc version 0.13.0
         let whipsink = gst::ElementFactory::make("whipclientsink")
             .name(self.whip_sink_name())
@@ -109,12 +108,9 @@ impl Branch {
             .into_iter()
             .any(|pad| pad.name().starts_with("video"))
         {
-            let output_tee_video =
-                pipeline
-                    .by_name(naming::OUTPUT_TEE_VIDEO)
-                    .ok_or(StreamError::MissingElement(
-                        naming::OUTPUT_TEE_VIDEO.to_string(),
-                    ))?;
+            let output_tee_video = pipeline
+                .by_name(naming::OUTPUT_TEE_VIDEO)
+                .with_context(|| format!("Failed to find element: {}", naming::OUTPUT_TEE_VIDEO))?;
             let queue_video: gst::Element = gst::ElementFactory::make("queue")
                 .name(self.video_queue_name())
                 .build()?;
@@ -148,12 +144,9 @@ impl Branch {
             .into_iter()
             .any(|pad| pad.name().starts_with("audio"))
         {
-            let output_tee_audio =
-                pipeline
-                    .by_name(naming::OUTPUT_TEE_AUDIO)
-                    .ok_or(StreamError::MissingElement(
-                        naming::OUTPUT_TEE_AUDIO.to_string(),
-                    ))?;
+            let output_tee_audio = pipeline
+                .by_name(naming::OUTPUT_TEE_AUDIO)
+                .with_context(|| format!("Failed to find element: {}", naming::OUTPUT_TEE_AUDIO))?;
             let queue_audio: gst::Element = gst::ElementFactory::make("queue")
                 .name(self.audio_queue_name())
                 .build()?;
@@ -261,23 +254,19 @@ impl Branch {
         }
 
         let queue = queue.unwrap();
-        let queue_sink_pad =
-            queue
-                .static_pad("sink")
-                .ok_or(StreamError::MissingElement(format!(
-                    "{}'s sink pad",
-                    queue_name
-                )))?;
+        let queue_sink_pad = queue
+            .static_pad("sink")
+            .with_context(|| format!("Failed to find element: {}'s sink pad", queue_name))?;
 
         // Remove src pad from tee if queue is linked
         let name = queue_name.to_string();
         if queue_sink_pad.is_linked() {
             let tee_src_pad = queue_sink_pad
                 .peer()
-                .ok_or(StreamError::MissingElement("tee's src pad".to_string()))?;
+                .context("Failed to find element: tee's src pad")?;
             let tee = tee_src_pad
                 .parent_element()
-                .ok_or(StreamError::MissingElement("output_tee".to_string()))?;
+                .context("Failed to find element: output_tee")?;
 
             // Pause tee before removing pad and resume afterward
             tee.call_async_future(move |tee| {
@@ -297,11 +286,10 @@ impl Branch {
 
             Self::remove_element_from_pipeline(pipeline, &queue).await?;
         } else {
-            return Err(StreamError::FailedOperation(format!(
+            return Err(anyhow!(
                 "Queue {} is not linked and can not be removed.",
                 name
-            ))
-            .into());
+            ));
         }
 
         Ok(())

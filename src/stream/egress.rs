@@ -13,11 +13,10 @@
 //! here; the dispatch (walking the demux's src pads on no-more-pads) stays
 //! with `init()` in `gst_pipeline.rs`.
 
-use anyhow::Error;
+use anyhow::{anyhow, Error};
 use gst::prelude::*;
 use gstreamer as gst;
 
-use crate::stream::errors::StreamError;
 use crate::stream::naming;
 
 /// Build and start the egress chain for one demuxed media type.
@@ -100,7 +99,7 @@ pub(crate) fn build_egress_chain(
 
         Ok(())
     } else {
-        Err(StreamError::FailedOperation(format!("Unknown media type {}", media_type)).into())
+        Err(anyhow!("Unknown media type {}", media_type))
     }
 }
 
