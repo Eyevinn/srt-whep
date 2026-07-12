@@ -16,7 +16,7 @@
 //! `startup.rs` imports [`WHIP_SINK_ROUTE`] and the WHIP handler imports
 //! [`whip_sink_path`], so the HTTP contract and the whipclientsink's endpoint
 //! can never drift apart.
-use anyhow::{anyhow, Context, Error, Result};
+use anyhow::{Context, Error, Result};
 use gst::prelude::*;
 use gstreamer as gst;
 
@@ -73,6 +73,11 @@ impl Branch {
     /// re-encodes it internally. This works around a caps-negotiation bug in
     /// webrtcsink 0.15.x on macOS, where H264 passthrough fails with
     /// not-negotiated on `GstAppSrc:video_0` (see `--decode-video`).
+    ///
+    /// On error, attach does NOT undo its own work: elements it already
+    /// added (whip sink, queues, decoder) stay in the pipeline. Call
+    /// [`Self::detach`] to clean up — it removes everything this branch put
+    /// in the pipeline, however far attach got.
     ///
     /// Synchronous GStreamer calls only; the caller may hold the pipeline
     /// state lock.
@@ -168,7 +173,12 @@ impl Branch {
     }
 
     /// Tear this viewer's branch down: remove the per-media queues via the
-    /// tee pad-probe dance, then remove the whip sink.
+    /// tee pad-probe dance, then the optional decoder and the whip sink.
+    ///
+    /// Tolerant of partial attach state: removes every element this branch
+    /// put in the pipeline, however far [`Self::attach`] got. Elements that
+    /// were never created are skipped; a queue that was added but never
+    /// linked is removed directly (there is no tee pad to release).
     ///
     /// Awaits GStreamer state changes; the caller must NOT hold the
     /// pipeline state lock.
@@ -240,7 +250,8 @@ impl Branch {
     /// * `queue_name` - Name of the queue element to be removed
     ///
     /// To remove a branch from a pipeline, one has to remove the src pad from the tee element
-    /// and remove the queue element from the pipeline.
+    /// and remove the queue element from the pipeline. A queue that exists but
+    /// was never linked (a partial attach) has no tee pad and is removed directly.
     async fn remove_branch_from_pipeline(
         pipeline: &gst::Pipeline,
         queue_name: &str,
@@ -259,7 +270,6 @@ impl Branch {
             .with_context(|| format!("Failed to find element: {}'s sink pad", queue_name))?;
 
         // Remove src pad from tee if queue is linked
-        let name = queue_name.to_string();
         if queue_sink_pad.is_linked() {
             let tee_src_pad = queue_sink_pad
                 .peer()
@@ -286,10 +296,11 @@ impl Branch {
 
             Self::remove_element_from_pipeline(pipeline, &queue).await?;
         } else {
-            return Err(anyhow!(
-                "Queue {} is not linked and can not be removed.",
-                name
-            ));
+            // Added but never linked: a partial attach got this far and no
+            // further. There is no tee pad to release — remove the element
+            // directly so detach cleans everything it can reach.
+            tracing::debug!("{} was never linked; removing directly", queue_name);
+            Self::remove_element_from_pipeline(pipeline, &queue).await?;
         }
 
         Ok(())
@@ -307,5 +318,44 @@ mod tests {
             "http://localhost:8000/whip_sink/abc",
             whip_endpoint(8000, "abc")
         );
+    }
+
+    #[tokio::test]
+    async fn detach_after_a_partial_attach_removes_everything_it_can_reach() {
+        gst::init().unwrap();
+        let pipeline = gst::Pipeline::new();
+        let branch = Branch::for_id("t1");
+        // Simulate an attach that added its elements but died before linking:
+        // detach finds everything by derived name, so stand-in factories are
+        // fine — what matters is that the queue exists and is unlinked.
+        let queue = gst::ElementFactory::make("queue")
+            .name(branch.video_queue_name())
+            .build()
+            .unwrap();
+        let decoder = gst::ElementFactory::make("identity")
+            .name(branch.video_decoder_name())
+            .build()
+            .unwrap();
+        let sink = gst::ElementFactory::make("fakesink")
+            .name(branch.whip_sink_name())
+            .build()
+            .unwrap();
+        pipeline.add_many([&queue, &decoder, &sink]).unwrap();
+
+        branch
+            .detach(&pipeline)
+            .await
+            .expect("detach must tolerate partial attach state");
+
+        for name in [
+            branch.video_queue_name(),
+            branch.video_decoder_name(),
+            branch.whip_sink_name(),
+        ] {
+            assert!(
+                pipeline.by_name(&name).is_none(),
+                "{name} must be removed by detach"
+            );
+        }
     }
 }
