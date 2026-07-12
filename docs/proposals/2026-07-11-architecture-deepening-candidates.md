@@ -76,6 +76,33 @@ _(append an entry per landed/declined candidate, same discipline as round 1)_
   CONTEXT.md glossary. Verified: 62 lib + 14 integration green; signal/
   supervisor plane only, no e2e needed (per the order table).
 
+- **D4 — landed (2026-07-12, PR #119).** The codec table moved out of
+  `init()`'s `no_more_pads` closure into a new `stream::egress` module:
+  `build_egress_chain(pipeline, media_type, video_queue, audio_queue)`
+  owns media type → parser choice → chain construction → the
+  `sync_state_with_parent` invariant; the closure is now a thin dispatch
+  that walks the demux pads and logs, mirroring D2's decision/mechanism
+  split for the bus watch. Two placements decided in design review
+  (approved by Kun, both as recommended): a **new module** (the `bus.rs`
+  precedent — its own doc header, its own tests; `gst_pipeline.rs` shrinks
+  644 → 570 lines) and the **card's handle-threading signature** — `init()`
+  passes the queues it just built rather than the function re-finding them
+  by name, so the "queues already in the pipeline" precondition rides in
+  the arguments and no new `MissingElement` failure mode appears. The
+  extraction kept strictly to the card's scope: the static ingest topology
+  stays inline in `init()` (linear construction, no decisions — extraction
+  would just move code). Unit tests (4) cover the previously-e2e-only
+  table: h264 and h265 (asserting *which* parser the queue got linked to,
+  not just that a tee exists), the audio AAC→Opus transcode chain, and
+  unknown media as an error that builds nothing. Simpler than the card
+  guessed: no `tsdemux` + forced caps needed — the extracted signature
+  takes `media_type` as a string, so tests need only a pipeline with two
+  named queues. CI runs these everywhere (the PR workflow installs
+  base/good/bad/ugly/libav, and `bus.rs` set the `gst::init()` lib-test
+  precedent). `Egress chain` added to the CONTEXT.md glossary. Verified:
+  66 lib + 14 integration green, the manual `--ignored` e2e passed, and
+  the browser media guard passed (frames 0→148 climbing).
+
 ---
 
 ## Required reading before touching code

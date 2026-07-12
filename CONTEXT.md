@@ -16,6 +16,13 @@ viewer through a loopback WHIP bridge inside the same process.
 - **Branch** — that connection's per-viewer GStreamer elements
   (`whipclientsink` + queues) hot-plugged into the pipeline. One connection,
   one branch.
+- **Egress chain** — the per-media output chain built once the demux
+  announces the stream's pads (`src/stream/egress.rs`, the codec table):
+  video is parsed (`h264parse`/`h265parse`) into a named output tee; audio
+  is transcoded AAC → Opus into its own tee; unknown media is an error.
+  The named tees are the attach points for Branches, and the terminating
+  fakesink keeps each chain consuming — and pops EOS onto the bus when the
+  SRT input closes — even with zero viewers attached.
 - **Loopback WHIP** — the in-process `whipclientsink` POSTing its SDP offer
   back to this app's own HTTP server (`/whip_sink/{id}`) instead of to an
   external WHIP endpoint. This is how the WHEP-facing signaling plane gets
@@ -99,8 +106,10 @@ elements. Do not introduce a fourth term.
   `BranchControl` (the coordinator's per-connection view: `ready`,
   `add_branch`, `remove_branch`) and `PipelineLifecycle` (the supervisor's
   whole-pipeline view: `init`, `run`, `end`, `clean_up`, `quit`).
-  `src/stream/gst_pipeline.rs` holds the real implementation; `TestPipeline`
-  in `src/stream/pipeline.rs` is the recording fake both traits share for
+  `src/stream/gst_pipeline.rs` holds the real implementation, with the
+  codec decisions split out into `src/stream/egress.rs` (which parser or
+  transcode chain each demuxed media type gets); `TestPipeline` in
+  `src/stream/pipeline.rs` is the recording fake both traits share for
   tests.
 - `src/supervisor.rs` — the restart loop: `init` → `run` → `cleanup` (pipeline
   `clean_up` + `signal.reset()`) → backoff → repeat, until a `watch`
