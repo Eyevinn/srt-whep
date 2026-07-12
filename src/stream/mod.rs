@@ -1,5 +1,6 @@
 mod branch;
 mod bus;
+mod egress;
 mod errors;
 mod gst_pipeline;
 mod naming;
