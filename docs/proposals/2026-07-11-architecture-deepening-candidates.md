@@ -160,6 +160,40 @@ _(append an entry per landed/declined candidate, same discipline as round 1)_
   it exercises the release binary through `main.rs`, the one call site
   no test executes.
 
+- **D7 — landed (2026-07-12, PR #122), both tiers.** Design review
+  (approved by Kun) took tier 1 + tier 2 together rather than the doc move
+  alone: doc-move-only would have enshrined the wart in `branch.rs`'s own
+  interface docs ("detach aborts at the first unlinked queue; leftovers
+  wait for a restart"), whereas hardening first lets the moved docs state a
+  clean contract — `detach` removes every element this branch put in the
+  pipeline, however far `attach` got. Tier 2:
+  `remove_branch_from_pipeline`'s exists-but-unlinked arm now removes the
+  element directly (no tee pad to release) instead of erroring, so the
+  failed-attach cleanup detach in `gst_pipeline.rs` actually cleans instead
+  of logging "cleanup also failed" and leaning on the next restart. The
+  arm is reachable only from partial state: a normal no-audio branch has
+  no audio queue at all (absent → skip), and `link_many` links
+  sequentially, so a linked sink pad always takes the pad-probe path. Two
+  discoveries beyond the card: (1) ADR 0002 already *asserted* "detach
+  tolerates a half-built branch" — the code only half-delivered it
+  (absent yes, unlinked no); tier 2 aligns the code with the ADR, no ADR
+  edit needed. (2) The card's "done when" imagined a manual e2e as the
+  only tier-2 verification, but `bus.rs`/`egress.rs` already run
+  `gst::init()` unit tests in CI — so the partial-attach teardown is now
+  pinned by an automated test
+  (`detach_after_a_partial_attach_removes_everything_it_can_reach`,
+  core elements only: queue/identity/fakesink stand-ins found by derived
+  name), written red-first against the old abort behaviour. The caller
+  comment at `gst_pipeline.rs` shrank from nine lines of borrowed
+  mechanics to caller-local facts (ADR 0002 location note, error
+  reporting, id-never-mapped). No new CONTEXT.md term — post-hardening,
+  "partial attach" is not even part of the caller-visible contract, which
+  is the point. Verified: 67 lib + 14 integration green, clippy
+  `-D warnings` clean, the manual `--ignored` e2e passed (18.8s, first
+  try), and the browser media guard passed (frames 0→145 climbing).
+  **Round 2 complete: D1–D7 all landed.** Deferred for a future round:
+  the PeerGone 404 honesty fix (wire-visible).
+
 ---
 
 ## Required reading before touching code
