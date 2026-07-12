@@ -28,28 +28,36 @@ pub enum SignalError {
     Pipeline(String),
 }
 
-impl ResponseError for SignalError {
-    fn status_code(&self) -> StatusCode {
+impl SignalError {
+    /// The HTTP contract in one match: the status a failure gets, and the
+    /// Retry-After to attach when a retry is worthwhile. One arm decides
+    /// both for each variant, so the retryable set (503 + Retry-After) is
+    /// spelled exactly once and the two can never drift.
+    fn http_contract(&self) -> (StatusCode, Option<&'static str>) {
         match self {
-            SignalError::InvalidSdp(_) | SignalError::Sdp(_) => StatusCode::BAD_REQUEST,
-            SignalError::NotFound(_) => StatusCode::NOT_FOUND,
-            SignalError::WrongState(_) => StatusCode::CONFLICT,
+            SignalError::InvalidSdp(_) | SignalError::Sdp(_) => (StatusCode::BAD_REQUEST, None),
+            SignalError::NotFound(_) => (StatusCode::NOT_FOUND, None),
+            SignalError::WrongState(_) => (StatusCode::CONFLICT, None),
             SignalError::Timeout(_) | SignalError::NotReady | SignalError::PipelineBusy(_) => {
-                StatusCode::SERVICE_UNAVAILABLE
+                (StatusCode::SERVICE_UNAVAILABLE, Some("3"))
             }
             SignalError::Unavailable | SignalError::Pipeline(_) => {
-                StatusCode::INTERNAL_SERVER_ERROR
+                (StatusCode::INTERNAL_SERVER_ERROR, None)
             }
         }
     }
+}
+
+impl ResponseError for SignalError {
+    fn status_code(&self) -> StatusCode {
+        self.http_contract().0
+    }
 
     fn error_response(&self) -> HttpResponse {
-        let mut builder = HttpResponse::build(self.status_code());
-        if matches!(
-            self,
-            SignalError::Timeout(_) | SignalError::NotReady | SignalError::PipelineBusy(_)
-        ) {
-            builder.append_header(("Retry-After", "3"));
+        let (status, retry_after) = self.http_contract();
+        let mut builder = HttpResponse::build(status);
+        if let Some(seconds) = retry_after {
+            builder.append_header(("Retry-After", seconds));
         }
         builder.body(self.to_string())
     }
