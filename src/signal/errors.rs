@@ -12,8 +12,19 @@ pub enum SignalError {
     // its Display is already "Invalid SDP: …", so this does not double-prefix.
     #[error(transparent)]
     Sdp(#[from] SdpError),
+    /// The id is not in the connection map — the caller named a connection
+    /// this coordinator never knew (or one long dead: the map holds no
+    /// tombstones, so a later lookup honestly cannot tell the difference).
     #[error("Connection {0} not found")]
     NotFound(String),
+    /// The connection existed but ended while this request was in flight —
+    /// the peer vanished mid-handshake, or the connection was deleted or
+    /// reaped under a parked waiter. Distinct from `NotFound` on the wire:
+    /// 404 = never knew this id; 410 = it existed and just died. Only
+    /// in-flight requests can be answered this honestly; once the entry
+    /// leaves the map, subsequent requests get `NotFound`.
+    #[error("Connection {0} is gone")]
+    Gone(String),
     #[error("Connection {0} is in the wrong state for this operation")]
     WrongState(String),
     #[error("Timed out waiting for the {0}")]
@@ -37,6 +48,9 @@ impl SignalError {
         match self {
             SignalError::InvalidSdp(_) | SignalError::Sdp(_) => (StatusCode::BAD_REQUEST, None),
             SignalError::NotFound(_) => (StatusCode::NOT_FOUND, None),
+            // No Retry-After: a dead session will not come back — the
+            // client's move is a fresh POST, not a retry of this request.
+            SignalError::Gone(_) => (StatusCode::GONE, None),
             SignalError::WrongState(_) => (StatusCode::CONFLICT, None),
             SignalError::Timeout(_) | SignalError::NotReady | SignalError::PipelineBusy(_) => {
                 (StatusCode::SERVICE_UNAVAILABLE, Some("3"))
@@ -92,6 +106,10 @@ mod tests {
             SignalError::NotFound("x".into()).status_code()
         );
         assert_eq!(
+            StatusCode::GONE,
+            SignalError::Gone("x".into()).status_code()
+        );
+        assert_eq!(
             StatusCode::CONFLICT,
             SignalError::WrongState("x".into()).status_code()
         );
@@ -122,6 +140,10 @@ mod tests {
         assert_eq!("3", resp.headers().get("Retry-After").unwrap());
 
         let resp = SignalError::NotFound("x".into()).error_response();
+        assert!(resp.headers().get("Retry-After").is_none());
+
+        // A dead session will not come back: no retry hint on 410 either.
+        let resp = SignalError::Gone("x".into()).error_response();
         assert!(resp.headers().get("Retry-After").is_none());
     }
 

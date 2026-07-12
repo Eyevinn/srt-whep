@@ -199,7 +199,7 @@ impl ConnectionState {
     /// notice into the concrete error the parked waiter receives.
     fn notify(self, notice: WaiterNotice, id: &ConnectionId) {
         match notice {
-            WaiterNotice::Gone => self.fail_waiter(SignalError::NotFound(id.clone())),
+            WaiterNotice::Gone => self.fail_waiter(SignalError::Gone(id.clone())),
             WaiterNotice::ExpiredLeg => self.expire(),
             WaiterNotice::Unavailable => self.fail_waiter(SignalError::Unavailable),
         }
@@ -281,9 +281,12 @@ enum MissingEntry {
 /// How a parked waiter learns its connection is terminating.
 #[derive(Clone, Copy)]
 enum WaiterNotice {
-    /// The connection no longer exists: `NotFound`. (For `PeerGone` the
-    /// waiter itself vanished, so there is nobody left to notify; the
-    /// surviving leg's reply is the calling handler's to answer.)
+    /// The connection existed and is ending under the waiter: `Gone` → 410.
+    /// Honest by construction — `terminate` only notifies waiters whose
+    /// entry it just removed, so this is never a plain "unknown id" 404.
+    /// (For `PeerGone` the waiter itself vanished, so there is nobody left
+    /// to notify; the surviving leg's reply is the calling handler's to
+    /// answer — with the same `Gone`.)
     Gone,
     /// The handshake deadline passed: the waiter gets its leg's `Timeout`.
     ExpiredLeg,
@@ -494,9 +497,11 @@ impl<P: BranchControl> Coordinator<P> {
             }
             Ok(OfferDelivery::WaiterGone) => {
                 // The WHEP client vanished while waiting (actix dropped its
-                // handler future). Fail this handshake now.
+                // handler future). Fail this handshake now; the surviving
+                // whipsink leg learns the connection existed but died (410),
+                // not that its id was unknown (404).
                 tracing::warn!("WHEP waiter for {} is gone; failing handshake", id);
-                let _ = reply.send(Err(SignalError::NotFound(id.clone())));
+                let _ = reply.send(Err(SignalError::Gone(id.clone())));
                 let _ = self.terminate(id, TerminateReason::PeerGone).await;
             }
             Err(other) => {
@@ -521,9 +526,11 @@ impl<P: BranchControl> Coordinator<P> {
             }
             Ok(AnswerDelivery::WaiterGone) => {
                 // The whipsink's HTTP request died; it can never receive the
-                // answer, so the handshake is failed.
+                // answer, so the handshake is failed. The surviving WHEP
+                // leg's PATCH gets `Gone` (410): its session existed but
+                // died, unlike a PATCH naming an unknown id (404).
                 tracing::warn!("WHIP waiter for {} is gone; failing handshake", id);
-                let _ = reply.send(Err(SignalError::NotFound(id.clone())));
+                let _ = reply.send(Err(SignalError::Gone(id.clone())));
                 let _ = self.terminate(id, TerminateReason::PeerGone).await;
             }
             Err(other) => {
@@ -890,10 +897,10 @@ mod tests {
             tokio::task::yield_now().await;
 
             // The handshake fails now: the whipsink's surviving leg learns
-            // the connection is gone...
+            // the connection existed but is gone (410, not an unknown-id 404)...
             assert!(matches!(
                 handle.offer_received(id.clone(), offer()).await,
-                Err(SignalError::NotFound(_))
+                Err(SignalError::Gone(_))
             ));
             // ...and, once the actor finishes cleanup, the branch is detached.
             tokio::task::yield_now().await;
@@ -926,10 +933,11 @@ mod tests {
         tokio::task::yield_now().await;
 
         // The browser's PATCH finds the whipsink's waiter gone: the
-        // handshake fails, the entry is dropped, the branch is detached.
+        // handshake fails with `Gone` (its session existed but died — 410,
+        // not an unknown-id 404), the entry is dropped, the branch detached.
         assert!(matches!(
             handle.answer_received("a".to_string(), answer()).await,
-            Err(SignalError::NotFound(_))
+            Err(SignalError::Gone(_))
         ));
         tokio::task::yield_now().await; // let the actor finish branch cleanup
         assert_eq!(vec!["a".to_string()], pipeline.snapshot().removed);
@@ -1253,8 +1261,8 @@ mod tests {
             whip_reply: tx,
             deadline: Instant::now(),
         };
-        state.fail_waiter(SignalError::NotFound("a".into()));
-        assert!(matches!(rx.await.unwrap(), Err(SignalError::NotFound(_))));
+        state.fail_waiter(SignalError::Gone("a".into()));
+        assert!(matches!(rx.await.unwrap(), Err(SignalError::Gone(_))));
     }
 
     #[tokio::test]

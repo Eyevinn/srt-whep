@@ -235,6 +235,44 @@ async fn unknown_ids_return_404() {
     // DELETE of an unknown id is idempotent (204), covered by delete_is_idempotent.
 }
 
+/// The other half of the 404 contract: 404 means "never knew this id".
+/// A request that is in flight when its connection dies is answered 410
+/// Gone — the connection existed; it ended under the caller.
+#[tokio::test]
+async fn in_flight_requests_get_410_when_the_connection_dies() {
+    let (address, pipeline) = spawn_app(functional_config());
+    let client = http_client();
+
+    // A WHEP client parks awaiting the offer...
+    let whep_task = {
+        let address = address.clone();
+        tokio::spawn(async move {
+            http_client()
+                .post(format!("{}/channel", address))
+                .header("Content-Type", "application/sdp")
+                .send()
+                .await
+                .expect("whep post failed")
+        })
+    };
+    let id = wait_for_added_connection(&pipeline, 0).await;
+
+    // ...and the connection is deleted while it waits.
+    let del = client
+        .delete(format!("{}/channel/{}", address, id))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(StatusCode::OK, del.status());
+
+    // The parked request learns its connection existed but is gone —
+    // 410, not the unknown-id 404 (and no Retry-After: a dead session
+    // won't come back; the client's move is a fresh POST).
+    let parked = whep_task.await.unwrap();
+    assert_eq!(StatusCode::GONE, parked.status());
+    assert!(parked.headers().get("Retry-After").is_none());
+}
+
 #[tokio::test]
 async fn delete_is_idempotent() {
     let (address, pipeline) = spawn_app(functional_config());
