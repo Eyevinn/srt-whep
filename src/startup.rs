@@ -36,6 +36,12 @@ pub fn run(listener: TcpListener, signal: SignalHandle) -> Result<Server, std::i
     Ok(server)
 }
 
+/// Bus-reap channel buffer: how many branch failures can queue while the
+/// coordinator is busy. The pipeline's bus handler `try_send`s and drops the
+/// report when full (the sweep remains a backstop), so overflow degrades to
+/// a slower reap, never a stall.
+const BRANCH_FAILURE_CAPACITY: usize = 64;
+
 /// The assembled application: coordinator + supervisor + HTTP server,
 /// wired in exactly one place — used by `main`, the signaling integration
 /// tests, and the GStreamer e2e test.
@@ -48,22 +54,27 @@ pub struct Application {
 }
 
 impl Application {
+    /// `make_pipeline` receives the bus-reap sender and must build the
+    /// pipeline from it. The sender exists nowhere else, so the only pipeline
+    /// that can be assembled is one that reports branch failures from birth.
+    /// The constructed pipeline is returned alongside the application — tests
+    /// drive their fake through it.
     pub fn assemble<P>(
         listener: TcpListener,
-        pipeline: P,
+        make_pipeline: impl FnOnce(mpsc::Sender<BranchId>) -> P,
         config: CoordinatorConfig,
         expected_whip_port: Option<u16>,
-        branch_failures: mpsc::Receiver<BranchId>,
-    ) -> Result<Self, std::io::Error>
+    ) -> Result<(Self, P), std::io::Error>
     where
         P: BranchControl + PipelineLifecycle + 'static,
     {
         let port = listener.local_addr()?.port();
         // The pipeline's whipclientsink posts loopback WHIP offers to a fixed
         // port; if the HTTP server is bound elsewhere those offers 404 silently.
-        // Fail loudly at wiring time instead. (This coupling exists only for the
-        // loopback WHIP bridge — see src/stream/branch.rs — and is deleted with
-        // the whepserversink migration, ADR 0001.)
+        // Fail loudly at wiring time, before the pipeline is even constructed.
+        // (This coupling exists only for the loopback WHIP bridge — see
+        // src/stream/branch.rs — and is deleted with the whepserversink
+        // migration, ADR 0001.)
         if let Some(expected) = expected_whip_port {
             if expected != port {
                 return Err(std::io::Error::new(
@@ -75,23 +86,30 @@ impl Application {
                 ));
             }
         }
+        // The bus-reap channel: the pipeline holds the sender (from birth —
+        // the factory shape guarantees it), the coordinator the receiver.
+        let (branch_failures_tx, branch_failures_rx) = mpsc::channel(BRANCH_FAILURE_CAPACITY);
+        let pipeline = make_pipeline(branch_failures_tx);
         // The watchdog restart channel: the coordinator holds the sender (it
         // requests a restart on a trip), the supervisor the receiver (it owns
         // the force-quit + rerun). Created here so both ends exist before
-        // either task is spawned — symmetric with the bus-reap channel.
+        // either task is spawned — like the bus-reap channel above.
         let (restart_tx, restart_rx) = mpsc::channel(1);
         let (signal, reset) =
-            spawn_coordinator(pipeline.clone(), config, branch_failures, restart_tx);
+            spawn_coordinator(pipeline.clone(), config, branch_failures_rx, restart_tx);
         let (shutdown_tx, shutdown_rx) = watch::channel(false);
-        let supervisor = Supervisor::spawn(pipeline, reset, shutdown_rx, restart_rx);
+        let supervisor = Supervisor::spawn(pipeline.clone(), reset, shutdown_rx, restart_rx);
         let server = run(listener, signal.clone())?;
-        Ok(Self {
-            server,
-            supervisor,
-            signal,
-            shutdown: shutdown_tx,
-            port,
-        })
+        Ok((
+            Self {
+                server,
+                supervisor,
+                signal,
+                shutdown: shutdown_tx,
+                port,
+            },
+            pipeline,
+        ))
     }
 
     pub fn port(&self) -> u16 {

@@ -50,17 +50,22 @@ fn expiring_config(watchdog_threshold: u32) -> CoordinatorConfig {
 fn spawn_app(config: CoordinatorConfig) -> (String, TestPipeline) {
     Lazy::force(&TRACING);
     let listener = TcpListener::bind("127.0.0.1:0").expect("Failed to bind random port");
-    // Share the bus-reap channel between the fake and the coordinator, exactly
-    // as production wires the real pipeline — so `fail_branch` reaches the actor
-    // (the reaping integration test depends on this).
-    let (branch_failures_tx, branch_failures_rx) = tokio::sync::mpsc::channel(64);
-    let pipeline = TestPipeline::new(branch_failures_tx);
-    pipeline.set_ready(true);
-    // The production wiring, supervisor included: TestPipeline::run parks
+    // The production wiring, supervisor included: the fake is built from
+    // assemble's own bus-reap sender, so `fail_branch` reaches the actor (the
+    // reaping integration test depends on this). TestPipeline::run parks
     // until end/quit, so the supervisor sits idle unless the watchdog
     // trips — exactly like the real pipeline between restarts.
-    let app = Application::assemble(listener, pipeline.clone(), config, None, branch_failures_rx)
-        .expect("Failed to assemble app");
+    let (app, pipeline) = Application::assemble(
+        listener,
+        |branch_failures| {
+            let pipeline = TestPipeline::new(branch_failures);
+            pipeline.set_ready(true);
+            pipeline
+        },
+        config,
+        None,
+    )
+    .expect("Failed to assemble app");
     let address = format!("http://127.0.0.1:{}", app.port());
     tokio::spawn(app.run_until_stopped(std::future::pending()));
     (address, pipeline)
@@ -514,17 +519,15 @@ async fn assemble_rejects_a_mismatched_whip_port() {
     Lazy::force(&TRACING);
     let listener = TcpListener::bind("127.0.0.1:0").expect("Failed to bind random port");
     let bound = listener.local_addr().unwrap().port();
-    let pipeline = TestPipeline::default();
     // Deliberately claim a different callback port than the one bound.
     let wrong = bound.checked_add(1).unwrap_or(bound - 1);
-    // Assembly fails on the port check before the reap channel is used.
-    let (_fail_tx, fail_rx) = tokio::sync::mpsc::channel(1);
     let result = Application::assemble(
         listener,
-        pipeline,
+        |_branch_failures| -> TestPipeline {
+            unreachable!("assembly fails the port check before constructing the pipeline")
+        },
         functional_config(),
         Some(wrong),
-        fail_rx,
     );
     assert!(result.is_err(), "mismatched whip port must fail assembly");
 }
