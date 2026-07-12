@@ -103,6 +103,33 @@ _(append an entry per landed/declined candidate, same discipline as round 1)_
   66 lib + 14 integration green, the manual `--ignored` e2e passed, and
   the browser media guard passed (frames 0→148 climbing).
 
+- **D5 — landed (2026-07-12, PR #120).** Both halves, one commit each.
+  **(a)** `StreamError` deleted, per the card's "pick one honestly": the
+  re-verification against `ecd2174` found not just zero matches but zero
+  *possible* policy — every one of the 14 construction sites' honest
+  classification is Fatal (attach runs under the same lock as the
+  `input_ready()` check, so a missing tee mid-attach is genuine breakage,
+  not a race; the retryable cases were already constructed as
+  `PipelineError::NotReady`/`Transient` directly at the seam), and five
+  sites live inside `init()`'s GStreamer callbacks where the error only
+  feeds a log line. So option B ("make it drive policy") would have added
+  a downcast with identical arms — deletion chosen (approved by Kun).
+  Sites now use anyhow `context`/`anyhow!` with the "Failed to find
+  element: X" text kept verbatim so logs read the same; `stream::errors`
+  is now exactly the `BranchControl` seam language (`PipelineError`
+  alone). **(b)** The retryable set `{Timeout, NotReady, PipelineBusy}`
+  is spelled once: a private `SignalError::http_contract()` match returns
+  `(status, retry-after)` per variant, and both `ResponseError` methods
+  are accessors over it. Chosen over the card's literal `is_retryable()`
+  predicate (approved by Kun) because it keeps the match exhaustive — a
+  new variant forces deciding status and retryability in one arm, instead
+  of an early-return leaving unreachable arms or a drift-prone catch-all.
+  Contract tests at `signal/errors.rs` unchanged and green, pinning that
+  the refactor moved nothing observable. Verified: 66 lib + 14
+  integration green, clippy `-D warnings` clean, the manual `--ignored`
+  e2e passed (18.8s), and the browser media guard passed (frames 0→148
+  climbing).
+
 ---
 
 ## Required reading before touching code
