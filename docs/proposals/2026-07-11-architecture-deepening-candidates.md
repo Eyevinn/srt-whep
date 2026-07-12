@@ -194,6 +194,38 @@ _(append an entry per landed/declined candidate, same discipline as round 1)_
   **Round 2 complete: D1–D7 all landed.** Deferred for a future round:
   the PeerGone 404 honesty fix (wire-visible).
 
+- **PeerGone honesty fix — landed (2026-07-12, PR #123).** The candidate
+  deferred from D1, taken up after round 2 closed. Design review
+  (approved by Kun) widened the scope from "the two PeerGone surviving
+  legs" to the full honesty line, because exploration showed the
+  dishonesty was provable at three sites, not two:
+  `WaiterNotice::Gone` (used by `Deleted` and `Reaped` too) is a
+  dishonest 404 *by construction* — `terminate` only notifies waiters
+  whose entry it just removed, so the connection always existed. New
+  `SignalError::Gone(id)` → **410 Gone** (no Retry-After: a dead session
+  won't come back; the client's move is a fresh POST) at all three
+  sites; the two genuine-404 families (unknown-id lookups,
+  `MissingEntry::Reject`) stay `NotFound`. The resulting wire invariant
+  is statable in one line — **in-flight at the moment of death → 410
+  ("it existed; it just ended"); later by-id lookups → 404 ("never knew
+  it")** — with no tombstones kept, so it cannot conflict with
+  WHIP/WHEP's 404-after-termination convention (subsequent requests
+  still 404). Recorded in CONTEXT.md's Termination entry. DELETE
+  idempotency (`remove.rs` matching `NotFound` → 204) is untouched: it
+  matches only the `Reject` arm. Pinned three ways: the errors.rs
+  contract tests gained the 410/no-Retry-After rows, the two
+  vanished-peer coordinator tests now assert `Gone`, and a NEW
+  wire-level integration test
+  (`in_flight_requests_get_410_when_the_connection_dies`) parks a WHEP
+  POST, DELETEs the connection, and asserts the parked request resolves
+  410 without Retry-After — the first test to pin the parked-waiter
+  notice on the wire. Verified: 67 lib + 15 integration green, clippy
+  `-D warnings` clean, the manual `--ignored` e2e passed (18.7s; the
+  usual fresh-worktree cold-start flake on the first run, clean on
+  rerun — the real whipclientsink receives the 410 on its offer POST in
+  exactly those vanished-viewer rounds), and the browser media guard
+  passed (frames 0→142 climbing).
+
 ---
 
 ## Required reading before touching code

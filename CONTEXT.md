@@ -65,7 +65,10 @@ viewer through a loopback WHIP bridge inside the same process.
   parked waiter is failed, whether the branch teardown gates the death, and
   whether the watchdog is fed. The sweep and reap rows keep their pinned
   semantics; "a reap does not feed the watchdog" is a value in that table,
-  not a comment.
+  not a comment. On the wire, termination answers requests still in flight
+  with **410 Gone** ("it existed; it just ended"); a later request naming
+  the id gets a plain **404** ("never knew it") — the map holds no
+  tombstones.
 - **Reset** — the restart contract between the supervisor and the
   coordinator: after *every* pipeline stop (error, EOS, watchdog restart,
   shutdown) the supervisor resets signaling, and the coordinator fails all
