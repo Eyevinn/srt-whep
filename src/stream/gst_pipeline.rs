@@ -545,7 +545,7 @@ impl SharablePipeline {
             .build()?;
 
         queue.connect("overrun", false, {
-            move |values: &[glib::Value]| {
+            move |values: &[gst::glib::Value]| {
                 let queue = values[0].get::<gst::Element>().unwrap();
                 tracing::debug!("{} is overrun", queue.name());
                 None
