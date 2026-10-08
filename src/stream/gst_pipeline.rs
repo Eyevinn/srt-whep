@@ -278,26 +278,33 @@ impl PipelineLifecycle for SharablePipeline {
                 None => return,
             };
 
-            let all_linked = dbin.foreach_src_pad(|_, pad| {
+            let mut all_linked = true;
+            dbin.foreach_src_pad(|_, pad| {
                 let media_type = pad
                     .current_caps()
-                    .and_then(|caps| caps.structure(0).map(|s| s.name()));
+                    .and_then(|caps| caps.structure(0).map(|s| s.name().to_string()));
                 if media_type.is_none() {
                     tracing::warn!("Failed to get media type from demux pad");
-                    return false;
+                    all_linked = false;
+                    return std::ops::ControlFlow::Break(());
                 }
 
-                let media_type = media_type.unwrap().as_str();
+                let media_type = media_type.unwrap();
                 tracing::debug!("linking to media {:?}", media_type);
 
                 let linked =
-                    egress::build_egress_chain(&pipeline, media_type, &video_queue, &audio_queue)
+                    egress::build_egress_chain(&pipeline, &media_type, &video_queue, &audio_queue)
                         .map_err(|err| {
                             tracing::error!("Failed to link media: {}", err);
                             err
                         });
 
-                linked.is_ok()
+                if linked.is_ok() {
+                    std::ops::ControlFlow::Continue(())
+                } else {
+                    all_linked = false;
+                    std::ops::ControlFlow::Break(())
+                }
             });
 
             if all_linked {
